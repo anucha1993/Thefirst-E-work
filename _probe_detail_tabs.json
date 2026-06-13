@@ -1,0 +1,42 @@
+[
+  {
+    "text": "สถานะคำขอ",
+    "href": "#tab_default_1",
+    "onclick": ""
+  },
+  {
+    "text": "ข้อมูลคนต่างด้าว",
+    "href": "#tab_default_2_1",
+    "onclick": ""
+  },
+  {
+    "text": "คำขออนุญาต",
+    "href": "#tab_default_2",
+    "onclick": ""
+  },
+  {
+    "text": "รายชื่อแรงงาน",
+    "href": "#tab_default_3",
+    "onclick": "handleTabClick(this.id)"
+  },
+  {
+    "text": "การชำระเงิน",
+    "href": "#tab_default_4",
+    "onclick": "handleTabClick(this.id)"
+  },
+  {
+    "text": "การนัดหมาย",
+    "href": "#tab_default_5",
+    "onclick": "handleTabClick(this.id)"
+  },
+  {
+    "text": "เอกสารตอบรับจากระบบ",
+    "href": "#tab_default_6",
+    "onclick": ""
+  },
+  {
+    "text": "ยื่นอุทธรณ์",
+    "href": "#tab_default_7",
+    "onclick": ""
+  }
+]
