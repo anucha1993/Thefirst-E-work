@@ -1,0 +1,66 @@
+﻿[t+   1.4s] login...
+[+] Login OK โ’ https://eworkpermit.doe.go.th/
+[t+  15.6s] Step 1 search...
+[t+  24.3s] Step 2.1 consent...
+      Step 2.1: Checking consent...
+      โ“ Consent checkbox clicked by user-like interaction
+      โ“ Loading finished (0.0s)
+      โ“ Clicked Next | text='เธ–เธฑเธ”เนเธ' id='gonextSubmit' class=''
+      โ“ Loading finished (2.0s)
+      โ“ Step 2.1 confirmed (transitioned to address step)
+[t+  28.9s] Step 2.3 verify permit...
+      โ“ เน€เธฅเธเธ—เธตเนเนเธเธญเธเธธเธเธฒเธ•เธ•เธฃเธเธเธฑเธ: 0569200055150 (expected 0569200055150)
+[t+  29.3s] Step 2.2 edit address...
+      Step 2.2: Editing address...
+      โ“ Loading finished (0.0s)
+      โ“ Clicked 'เธเธธเนเธก 'เนเธเนเนเธเธเนเธญเธกเธนเธฅ''
+      โ“ Loading finished (0.3s)
+      โ“ Loading finished (0.0s)
+      โ“ Clicked 'เธเธฑเธเธ—เธถเธ'
+      โ“ Loading finished (0.0s)
+      โ“ Loading finished (0.0s)
+      โ“ เธเธ” 'เธขเธทเธเธขเธฑเธ' เนเธเนเธกเธ”เธฑเธฅเธเธฑเธเธ—เธถเธเธชเธณเน€เธฃเนเธเนเธฅเนเธง
+      โ“ Address edited successfully
+      โ“ Loading finished (0.0s)
+[t+  39.2s] Step 3.1 change employer...
+      [Step 3.1] เธเนเธเธซเธฒเธเธฒเธขเธเนเธฒเธ...
+      โ“ Loading finished (0.0s)
+      โ“ Loading finished (0.0s)
+      [Step 3.1] เธเธฃเธญเธเน€เธซเธ•เธธเธเธฅเธญเธทเนเธเน: เธขเนเธฒเธขเธ—เธตเนเธญเธขเธนเน/เน€เธเธฅเธตเนเธขเธเธเธฒเธเนเธซเธกเน
+      โ“ Loading finished (0.3s)
+      โ“ Loading finished (0.0s)
+      [Step 3.1] โ… เน€เธเธฅเธตเนเธขเธเธเธฒเธขเธเนเธฒเธเนเธฅเธฐเธเธฑเธเธ—เธถเธเนเธฅเนเธง
+[probe] step3.1 -> {"status": "SUCCESS", "note": "Step 3.1 complete (employer changed + saved)"}
+[t+  51.0s] Step 3.3-3.4 workplace...
+      [Step 3.3] เน€เธฅเธทเธญเธเธชเธ–เธฒเธเธ—เธตเนเธ—เธณเธเธฒเธ...
+      โ“ Loading finished (0.3s)
+      โ“ Loading finished (0.8s)
+      [Step 3.3] เน€เธฅเธทเธญเธเธชเธฒเธเธฒ: เธชเธณเธเธฑเธเธเธฒเธ : 88/7 เธซเธกเธนเนเธ—เธตเน 3 เนเธเธงเธ/เธ•เธณเธเธฅ เธ—เนเธฒเธเนเธฒเธก เน€เธเธ•/เธญเธณเน€เธ เธญ เธเธฒเธเธเธฐเธเธ เธเธฑเธเธซเธงเธฑเธ” เธเธฐเน€เธเธดเธเน€เธ—เธฃเธฒ
+      [Step 3.3.1] เธเธฃเธฐเน€เธ เธ—เธเธดเธเธเธฒเธฃ: เธเนเธฒเธชเนเธ เธเนเธฒเธเธฅเธตเธ เนเธเธเธฅเธญเธข (BT20)**
+      โ“ Loading finished (0.0s)
+      [Step 3.3.1] โ“ เธเธฃเธฐเน€เธ เธ—เธเธฒเธเธ—เธตเนเธเธญเธญเธเธธเธเธฒเธ•เธ•เธฃเธ: เธเธฃเธฃเธกเธเธฃ
+      โ“ Loading finished (0.0s)
+      [Step 3.3.2] เธฅเธฑเธเธฉเธ“เธฐเธเธฒเธ: เธขเธ เนเธเธ เธซเธฒเธก
+      โ“ Loading finished (0.0s)
+      โ“ Loading finished (0.0s)
+      [Step 3.3] โ… เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธฃเธเธญเธญเธเธธเธเธฒเธ•เนเธฅเนเธง
+      โ  Loading timeout (10.1s/10000ms) - continuing anyway
+      [Step 3.4] โ… เธเธ”เธ–เธฑเธ”เนเธ โ’ Step 4
+[probe] step3.3 -> {"status": "SUCCESS", "note": "Step 3.3-3.4 complete (เธชเธฒเธเธฒ+เธเธฃเธฐเน€เธ เธ—เธเธดเธเธเธฒเธฃ+เธ•เธฃเธงเธเธเธฃเธฐเน€เธ เธ—เธเธฒเธ+เธฅเธฑเธเธฉเธ“เธฐเธเธฒเธ+เธ–เธฑเธ”เนเธ)"}
+[t+  70.1s] Step 4 reached โ€” dumping DOM...
+      โ  Loading timeout (8.2s/8000ms) - continuing anyway
+[probe] saved step4_probe.json
+[probe] heading: เธเธฒเธฃเนเธเนเธเธเธฒเธฃเธ—เธณเธเธฒเธ เนเธฅเธฐเธเธฒเธฃเธขเธทเนเธเธเธณเธเธญเน€เธเธฅเธตเนเธขเธเธฃเธฒเธขเธเธฒเธฃเนเธเนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ เธเธถเนเธเนเธกเนเธเธฃเธฐเธ—เธเนเธเนเธเธญเธเธธเธเธฒเธ•
+[probe] fileInputs count: 11
+[probe] photo input id = file-1-884u2
+[probe] set photo file ok
+      โ“ Loading finished (0.0s)
+[probe] crop_detail buttons: [{"text": "เธซเธเนเธฒเน€เน€เธฃเธ /", "id": "text_home", "da": "", "cls": "text-secondary font-weight-normal"}, {"text": "เน€เธเธดเนเธกเน€เธญเธเธชเธฒเธฃ", "id": "", "da": "popup-upload", "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"}, {"text": "เธขเธเน€เธฅเธดเธ", "id": "", "da": "back-to-menu", "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"}, {"text": "เธ–เธฑเธ”เนเธ", "id": "button_next", "da": "next", "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"}, {"text": "เธขเนเธญเธเธเธฅเธฑเธ", "id": "", "da": "prev", "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"}, {"text": "เธขเธเน€เธฅเธดเธ", "id": "", "da": "", "cls": "btn btn-dark m-0 lang_txt_cancel"}, {"text": "เธเธฑเธเธ—เธถเธ", "id": "crop-save-button", "da": "", "cls": "btn btn-primary lang_lbl_save"}]
+[probe] crop_detail imgs: [{"tag": "IMG", "id": "", "cls": ""}, {"tag": "IMG", "id": "", "cls": "p-img"}, {"tag": "IMG", "id": "", "cls": "cropper-hide"}, {"tag": "IMG", "id": "", "cls": ""}]
+[probe] clicked crop เธเธฑเธเธ—เธถเธ
+      โ  Loading timeout (6.3s/6000ms) - continuing anyway
+[probe] clicked เน€เธเธดเนเธกเน€เธญเธเธชเธฒเธฃ
+[probe] adddoc_modal fileInputs: []
+[probe] adddoc_modal textInputs: [{"id": "document", "name": "document", "placeholder": "เธเธฃเธธเธ“เธฒเธเธฃเธญเธ"}]
+[probe] adddoc_modal buttons: [{"text": "เธซเธเนเธฒเน€เน€เธฃเธ /", "id": "text_home", "da": "", "cls": "text-secondary font-weight-normal"}, {"text": "เน€เธเธดเนเธกเน€เธญเธเธชเธฒเธฃ", "id": "", "da": "popup-upload", "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"}, {"text": "เธขเธเน€เธฅเธดเธ", "id": "", "da": "back-to-menu", "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"}, {"text": "เธ–เธฑเธ”เนเธ", "id": "button_next", "da": "next", "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"}, {"text": "เธขเนเธญเธเธเธฅเธฑเธ", "id": "", "da": "prev", "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"}, {"text": "เธขเธทเธเธขเธฑเธ", "id": "", "da": "", "cls": "btn btn-primary float-right"}, {"text": "เธขเธเน€เธฅเธดเธ", "id": "", "da": "", "cls": "btn btn-dark float-right"}]
+[probe] saved step4_probe.json (full)

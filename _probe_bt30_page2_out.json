@@ -1,0 +1,284 @@
+{
+  "page2": {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "กรอกข้อมูลคำขอ",
+      "แนบเอกสาร",
+      "สรุปคำขอ",
+      "ยืนยันตัวตน",
+      "ชำระเงิน",
+      "เสร็จสิ้น",
+      "ข้อมูลนายจ้าง",
+      "โดยจะมาทำงาน",
+      "เอกสารแสดงการอนุญาตหรือการรับรอง",
+      "เลขที่",
+      "ออกให้โดย",
+      "วันที่ออกเอกสาร",
+      "วันที่เอกสารหมดอายุ",
+      "ข้อมูลการขออนุญาต",
+      "ระยะเวลาการขออนุญาตทำงาน",
+      "เดือน",
+      "วัน",
+      "วันที่เริ่ม",
+      "วันที่สิ้นสุด"
+    ],
+    "inputs": [
+      {
+        "tag": "SELECT",
+        "id": "sltLang",
+        "name": "",
+        "type": "select-one",
+        "readonly": false,
+        "disabled": false,
+        "cls": "div-lang sltLang",
+        "placeholder": null,
+        "value": "th",
+        "visible": true,
+        "label": "",
+        "opts": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ],
+        "nopts": 6
+      },
+      {
+        "tag": "SELECT",
+        "id": "workplace_full_address_emp_RE17604197590294154",
+        "name": "",
+        "type": "select-one",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control select2_lang mb-3 style-form select2-hidden-accessible",
+        "placeholder": null,
+        "value": "1",
+        "visible": true,
+        "label": "",
+        "opts": [
+          "กรุณาเลือก",
+          "สำนักงาน : 365/1 ถนน พหลโยธิน แขวง/ตำบล อนุสาวรีย์",
+          "สาขา : 365/1 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "สาขา : 365/1 ถนน พหลโยธิน แขวง/ตำบล อนุสาวรีย์ เขต",
+          "สาขา : 914/151 ถนน พระราม 3 แขวง/ตำบล บางโพงพาง เข",
+          "สาขา : 991 อาคารศูนย์การค้าสยามพารากอน ถนน พระรามท",
+          "สาขา : 365/1 ถนน พหลโยธิน แขวง/ตำบล อนุสาวรีย์ เขต",
+          "สาขา : อาคารศูนย์การค้าสยามพารากอน ถนน พระราม 1 แข",
+          "สาขา : 494 ถนน เพลินจิต แขวง/ตำบล ปทุมวัน เขต/อำเภ",
+          "สาขา : 365 ถนน พหลโยธิน แขวง/ตำบล อนุสาวรีย์ เขต/อ",
+          "สาขา : 365/1 ถนน พหลโยธิน แขวง/ตำบล อนุสาวรีย์ เขต",
+          "สาขา : 365/1 ถนน พหลโยธิน แขวง/ตำบล อนุสาวรีย์ เขต",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน",
+          "365/1 หมู่ 0 แขวง/ตำบล อนุสาวรีย์ เขต/อำเภอ บางเขน"
+        ],
+        "nopts": 97
+      },
+      {
+        "tag": "SELECT",
+        "id": "bus_type_name_th_emp_RE17604197590294154",
+        "name": "",
+        "type": "select-one",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control select2_lang mb-3 style-form select2-hidden-accessible",
+        "placeholder": null,
+        "value": "21114",
+        "visible": true,
+        "label": "",
+        "opts": [
+          "กรุณาเลือกสถานที่ทำงานก่อน",
+          "การให้บริการต่างๆ (BT24)**",
+          "ประเภทกิจการอื่นๆ",
+          "การให้บริการต่างๆ (BT24)**",
+          "การให้บริการต่างๆ (BT24)**",
+          "ประเภทกิจการอื่นๆ"
+        ],
+        "nopts": 6
+      },
+      {
+        "tag": "INPUT",
+        "id": "alien_cert_no",
+        "name": "",
+        "type": "text",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control nospecialchar",
+        "placeholder": "กรุณากรอก",
+        "value": "",
+        "visible": true,
+        "label": "",
+        "opts": null,
+        "nopts": null
+      },
+      {
+        "tag": "INPUT",
+        "id": "alien_cert_issue_at",
+        "name": "",
+        "type": "text",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control nospecialchar",
+        "placeholder": "กรุณากรอก",
+        "value": "",
+        "visible": true,
+        "label": "",
+        "opts": null,
+        "nopts": null
+      },
+      {
+        "tag": "INPUT",
+        "id": "alien_cert_issue_dt",
+        "name": "",
+        "type": "text",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control inputdatepicker date-input datepicker",
+        "placeholder": "วว/ดด/ปปปป",
+        "value": "",
+        "visible": true,
+        "label": "เป็นคนต่างด้าวตามมติคณะรัฐมนตรีเมื่อวันที่",
+        "opts": null,
+        "nopts": null
+      },
+      {
+        "tag": "INPUT",
+        "id": "alien_cert_expired_dt",
+        "name": "",
+        "type": "text",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control inputdatepicker date-input datepicker",
+        "placeholder": "วว/ดด/ปปปป",
+        "value": "",
+        "visible": true,
+        "label": "อยู่ได้ถึงวันที่",
+        "opts": null,
+        "nopts": null
+      },
+      {
+        "tag": "SELECT",
+        "id": "year_work",
+        "name": "yearcheck",
+        "type": "select-one",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control style-form yearcheck-work",
+        "placeholder": null,
+        "value": "2",
+        "visible": true,
+        "label": "ปี",
+        "opts": [
+          "0",
+          "1",
+          "2"
+        ],
+        "nopts": 3
+      },
+      {
+        "tag": "SELECT",
+        "id": "month_work",
+        "name": "monthcheck",
+        "type": "select-one",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control style-form monthcheck-work",
+        "placeholder": null,
+        "value": "0",
+        "visible": true,
+        "label": "เดือน",
+        "opts": [
+          "0"
+        ],
+        "nopts": 1
+      },
+      {
+        "tag": "SELECT",
+        "id": "day_work",
+        "name": "daycheck",
+        "type": "select-one",
+        "readonly": false,
+        "disabled": false,
+        "cls": "form-control style-form daycheck-work",
+        "placeholder": null,
+        "value": "0",
+        "visible": true,
+        "label": "วัน",
+        "opts": [
+          "0"
+        ],
+        "nopts": 1
+      },
+      {
+        "tag": "INPUT",
+        "id": "work_duration_since_at",
+        "name": "work_duration_since_at_check",
+        "type": "text",
+        "readonly": false,
+        "disabled": true,
+        "cls": "form-control work_duration_since_at_check inputdatepicker date-input",
+        "placeholder": "วว/ดด/ปปปป",
+        "value": "27/06/2026",
+        "visible": true,
+        "label": "วันที่เริ่ม",
+        "opts": null,
+        "nopts": null
+      },
+      {
+        "tag": "INPUT",
+        "id": "work_duration_until_at",
+        "name": "work_duration_until_at_check",
+        "type": "text",
+        "readonly": false,
+        "disabled": true,
+        "cls": "form-control work_duration_until_at_check inputdatepicker date-input d",
+        "placeholder": "วว/ดด/ปปปป",
+        "value": "26/06/2028",
+        "visible": true,
+        "label": "วันที่สิ้นสุด",
+        "opts": null,
+        "nopts": null
+      }
+    ],
+    "buttons": [
+      {
+        "id": "delete_draft",
+        "txt": "ลบฉบับร่าง",
+        "onclick": "DeleteDataDraftRequestForm()",
+        "cls": "btn btn-primary btt-draft action-button"
+      },
+      {
+        "id": "save_draft",
+        "txt": "บันทึกฉบับร่าง",
+        "onclick": "saveDataDraft()",
+        "cls": "btn btn-primary btt-draft action-button"
+      },
+      {
+        "id": "buttoncancel",
+        "txt": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "cls": "btn btn-cancel float-right float-left lang_txt_cancel"
+      },
+      {
+        "id": "NextStepTwoPageOne",
+        "txt": "ถัดไป",
+        "onclick": "",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_"
+      },
+      {
+        "id": "previous2",
+        "txt": "ย้อนกลับ",
+        "onclick": "",
+        "cls": "btn btn-dark action-button-previous float-right-test w-48-bt"
+      }
+    ]
+  }
+}

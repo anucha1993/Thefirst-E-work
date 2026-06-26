@@ -1,0 +1,145 @@
+﻿[t+   1.0s] login...
+[+] Login OK โ’ https://eworkpermit.doe.go.th/
+[t+  17.1s] Step 1 search...
+[t+  24.9s] Step 2.1 consent...
+      Step 2.1: Checking consent...
+      โ“ Consent checkbox clicked by user-like interaction
+      โ“ Loading finished (0.0s)
+      โ“ Clicked Next | text='เธ–เธฑเธ”เนเธ' id='gonextSubmit' class=''
+      โ“ Loading finished (2.1s)
+      โ“ Step 2.1 confirmed (transitioned to address step)
+[t+  33.1s] Step 2.3 verify permit...
+      โ“ เน€เธฅเธเธ—เธตเนเนเธเธญเธเธธเธเธฒเธ•เธ•เธฃเธเธเธฑเธ: 0569200055150 (expected 0569200055150)
+[t+  33.5s] Step 2.2 edit address...
+      Step 2.2: Editing address...
+      โ“ Loading finished (0.0s)
+      โ“ Clicked 'เธเธธเนเธก 'เนเธเนเนเธเธเนเธญเธกเธนเธฅ''
+      โ“ Loading finished (0.3s)
+      โ“ Loading finished (0.0s)
+      โ“ Clicked 'เธเธฑเธเธ—เธถเธ'
+      โ“ Loading finished (0.0s)
+      โ“ Loading finished (0.0s)
+      โ“ เธเธ” 'เธขเธทเธเธขเธฑเธ' เนเธเนเธกเธ”เธฑเธฅเธเธฑเธเธ—เธถเธเธชเธณเน€เธฃเนเธเนเธฅเนเธง
+      โ“ Address edited successfully
+      โ“ Loading finished (0.0s)
+[t+  43.5s] Step 3.1 change employer...
+      [Step 3.1] เธเนเธเธซเธฒเธเธฒเธขเธเนเธฒเธ...
+      โ“ Loading finished (0.0s)
+      โ“ Loading finished (0.0s)
+      [Step 3.1] เธเธฃเธญเธเน€เธซเธ•เธธเธเธฅเธญเธทเนเธเน: เธขเนเธฒเธขเธ—เธตเนเธญเธขเธนเน/เน€เธเธฅเธตเนเธขเธเธเธฒเธเนเธซเธกเน
+      โ“ Loading finished (0.3s)
+      โ“ Loading finished (0.0s)
+      [Step 3.1] โ… เน€เธเธฅเธตเนเธขเธเธเธฒเธขเธเนเธฒเธเนเธฅเธฐเธเธฑเธเธ—เธถเธเนเธฅเนเธง
+[t+  55.2s] Step 3.3-3.4 workplace...
+      [Step 3.3] เน€เธฅเธทเธญเธเธชเธ–เธฒเธเธ—เธตเนเธ—เธณเธเธฒเธ...
+      โ“ Loading finished (0.3s)
+      โ“ Loading finished (0.5s)
+      [Step 3.3] เน€เธฅเธทเธญเธเธชเธฒเธเธฒ: เธชเธณเธเธฑเธเธเธฒเธ : 88/7 เธซเธกเธนเนเธ—เธตเน 3 เนเธเธงเธ/เธ•เธณเธเธฅ เธ—เนเธฒเธเนเธฒเธก เน€เธเธ•/เธญเธณเน€เธ เธญ เธเธฒเธเธเธฐเธเธ เธเธฑเธเธซเธงเธฑเธ” เธเธฐเน€เธเธดเธเน€เธ—เธฃเธฒ
+      [Step 3.3.1] เธเธฃเธฐเน€เธ เธ—เธเธดเธเธเธฒเธฃ: เธเนเธฒเธชเนเธ เธเนเธฒเธเธฅเธตเธ เนเธเธเธฅเธญเธข (BT20)**
+      โ“ Loading finished (0.0s)
+      [Step 3.3.1] โ“ เธเธฃเธฐเน€เธ เธ—เธเธฒเธเธ—เธตเนเธเธญเธญเธเธธเธเธฒเธ•เธ•เธฃเธ: เธเธฃเธฃเธกเธเธฃ
+      โ“ Loading finished (0.0s)
+      [Step 3.3.2] เธฅเธฑเธเธฉเธ“เธฐเธเธฒเธ: เธขเธ เนเธเธ เธซเธฒเธก
+      โ“ Loading finished (0.0s)
+      โ“ Loading finished (0.0s)
+      [Step 3.3] โ… เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเธเธฒเธฃเธเธญเธญเธเธธเธเธฒเธ•เนเธฅเนเธง
+      โ  Loading timeout (10.3s/10000ms) - continuing anyway
+      [Step 3.4] โ… เธเธ”เธ–เธฑเธ”เนเธ โ’ Step 4
+[t+  74.3s] Step 4 attach docs...
+      โ  Loading timeout (8.1s/8000ms) - continuing anyway
+        โ“ เธชเธณเน€เธเธฒเน€เธญเธเธชเธฒเธฃเธชเธณเธเธฑเธเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธญเธเธเธเธ•เนเธฒเธเธ”เนเธฒ: 2 Work Permit.pdf
+        โ“ เธชเธณเน€เธเธฒเน€เธญเธเธชเธฒเธฃเธซเธฃเธทเธญเธซเธฅเธฑเธเธเธฒเธเธ—เธตเนเนเธชเธ”เธเนเธซเนเน€เธซเนเธ: เธเธ•.46 เธ.เน€เธกเธฅเธญเธ-1.pdf
+        โ“ เนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ: 2 Work Permit.pdf
+        โ“ เธชเธณเน€เธเธฒเธซเธเธฑเธเธชเธทเธญเน€เธ”เธดเธเธ—เธฒเธ: 2 Work Permit.pdf
+        โ“ เธเธฃเธญเธเธฃเธนเธเธ–เนเธฒเธข (3:4) เนเธฅเนเธงเธเธฑเธเธ—เธถเธ
+        โ“ เธฃเธนเธเธ–เนเธฒเธข เธเธเธฒเธ” 3 x 4 เธเธก.: EI EI THWIN.jpg
+        โ“ เธซเธเธฑเธเธชเธทเธญเธกเธญเธเธญเธณเธเธฒเธเธเธถเนเธเธฃเธฐเธเธธเธเนเธญเธเธงเธฒเธกเธกเธญเธเธญเธณเธ: 1.เธกเธญเธเธญเธณเธเธฒเธ.pdf
+        โ“ เนเธเธกเธญเธเธญเธณเธเธฒเธเธเธฃเนเธญเธกเธ•เธดเธ”เธญเธฒเธเธฃเนเธชเธ•เธกเธเนเธเธญเธเธเธนเนเธฃเธฑ: 2. เธกเธญเธเธญเธณเธเธฒเธเธเธธเธ“เธซเธเธฉเนเนเธซเนเธเธดเธฃเธฐเธเธฑเธเธ—เน เธกเธฐเธฅเธฑเธขเธ—เธญเธ.pdf
+        โ“ เธชเธณเน€เธเธฒเธเธฑเธ•เธฃเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธฃเธฐเธเธฒเธเธเธเธญเธเธเธนเนเธกเธญเธเธญเธณเธ: 3.เน€เธญเธเธชเธฒเธฃเธเธธเธ“เธซเธเธฉเน.pdf
+        โ“ เธชเธณเน€เธเธฒเธเธฑเธ•เธฃเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธฃเธฐเธเธฒเธเธเธเธญเธเธเธนเนเธฃเธฑเธเธกเธญเธ: 4.เน€เธญเธเธชเธฒเธฃ เธเธดเธฃเธฐเธเธฑเธเธ—เน เธกเธฐเธฅเธฑเธขเธ—เธญเธ.pdf
+        โ“ เน€เธญเธเธชเธฒเธฃเธญเธทเนเธเน #1: 5.DBD+เน€เธญเธเธชเธฒเธฃเธเธฒเธขเธเนเธฒเธ.pdf
+        โ“ เน€เธญเธเธชเธฒเธฃเธญเธทเนเธเน #2: เธกเธญเธเธญเธณเธเธฒเธเนเธซเนเธเธดเธฃเธเธฑเธเธ—เน1-18 (1).pdf
+      โ“ Loading finished (0.0s)
+      [Step 4.1] โ… เนเธเธเน€เธญเธเธชเธฒเธฃเธฅเธนเธเธเนเธฒเธ 9/9 + เธญเธทเนเธเน 2/2 โ’ เธ–เธฑเธ”เนเธ
+      โ“ Loading finished (0.0s)
+      [Step 4.2] โ… เน€เธญเธเธชเธฒเธฃเธเธฒเธขเธเนเธฒเธ โ’ เธ–เธฑเธ”เนเธ
+[t+  97.0s] Step 4 done โ€” at Step 5 (เธชเธฃเธธเธเธเธณเธเธญ) ?
+      โ“ Loading finished (0.0s)
+[t+  98.7s] step5_initial heading: เธเธฒเธฃเนเธเนเธเธเธฒเธฃเธ—เธณเธเธฒเธ เนเธฅเธฐเธเธฒเธฃเธขเธทเนเธเธเธณเธเธญเน€เธเธฅเธตเนเธขเธเธฃเธฒเธขเธเธฒเธฃเนเธเนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ เธเธถเนเธเนเธกเนเธเธฃเธฐเธ—เธเนเธเนเธเธญเธเธธเธเธฒ
+[t+  98.7s] Step 5.1 click เธ–เธฑเธ”เนเธ...
+      โ“ Loading finished (0.0s)
+[t+ 100.5s] after 5.1 heading: เธเธฒเธฃเนเธเนเธเธเธฒเธฃเธ—เธณเธเธฒเธ เนเธฅเธฐเธเธฒเธฃเธขเธทเนเธเธเธณเธเธญเน€เธเธฅเธตเนเธขเธเธฃเธฒเธขเธเธฒเธฃเนเธเนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ เธเธถเนเธเนเธกเนเธเธฃเธฐเธ—เธเนเธเนเธเธญเธเธธเธเธฒ
+[t+ 100.5s] Step 5.2 click เธ–เธฑเธ”เนเธ...
+      โ“ Loading finished (0.0s)
+[t+ 102.3s] after 5.2 heading: เธเธฒเธฃเนเธเนเธเธเธฒเธฃเธ—เธณเธเธฒเธ เนเธฅเธฐเธเธฒเธฃเธขเธทเนเธเธเธณเธเธญเน€เธเธฅเธตเนเธขเธเธฃเธฒเธขเธเธฒเธฃเนเธเนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ เธเธถเนเธเนเธกเนเธเธฃเธฐเธ—เธเนเธเนเธเธญเธเธธเธเธฒ
+[probe] checkboxes on 5.3 page:
+[t+ 102.3s] saved step5_probe.json (initial)
+[t+ 102.3s] Step 5.3 check consent checkbox + click...
+[probe] consent check result: OK_CLICK
+      โ“ Loading finished (0.0s)
+[t+ 108.6s] step6 heading: เธเธฒเธฃเนเธเนเธเธเธฒเธฃเธ—เธณเธเธฒเธ เนเธฅเธฐเธเธฒเธฃเธขเธทเนเธเธเธณเธเธญเน€เธเธฅเธตเนเธขเธเธฃเธฒเธขเธเธฒเธฃเนเธเนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ เธเธถเนเธเนเธกเนเธเธฃเธฐเธ—เธเนเธเนเธเธญเธเธธเธเธฒ
+[probe] step6 buttons:
+   'เธ–เนเธฒเธขเธ เธฒเธ'                                          id=''                       da='camera-capture'   cls=btn btn-primary action-button mt-4 lang_take_photo
+   'เธญเธฑเธเนเธซเธฅเธ”'                                          id=''                       da='picture-uploader' cls=btn btn-dark action-button lang_btn_upload_photo
+   'เธขเธเน€เธฅเธดเธ'                                           id=''                       da='back-to-menu'     cls=btn btn-cancel float-right float-left w-48-bt lang_txt_cance
+   'เธ–เธฑเธ”เนเธ'                                            id=''                       da='next'             cls=btn btn-next btn-primary action-button float-right w-48-bt l
+[t+ 108.6s] Step 6 โ€” click เธญเธฑเธเนเธซเธฅเธ”เธ เธฒเธ...
+[probe] clicked เธญเธฑเธเนเธซเธฅเธ”เธ เธฒเธ
+[probe] step6 visible fileInputs after click:
+   id='file-1-fmrlth' name='file-1-fmrlth' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเน€เธญเธเธชเธฒเธฃเธชเธณเธเธฑเธเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธญเธเธเธเธ•เนเธฒเธเธ”เนเธฒเธงเธ—เธตเนเธฃเธฒเธเธเธฒเธฃเธญเธญเธเนเธซเน","EN":"A copy of the
+       data-document-en=A copy of the alien's important identification document issued by the government
+       data-gtm-form-interact-field-id=5
+   id='file-1-y92wn' name='file-1-y92wn' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเน€เธญเธเธชเธฒเธฃเธซเธฃเธทเธญเธซเธฅเธฑเธเธเธฒเธเธ—เธตเนเนเธชเธ”เธเนเธซเนเน€เธซเนเธเธงเนเธฒเธกเธตเธเธฒเธฃเน€เธเธฅเธตเนเธขเธเธฃเธฒเธขเธเธฒเธฃเนเธเนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธเธ
+       data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit
+       data-gtm-form-interact-field-id=6
+   id='file-1-0mtrnf' name='file-1-0mtrnf' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เนเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธ","EN":"Work permit","VN":"Giแบฅy phรฉp lao ฤ‘แปng","MM":"แ€กแ€แ€ฏแ€•แ€บแ€แ€ฏ
+       data-document-en=Work permit
+       data-gtm-form-interact-field-id=7
+   id='file-1-tubee' name='file-1-tubee' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเธซเธเธฑเธเธชเธทเธญเน€เธ”เธดเธเธ—เธฒเธ","EN":"A copy of the passport.","VN":"Bแบฃn sao hแป chiแบฟ
+       data-document-en=A copy of the passport.
+       data-gtm-form-interact-field-id=8
+   id='file-2-h5i3sk' name='file-2-h5i3sk' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเน€เธญเธเธชเธฒเธฃเนเธเนเนเธ—เธเธซเธเธฑเธเธชเธทเธญเน€เธ”เธดเธเธ—เธฒเธ","EN":"A copy of the document serving as 
+       data-document-en=A copy of the document serving as a substitute for a passport.
+   id='file-1-ncusj' name='file-1-ncusj' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเธซเธฅเธฑเธเธเธฒเธเธเธฒเธฃเธญเธเธธเธเธฒเธ•เนเธซเนเน€เธเนเธฒเธกเธฒเนเธเธฃเธฒเธเธญเธฒเธ“เธฒเธเธฑเธเธฃ","EN":"A copy of the permit t
+       data-document-en=A copy of the permit to enter the kingdom.
+   id='file-1-4lyav' name='file-1-4lyav' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธฃเธนเธเธ–เนเธฒเธข เธเธเธฒเธ” 3 x 4 เธเธก.","EN":"A photograph, size 3 x 4 centimeters.","VN"
+       data-document-en=A photograph, size 3 x 4 centimeters.
+       data-gtm-form-interact-field-id=9
+   id='file-1-1gjto' name='file-1-1gjto' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธซเธเธฑเธเธชเธทเธญเธกเธญเธเธญเธณเธเธฒเธเธเธถเนเธเธฃเธฐเธเธธเธเนเธญเธเธงเธฒเธกเธกเธญเธเธญเธณเธเธฒเธเนเธซเนเธเธนเนเธฃเธฑเธเธญเธเธธเธเธฒเธ•เธเธณเธเธเธ•เนเธฒเธเธ”เนเธฒเธงเธกเธฒเธ—เธณเธเธฒเธเน€
+       data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the
+       data-gtm-form-interact-field-id=10
+   id='file-1-supk0j' name='file-1-supk0j' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เนเธเธกเธญเธเธญเธณเธเธฒเธเธเธฃเนเธญเธกเธ•เธดเธ”เธญเธฒเธเธฃเนเธชเธ•เธกเธเนเธเธญเธเธเธนเนเธฃเธฑเธเธกเธญเธเธญเธณเธเธฒเธเนเธ—เธเธเธฃเธดเธฉเธฑเธ—เธเธณเน€เธเนเธฒเธเธเธ•เนเธฒเธเธ”เนเธฒเธง (เน€
+       data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal
+       data-gtm-form-interact-field-id=11
+   id='file-1-gfbx6f' name='file-1-gfbx6f' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเธเธฑเธ•เธฃเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธฃเธฐเธเธฒเธเธเธเธญเธเธเธนเนเธกเธญเธเธญเธณเธเธฒเธ (เธเธฃเธดเธฉเธฑเธ—เธเธณเน€เธเนเธฒเธเธเธ•เนเธฒเธเธ”เนเธฒเธง) (เน€เธญเธเธชเธฒเธฃเน€เธ
+       data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A
+       data-gtm-form-interact-field-id=12
+   id='file-1-m9jq1' name='file-1-m9jq1' accept='image/*,application/pdf' visible=False
+       data-document-th={"TH":"เธชเธณเน€เธเธฒเธเธฑเธ•เธฃเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธฃเธฐเธเธฒเธเธเธเธญเธเธเธนเนเธฃเธฑเธเธกเธญเธเธญเธณเธเธฒเธเนเธ—เธเธเธฃเธดเธฉเธฑเธ—เธเธณเน€เธเนเธฒเธเธเธ•เนเธฒเธเธ”เนเธฒเธง (เน€เธญเธเธชเธฒ
+       data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp
+       data-gtm-form-interact-field-id=13
+   id='file' name='file' accept='image/*,application/pdf' visible=False
+       data-document-th=5.DBD+เน€เธญเธเธชเธฒเธฃเธเธฒเธขเธเนเธฒเธ
+       data-document-en=5.DBD+เน€เธญเธเธชเธฒเธฃเธเธฒเธขเธเนเธฒเธ
+   id='file-1' name='file-1' accept='image/*,application/pdf' visible=False
+       data-document-th=เธกเธญเธเธญเธณเธเธฒเธเนเธซเนเธเธดเธฃเธเธฑเธเธ—เน1-18 (1)
+       data-document-en=เธกเธญเธเธญเธณเธเธฒเธเนเธซเนเธเธดเธฃเธเธฑเธเธ—เน1-18 (1)
+   id='upload-popup' name='' accept='image/*' visible=False
+[probe] step6 buttons after click:
+   'เธ–เนเธฒเธขเธ เธฒเธ'                                          id=''                       da='camera-capture'   cls=btn btn-primary action-button mt-4 lang_take_photo
+   'เธญเธฑเธเนเธซเธฅเธ”'                                          id=''                       da='picture-uploader' cls=btn btn-dark action-button lang_btn_upload_photo
+   'เธขเธเน€เธฅเธดเธ'                                           id=''                       da='back-to-menu'     cls=btn btn-cancel float-right float-left w-48-bt lang_txt_cance
+   'เธขเธทเธเธขเธฑเธ'                                           id=''                       da=''                 cls=btn btn-primary float-right
+   'เธขเธเน€เธฅเธดเธ'                                           id=''                       da=''                 cls=btn btn-dark float-right
+[t+ 110.4s] saved step5_probe.json (with step6)
+[t+ 110.4s] PAUSE 25s for inspection...

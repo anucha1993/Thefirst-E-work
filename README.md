@@ -15,14 +15,15 @@
 | **Chromium** (ของ Playwright) | ล่าสุด | เบราว์เซอร์ที่ใช้เปิดเว็บ |
 | **python-dotenv** | ≥ 1.0.1 | อ่านค่า Login จากไฟล์ `.env` |
 | **openpyxl** | ≥ 3.1.5 | สร้างไฟล์ Excel (.xlsx) |
+| **pypdf** | ≥ 6.0.0 | อ่านข้อมูลจากไฟล์ PDF (ใบเสร็จ/ใบแจ้งชำระเงิน) |
 
-> ไลบรารี 3 ตัวล่างอยู่ใน [requirements.txt](requirements.txt) แล้ว ติดตั้งครั้งเดียวจบ
+> ไลบรารี 4 ตัวล่างอยู่ใน [requirements.txt](requirements.txt) แล้ว ติดตั้งครั้งเดียวจบ
 
 ### ⚡ ติดตั้งรวดเดียว (Copy วางได้เลย) 
 
 วางทั้งบล็อกนี้ลง **PowerShell** ที่โฟลเดอร์โปรเจกต์ — ติดตั้งครบทุกอย่างในคำสั่งเดียว:
 ```powershell
-python -m pip install --upgrade pip; pip install "playwright>=1.47.0" "python-dotenv>=1.0.1" "openpyxl>=3.1.5"; python -m playwright install chromium
+python -m pip install --upgrade pip; pip install "playwright>=1.47.0" "python-dotenv>=1.0.1" "openpyxl>=3.1.5" "pypdf>=6.0.0"; python -m playwright install chromium
 ```
 
 หรือถ้ามีไฟล์ `requirements.txt` อยู่แล้ว:

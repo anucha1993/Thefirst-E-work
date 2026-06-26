@@ -25,6 +25,14 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from playwright.sync_api import Page, TimeoutError as PWTimeoutError, sync_playwright
 
+# บังคับ stdout/stderr เป็น UTF-8 เพื่อกันปัญหา UnicodeEncodeError บน Windows
+# (เช่น console code page เป็น cp874/Thai หรือเมื่อ redirect output ลงไฟล์)
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except Exception:
+        pass
+
 LOGIN_URL = "https://eworkpermit.doe.go.th/Login"
 TRACKING_URL = "https://eworkpermit.doe.go.th/Permit/Tracking"
 DETAIL_BASE = "https://eworkpermit.doe.go.th"
@@ -261,7 +269,7 @@ def _launch_chromium(pw, cfg: dict, extra_args: list[str] | None = None):
     return pw.chromium.launch(headless=headless, args=args)
 
 
-def load_config() -> dict:
+def load_config(require_login: bool = True) -> dict:
     load_dotenv(ROOT / ".env")
     cfg = {
         "username": os.getenv("EWP_USERNAME", "").strip(),
@@ -275,7 +283,8 @@ def load_config() -> dict:
     wl = os.getenv("EWP_STATUS_WHITELIST", "").strip()
     if wl:
         cfg["status_whitelist"] = [s.strip() for s in wl.split("|") if s.strip()]
-    if not cfg["username"] or not cfg["password"]:
+    # โหมดที่ login จาก Excel (receipts/results/bt30) ไม่ต้องใช้ EWP_USERNAME/PASSWORD ใน .env
+    if require_login and (not cfg["username"] or not cfg["password"]):
         raise SystemExit("[ERROR] ตั้งค่า EWP_USERNAME / EWP_PASSWORD ใน .env ก่อน")
     return cfg
 
@@ -2443,16 +2452,21 @@ def _read_register_excel(path: Path) -> list[dict[str, Any]]:
 
 
 def _capture_register_alert(page: Page) -> str:
+    """Capture alert/confirmation modal text (SweetAlert or Bootstrap).
+    Exclude the search_alien_modal (form modal) to avoid capturing form content."""
     try:
         return page.evaluate(
             r"""() => {
+              // SweetAlert2 (priority)
               for (const el of document.querySelectorAll('.swal2-popup, .swal2-container')) {
                 if (el.offsetParent === null) continue;
                 const t = el.querySelector('.swal2-title');
                 const c = el.querySelector('.swal2-html-container, .swal2-content');
                 return ((t?t.textContent.trim():'') + ' | ' + (c?c.textContent.trim():'')).slice(0, 600);
               }
+              // Bootstrap modal (but exclude search_alien_modal)
               for (const el of document.querySelectorAll('.modal.show, .modal[style*="display: block"]')) {
+                if (el.id === 'search_alien_modal') continue;  // Skip the search form modal
                 const t = el.querySelector('.modal-title');
                 const b = el.querySelector('.modal-body');
                 return ((t?t.textContent.trim():'') + ' | ' + (b?b.textContent.trim().slice(0,500):''));
@@ -3015,6 +3029,9 @@ DOC_TYPES: dict[str, dict[str, Any]] = {
         "tab_pattern": r"เอกสารตอบรับ",
         "find": "row_link",
         "label_pattern": r"บต\.?\s*55",
+        # 1 คำขออาจมีเอกสาร บต.55 แยกตามคนหลายฉบับ → ดาวน์โหลดทุกฉบับ
+        # แล้วตั้งชื่อไฟล์จากข้อมูลใน PDF (ชื่อ/เลขที่/ใบอนุญาตทำงานเลขที่)
+        "per_person": True,
     },
     "bt52": {
         "suffix": "BT52",
@@ -3662,6 +3679,59 @@ def _extract_pdf_amount(pdf_bytes: bytes) -> str:
     return f"{top:.2f}".rstrip("0").rstrip(".").replace(".", "_")
 
 
+# เดือนไทย + รูปแบบชื่อที่ยอมรับ (ใช้พาร์สข้อมูลในเอกสาร บต.55)
+_BT55_TH_MONTHS = (
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+)
+_BT55_NAME_OK = re.compile(r"^[A-Za-zก-๙][A-Za-zก-๙\s.\-']{1,58}$")
+
+
+def _bt55_parse_pdf(pdf_bytes: bytes) -> dict[str, str]:
+    """อ่านข้อมูลในกรอบสีแดงของเอกสาร บต.55 (เป็น PDF text-base) เพื่อนำไปตั้งชื่อไฟล์
+    คืน {"name", "doc_no", "work_permit"} — ช่องไหนหาไม่เจอจะเป็น "" (ไม่ต้องระบุ)
+      - name        : ชื่อคนต่างด้าว (เช่น MISS SWE ZIN MYINT)
+      - doc_no      : เลขที่ / เลขหนังสือเดินทาง (เช่น MJ197150)
+      - work_permit : ใบอนุญาตทำงานเลขที่ (เลข 13 หลัก เช่น 1400670022679)
+    """
+    out = {"name": "", "doc_no": "", "work_permit": ""}
+    try:
+        import io
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        text = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+    except Exception:
+        return out
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+
+    # เลขที่ (หนังสือเดินทาง): 1-2 ตัวพิมพ์ใหญ่ ตามด้วยตัวเลข 6-9 หลัก
+    m = re.search(r"\b([A-Z]{1,2}\d{6,9})\b", text)
+    if m:
+        out["doc_no"] = m.group(1)
+
+    # ใบอนุญาตทำงานเลขที่: เลข 13 หลักที่ไม่ขึ้นต้นด้วย 0
+    # (เลขทะเบียนนิติบุคคลของบริษัทก็ 13 หลักแต่ขึ้นต้นด้วย 0 → ตัดทิ้ง)
+    thirteens = re.findall(r"(?<!\d)(\d{13})(?!\d)", text)
+    non_company = [t for t in thirteens if not t.startswith("0")]
+    out["work_permit"] = (
+        non_company[0] if non_company else (thirteens[-1] if thirteens else "")
+    )
+
+    # ชื่อ: บรรทัดถัดจาก "วัน/เดือนไทย/ปี พ.ศ." ที่ถูกแยกเป็น 3 บรรทัดชุดแรก
+    for i in range(len(lines) - 3):
+        if (
+            re.fullmatch(r"\d{1,2}", lines[i])
+            and lines[i + 1] in _BT55_TH_MONTHS
+            and re.fullmatch(r"\d{4}", lines[i + 2])
+        ):
+            cand = lines[i + 3]
+            if _BT55_NAME_OK.match(cand) and cand not in _BT55_TH_MONTHS:
+                out["name"] = cand
+            break
+    return out
+
+
 def _download_all_receipts(
     page: Page,
     receipts_dir: Path,
@@ -3757,6 +3827,168 @@ def _download_all_receipts(
     return results
 
 
+def _norm_id(s: Any) -> str:
+    """normalize เลขที่เอกสาร/passport เพื่อเทียบ: ตัดช่องว่าง-ขีด แล้วทำเป็นพิมพ์ใหญ่"""
+    return re.sub(r"[\s\-]", "", str(s or "")).upper()
+
+
+def _bt55_filename_stem(
+    info: dict[str, str],
+    req_no: str,
+    people: list[dict[str, Any]] | None,
+    fallback: str = "",
+) -> str:
+    """ตั้งชื่อไฟล์ บต.55 (ส่วน stem ไม่รวม _BT55.pdf) รูปแบบ {PASSPORT}_{NAME}_{เลขคำขอ}
+    - จับคู่กับแถวใน Excel (people) ด้วย passport = เลขที่ในเอกสาร หรือเลข 13 หลัก
+      → ใช้ passport+ชื่อ จาก Excel
+    - ถ้าไม่เจอคู่ → ใช้ เลขที่(passport)+ชื่อ จากเนื้อหา PDF แทน
+    - ถ้ายังว่าง → คืน fallback
+    """
+    doc_no = info.get("doc_no", "")
+    work_permit = info.get("work_permit", "")
+    matched = None
+    for p in (people or []):
+        key = _norm_id(p.get("passport", ""))
+        if key and key in (_norm_id(doc_no), _norm_id(work_permit)):
+            matched = p
+            break
+    if matched:
+        passport, name = matched.get("passport", ""), matched.get("name_eng", "")
+    else:
+        passport, name = doc_no, info.get("name", "")
+    # ระบุตัวบุคคลไม่ได้เลย (ไม่มีทั้ง passport และชื่อ) → ใช้ fallback กันไฟล์ชนกันในคำขอเดียวกัน
+    if not (passport or name):
+        return fallback or req_no
+    stem = "_".join(_safe_filename(x) for x in (passport, name, req_no) if x)
+    return stem or fallback
+
+
+def _download_bt55_per_person(
+    page: Page,
+    receipts_dir: Path,
+    passport_safe: str,
+    req_no: str = "",
+    people: list[dict[str, Any]] | None = None,
+    log=print,
+) -> list[dict[str, str]]:
+    """ดาวน์โหลดเอกสาร 'แบบ บต.55' ทุกฉบับในแท็บเอกสารตอบรับ
+    (1 คำขออาจมีเอกสาร บต.55 แยกตามคนหลายฉบับ — ตัวเดิมดึงได้แค่ฉบับเดียว/พลาด)
+    ตั้งชื่อไฟล์: {PASSPORT}_{NAME}_{เลขคำขอ}_BT55.pdf
+    - จับคู่แต่ละไฟล์กับแถวใน Excel (people) ด้วย passport/เลข 13 หลัก → ใช้ passport+ชื่อจาก Excel
+    - ถ้าไม่เจอคู่ → ใช้ เลขที่(passport)+ชื่อ จากเนื้อหา PDF แทน
+    คืน list ของ {name, doc_no, work_permit, file, status, error} (1 รายการ/1 ฉบับ)
+    """
+    pat = r"บต\.?\s*55"
+
+    # 1) คลิกแท็บเอกสารตอบรับ
+    clicked = page.evaluate(
+        r"""() => {
+            const re = /เอกสารตอบรับ/;
+            const f = [...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a')]
+                .find(a => re.test(a.innerText || ''));
+            if (f) { f.click(); return true; }
+            return false;
+        }"""
+    )
+    if not clicked:
+        return [{"name": "", "doc_no": "", "work_permit": "", "file": "",
+                 "status": "FAIL", "error": "ไม่พบแท็บเอกสารตอบรับ"}]
+    page.wait_for_timeout(1800)
+
+    # 2) นับจำนวนเอกสาร บต.55
+    #    โครงสร้างจริง (#tab_default_4 → #DetailDocumentList): เป็น grid แบบ flat
+    #    คอลัมน์ชื่อเอกสาร <div class="col-7/col-8"> กับปุ่มดาวน์โหลด
+    #    <div class="row col-3"><a onclick="GetDocumentConfirm(...)"> เป็น "พี่น้องติดกัน"
+    #    (ปุ่มไม่ได้อยู่ใน element เดียวกับ label) → จับคู่ผ่าน parentElement.previousElementSibling
+    #    แล้วกรองเฉพาะ label ที่เป็น บต.55 (กัน บต.52/บต.56 และแถวแม่ที่ไม่มีปุ่ม) + dedup ด้วย onclick
+    enum_js = r"""(pat) => {
+        const re = new RegExp(pat);
+        const seen = new Set();
+        let n = 0;
+        document.querySelectorAll('[onclick*="GetDocumentConfirm"]').forEach(a => {
+            const oc = a.getAttribute('onclick') || '';
+            if (!oc) return;
+            const grp = a.parentElement;
+            const lbl = (grp && grp.previousElementSibling)
+                ? (grp.previousElementSibling.innerText || '') : '';
+            if (!re.test(lbl)) return;
+            if (seen.has(oc)) return;
+            seen.add(oc); n++;
+        });
+        return n;
+    }"""
+    count = page.evaluate(enum_js, pat)
+    if not count:
+        return [{"name": "", "doc_no": "", "work_permit": "", "file": "",
+                 "status": "FAIL",
+                 "error": "ไม่พบเอกสาร บต.55 ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"}]
+
+    # JS เลือกลิงก์ลำดับที่ i ด้วยลำดับ/ตัวกรอง dedup เดียวกับ enum_js
+    # (mode='url' อ่าน onclick/href, mode='click' สั่งคลิก)
+    pick_js = r"""(args) => {
+        const { pat, i, mode } = args;
+        const re = new RegExp(pat);
+        const seen = new Set(); const list = [];
+        document.querySelectorAll('[onclick*="GetDocumentConfirm"]').forEach(a => {
+            const oc = a.getAttribute('onclick') || '';
+            if (!oc) return;
+            const grp = a.parentElement;
+            const lbl = (grp && grp.previousElementSibling)
+                ? (grp.previousElementSibling.innerText || '') : '';
+            if (!re.test(lbl)) return;
+            if (seen.has(oc)) return;
+            seen.add(oc); list.push(a);
+        });
+        const b = list[i];
+        if (!b) return mode === 'url' ? '' : false;
+        if (mode === 'url') return (b.getAttribute('onclick') || '') + ' | ' + (b.getAttribute('href') || '');
+        b.click(); return true;
+    }"""
+
+    results: list[dict[str, str]] = []
+    for idx in range(count):
+        try:
+            # ลองดึง URL เอกสารฉบับนี้ เพื่อ fetch ตรง (เร็วกว่าเปิด popup)
+            prefetch_url = ""
+            try:
+                raw = page.evaluate(pick_js, {"pat": pat, "i": idx, "mode": "url"}) or ""
+                prefetch_url = _extract_doc_url(raw, page.url)
+            except Exception:
+                prefetch_url = ""
+
+            body, err = _grab_pdf_after_click(
+                page,
+                lambda i=idx: page.evaluate(pick_js, {"pat": pat, "i": i, "mode": "click"}),
+                log=log,
+                prefetch_url=prefetch_url,
+            )
+            if err:
+                results.append({"name": "", "doc_no": "", "work_permit": "", "file": "",
+                                "status": "FAIL",
+                                "error": f"ฉบับที่ {idx + 1}: ดาวน์โหลดไม่สำเร็จ ({err})"})
+                continue
+            if not body or len(body) < 500:
+                results.append({"name": "", "doc_no": "", "work_permit": "", "file": "",
+                                "status": "FAIL",
+                                "error": f"ฉบับที่ {idx + 1}: ไฟล์ PDF เล็กผิดปกติ "
+                                         f"({len(body) if body else 0} bytes)"})
+                continue
+
+            info = _bt55_parse_pdf(body)
+            stem = _bt55_filename_stem(info, req_no, people, fallback=f"{passport_safe}_{idx + 1}")
+            name = f"{stem}_BT55.pdf"
+            # ชื่อซ้ำ (รันซ้ำ/หลายแถวคำขอเดียวกัน) → ทับไฟล์เดิม ไม่หลบชื่อ จะได้ไฟล์เดียว
+            receipts_dir.mkdir(parents=True, exist_ok=True)
+            (receipts_dir / name).write_bytes(body)
+            results.append({**info, "file": name, "status": "SUCCESS", "error": ""})
+            log(f"     ✓ บต.55: {name}")
+        except Exception as e:
+            results.append({"name": "", "doc_no": "", "work_permit": "", "file": "",
+                            "status": "FAIL",
+                            "error": f"ฉบับที่ {idx + 1}: {str(e).splitlines()[0][:120]}"})
+    return results
+
+
 def _save_receipt_report(
     rows: list[dict[str, Any]],
     out_path: Path,
@@ -3785,7 +4017,7 @@ def _save_receipt_report(
 
     text_cols = {"ลำดับ", "PASSPORT", "เลขที่คำขอ"}
     link_cols = {f"ไฟล์ {DOC_TYPES[dt]['label']}" for dt in doc_types
-                 if not DOC_TYPES[dt].get("multi")}
+                 if not DOC_TYPES[dt].get("multi") and not DOC_TYPES[dt].get("per_person")}
 
     for r in rows:
         row_vals: list[Any] = [
@@ -3868,6 +4100,14 @@ def run_receipts(
     results: list[dict[str, Any]] = []
     done_count = 0
     success = 0
+    # เอกสารแยกตามคน (บต.55) ดาวน์โหลด "ครั้งเดียวต่อ 1 เลขคำขอ" — กันโหลดซ้ำเมื่อหลายแถวเป็นคำขอเดียวกัน
+    per_person_done: dict[tuple[str, str], str] = {}
+    # map เลขคำขอ → รายชื่อคนใน Excel (passport+ชื่อ) เพื่อจับคู่ตั้งชื่อไฟล์ บต.55
+    req_people: dict[str, list[dict[str, Any]]] = {}
+    for _rec in records:
+        req_people.setdefault(_rec.get("req_no", ""), []).append(
+            {"passport": _rec.get("passport", ""), "name_eng": _rec.get("name_eng", "")}
+        )
     if progress:
         try: progress(0, len(selected))
         except Exception: pass
@@ -3909,6 +4149,9 @@ def run_receipts(
                 }
                 log(f"[กลุ่ม {gi}/{len(groups)}] เข้าสู่ระบบ: {acct['username']} ({acct['type']}) — {len(recs)} รายการ")
                 try:
+                    if gi > 1:
+                        _logout_safely(page)
+                        page.wait_for_timeout(800)
                     login(page, login_cfg)
                 except Exception as e:
                     log(f"      ✗ login ไม่สำเร็จ: {e} — ข้ามกลุ่มนี้")
@@ -3924,6 +4167,7 @@ def run_receipts(
                         log("[!] ผู้ใช้ยกเลิก — หยุด"); break
                     res = _process_one_receipt(
                         page, rec, login_cfg, receipts_dir, doc_types, log=log,
+                        per_person_done=per_person_done, req_people=req_people,
                     )
                     results.append(res)
                     done_count += 1
@@ -3951,10 +4195,16 @@ def _process_one_receipt(
     receipts_dir: Path,
     doc_types: list[str],
     log=print,
+    per_person_done: dict[tuple[str, str], str] | None = None,
+    req_people: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """ค้นหา 1 เลขคำขอ → เปิด detail → ดาวน์โหลดเอกสารตามที่เลือก
     มี session recovery: ถ้าหลุด login ระหว่างทาง → login ใหม่ด้วยบัญชีเดิม แล้วลองอีกครั้ง
+    per_person_done: เก็บ (เลขคำขอ, ประเภทเอกสาร) ที่โหลดแบบ "แยกตามคน" (บต.55) ไปแล้ว
+      → คำขอเดียวกันในแถวถัดไปจะข้าม ไม่โหลดซ้ำ (ดาวน์โหลดครั้งเดียวต่อคำขอ)
     """
+    if per_person_done is None:
+        per_person_done = {}
     seq = rec.get("seq", "")
     req_no = rec.get("req_no", "")
     name_excel = rec.get("name_eng", "")
@@ -3974,6 +4224,16 @@ def _process_one_receipt(
     todo: list[str] = []
     for dt in doc_types:
         cfg_dt = DOC_TYPES[dt]
+        if cfg_dt.get("per_person"):
+            # บต.55 = เอกสารแยกตามคน "ของทั้งคำขอ" → ดาวน์โหลดครั้งเดียวต่อ 1 เลขคำขอ
+            # ถ้าคำขอนี้โหลดแบบแยกตามคนไปแล้ว (แถวก่อนของคำขอเดียวกัน) → ข้าม ไม่โหลดซ้ำ
+            if (req_no, dt) in per_person_done:
+                docs_state[dt]["status"] = "SKIP_EXISTS"
+                docs_state[dt]["pdf_file"] = per_person_done[(req_no, dt)]
+                log(f"     ↷ {cfg_dt['label']}: คำขอนี้ดาวน์โหลดแล้ว — ข้าม (โหลดครั้งเดียวต่อคำขอ)")
+            else:
+                todo.append(dt)
+            continue
         if cfg_dt.get("multi"):
             existing = sorted(receipts_dir.glob(f"{passport_safe}_RECEIPT*.pdf"))
             if existing:
@@ -4006,6 +4266,27 @@ def _process_one_receipt(
         retry: list[str] = []
         for dt in targets:
             cfg_dt = DOC_TYPES[dt]
+            if cfg_dt.get("per_person"):
+                people = (req_people or {}).get(req_no, [])
+                pp_results = _download_bt55_per_person(
+                    page, receipts_dir, passport_safe, req_no, people, log=log
+                )
+                ok = [r for r in pp_results if r["status"] == "SUCCESS"]
+                errs_here = [r["error"] for r in pp_results if r.get("error")]
+                if ok:
+                    docs_state[dt]["status"] = "SUCCESS"
+                    docs_state[dt]["pdf_file"] = ", ".join(r["file"] for r in ok)
+                    docs_state[dt]["error"] = " | ".join(errs_here)
+                    per_person_done[(req_no, dt)] = docs_state[dt]["pdf_file"]
+                    log(f"     ✓ {cfg_dt['label']}: ดาวน์โหลด {len(ok)} ฉบับ (แยกตามคน)")
+                else:
+                    docs_state[dt]["status"] = "FAIL"
+                    docs_state[dt]["error"] = " | ".join(errs_here) or "ดาวน์โหลด บต.55 ไม่สำเร็จ"
+                    log(f"     ✗ {cfg_dt['label']}: {docs_state[dt]['error']}")
+                    if _is_logged_out(page):
+                        retry.append(dt)
+                        break
+                continue
             if cfg_dt.get("multi"):
                 rec_results = _download_all_receipts(page, receipts_dir, passport_safe, log=log)
                 ok = [r for r in rec_results if r["status"] == "SUCCESS"]
@@ -4527,6 +4808,9 @@ def run_result_docs_by_ref(
                 }
                 log(f"[กลุ่ม {gi}/{len(groups)}] เข้าสู่ระบบ: {acct['username']} ({acct['type']}) — {len(recs)} รายการ")
                 try:
+                    if gi > 1:
+                        _logout_safely(page)
+                        page.wait_for_timeout(800)
                     login(page, login_cfg)
                 except Exception as e:
                     log(f"      ✗ login ไม่สำเร็จ: {e} — ข้ามกลุ่มนี้")
@@ -4685,6 +4969,9 @@ def run_result_docs(
                 }
                 log(f"[บัญชี {gi}/{len(accounts)}] เข้าสู่ระบบ: {acct['username']} ({acct['type']})")
                 try:
+                    if gi > 1:
+                        _logout_safely(page)
+                        page.wait_for_timeout(800)
                     login(page, login_cfg)
                     goto_tracking(page)
                     apply_wa_filter(page, request_type or "", status_ids=status_ids)
@@ -5904,6 +6191,9 @@ def run_inform_employer(
                     }
                     log(f"      เข้าสู่ระบบ: {acct['username']} ({acct['type']}, {login_cfg['method']})")
                     try:
+                        if current_user is not None:
+                            _logout_safely(page)
+                            page.wait_for_timeout(800)
                         login(page, login_cfg)
                         page.wait_for_timeout(1500)
                         current_user = acct["username"].lower()
@@ -6018,6 +6308,8320 @@ def run_aliens_scrape(
             ctx.close(); browser.close()
 
 
+# ─────────────────────────────────────────────────────────────────
+# โหมด บต.30 — ยื่นต่ออายุใบอนุญาตทำงานของคนต่างด้าวตาม MoU (MT_59_MOU_RENEWAL)
+#   1) Login จาก UsernameLogin.xlsx
+#   2) เมนูบริการ → การยื่นขอต่ออายุใบอนุญาตทำงาน → ...ตาม MoU (แบบ บต.30)
+#   3) กรอกฟอร์ม "ค้นหาข้อมูลคนต่างด้าว" ตาม from_bt30.xlsx แล้วกดบันทึก
+# ─────────────────────────────────────────────────────────────────
+# URL ฟอร์ม บต.30 (จาก setFormTypeRenew ของเมนู MT_59_MOU_RENEWAL)
+BT30_FORM_URL = (
+    "https://eworkpermit.doe.go.th/WorkPermit?user_type=alien&ft=RENEW_REQ&ut=alien&uti=3"
+)
+
+
+def _read_bt30_excel(path: Path) -> list[dict[str, Any]]:
+    """อ่าน from_bt30.xlsx → list of dict (ข้อมูลครบทั้งขั้นตอน 1 และ 2)
+    คอลัมน์ (header แถวแรก, ลำดับคงที่ตาม template):
+      ขั้น 1 : No., คำนำหน้า, ชื่อ, สัญชาติ, เพศ, วันเกิด
+      2.2    : เลขที่, หมู่ที่/อาคาร, ซอย, ถนน, จังหวัด, เขต/อำเภอ, แขวง/ตำบล
+      2.3    : ประเภทเอกสาร, เลขที่เอกสาร, สถานที่ออกให้, ออกให้วันที่, ใช้ได้ถึงวันที่
+      วีซ่า  : เลขที่การตรวจลงตรา, ตรวจลงตราประเภท, ออกให้ที่, ออกให้วันที่, ใช้ได้ถึงวันที่
+      2.4    : ได้รับอนุญาตจากพนักงานเจ้าหน้าที่ตรวจคนเข้าเมือง, วันที่เดินทางมาถึงราชอาณาจักร, อยู่ได้ถึงวันที่
+      หน้า2/2: สถานที่ทำงาน/สาขา, ประเภทกิจการ,
+               เลขที่/ออกให้โดย/วันที่ออกเอกสาร/วันที่เอกสารหมดอายุ (*เอกสารแสดงการอนุญาตหรือการรับรอง*)
+    วันที่ทุกช่องแปลงเป็น dd/mm/yyyy (ค.ศ.) ตามที่ datepicker ของเว็บรองรับ
+    (header วันที่ซ้ำกัน จึง anchor ตำแหน่งจากคอลัมน์ชื่อไม่ซ้ำที่อยู่ก่อนหน้า)
+    """
+    wb = load_workbook(path, data_only=True)
+    ws = wb.active
+    hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
+
+    def col(*names: str) -> int:
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if h == nm:
+                    return i
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if nm and nm in h:
+                    return i
+        return -1
+
+    # --- ขั้นตอน 1: ข้อมูลคนต่างด้าว ---
+    i_no = col("No.", "No", "ลำดับ", "ลําดับ")
+    i_prefix = col("คำนำหน้า", "คํานําหน้า", "Prefix", "Title")
+    i_name = col("ชื่อ", "ชื่อ-สกุล", "Name")
+    i_nat = col("สัญชาติ", "Nationality")
+    i_sex = col("เพศ", "Sex", "Gender")
+    i_birth = col("วันเกิด", "วันเดือนปีเกิด", "BirthDate", "DOB", "Birth")
+    # บัญชี login ที่ใช้ยื่นของแถวนี้ (รองรับยื่นหลาย Username) — เว้นว่าง = ใช้บัญชีหลัก
+    i_username = col("Username", "username", "ชื่อผู้ใช้")
+
+    # --- ขั้นตอน 2.2: ที่อยู่ที่ติดต่อได้ (header ไม่ซ้ำ จับด้วยชื่อได้) ---
+    i_addr_no = col("เลขที่")            # exact → ' เลขที่' (ไม่ชนกับ 'เลขที่เอกสาร')
+    i_addr_moo = col("หมู่ที่/อาคาร", "หมู่ที่", "อาคาร")
+    i_addr_soi = col("ซอย")
+    i_addr_road = col("ถนน")
+    i_addr_prov = col("จังหวัด")
+    i_addr_dist = col("เขต/อำเภอ")
+    i_addr_sub = col("แขวง/ตำบล")
+
+    # --- ขั้นตอน 2.3: เอกสารแสดงการได้รับอนุญาต (วันที่ใช้ header ซ้ำ → anchor ตำแหน่ง) ---
+    i_doc_type = col("ประเภทเอกสาร")     # เอกสารแสดงการได้รับอนุญาต (หนังสือเดินทาง ฯลฯ)
+    i_doc_no = col("เลขที่เอกสาร")
+    i_doc_place = col("สถานที่ออกให้")
+    # ออกให้วันที่ / ใช้ได้ถึงวันที่ ของเอกสาร = ถัดจาก 'สถานที่ออกให้'
+    i_doc_issue = i_doc_place + 1 if i_doc_place >= 0 else -1
+    i_doc_expire = i_doc_place + 2 if i_doc_place >= 0 else -1
+
+    # --- การตรวจลงตรา (วีซ่า) ---
+    i_visa_no = col("เลขที่การตรวจลงตรา")
+    i_visa_type = col("ตรวจลงตราประเภท")
+    i_visa_place = col("ออกให้ที่")
+    i_visa_issue = i_visa_place + 1 if i_visa_place >= 0 else -1
+    i_visa_expire = i_visa_place + 2 if i_visa_place >= 0 else -1
+
+    # --- ขั้นตอน 2.4: ได้รับอนุญาตจากพนักงานเจ้าหน้าที่ตรวจคนเข้าเมือง ---
+    i_imm = col("ได้รับอนุญาตจากพนักงานเจ้าหน้าที่ตรวจคนเข้าเมือง", "ตรวจคนเข้าเมือง")
+    i_arrival = col("วันที่เดินทางมาถึงราชอาณาจักร", "เดินทางมาถึง")
+    i_stay_until = i_arrival + 1 if i_arrival >= 0 else -1
+
+    # --- หน้า 2/2 (Step 3): 'โดยจะมาทำงาน' + 'เอกสารแสดงการอนุญาตหรือการรับรอง' ---
+    # คอลัมน์เอกสารอนุญาตมี header ซ้ำคำกับ 2.2/2.3 จึงจับด้วย keyword + marker เฉพาะหัวข้อนี้
+    def col_auth(keyword: str) -> int:
+        mark = "เอกสารแสดงการอนุญาตหรือการรับรอง"
+        for j, h in enumerate(hdr):
+            if keyword in h and mark in h:
+                return j
+        return -1
+
+    i_work_place = col("สถานที่ทำงาน/สาขา", "สถานที่ทำงาน")
+    i_work_biz = col("ประเภทกิจการ")
+    i_auth_no = col_auth("เลขที่")
+    i_auth_by = col_auth("ออกให้โดย")
+    i_auth_issue = col_auth("วันที่ออกเอกสาร")
+    i_auth_expire = col_auth("วันที่เอกสารหมดอายุ")
+
+    # --- ขั้นตอน 3 (แนบเอกสาร): คอลัมน์ path ไฟล์เอกสารแต่ละประเภท ---
+    # header ยาวและไม่ซ้ำ → จับด้วย keyword เฉพาะ (contains)
+    i_doc_passport = col("สำเนาหนังสือเดินทาง")                  # 3.1
+    i_doc_entry = col("หลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร")   # 3.2
+    i_doc_contract = col("สำเนาสัญญาจ้าง")                        # 3.3
+    i_doc_medical = col("เวชกรรม")                                # 3.4 (ใบรับรองแพทย์)
+    i_doc_photo = col("รูปถ่าย")                                  # 3.5
+    i_doc_bt46 = col("บต.46")                                     # 3.6
+    i_doc_poa_agent = col("ดำเนินการแทน")                         # 3.7 หนังสือมอบอำนาจ
+    i_doc_poa_stamp = col("อากรแสตมป์")                           # 3.8 ใบมอบอำนาจติดอากร
+    i_doc_id_grantor = col("ประชาชนของผู้มอบอำนาจ")               # 3.9 บัตร ปชช ผู้มอบอำนาจ
+    i_doc_id_grantee = col("ประชาชนของผู้รับมอบอำนาจ")            # 4.0 บัตร ปชช ผู้รับมอบอำนาจ
+    i_doc_workpermit = col("ใบอนุญาตทำงาน")                       # 4.1
+    # 4.2 เอกสารอื่นๆที่เกี่ยวข้อง 1..5 (แนบได้หลายไฟล์ — ทีละไฟล์)
+    i_doc_others = [c for c in (col(f"เอกสารอื่นๆที่เกี่ยวข้อง {n}") for n in range(1, 9)) if c >= 0]
+
+    # --- คอลัมน์ผลลัพธ์ที่ระบบเคยเขียนกลับ (สำหรับ resume/skip คนที่ส่งคำขอแล้ว) ---
+    i_done_status = col("สถานะส่งคำขอ")
+    i_done_req = col("เลขที่คำขอ")
+
+    base_dir = path.parent
+
+    def fmt_date(v: Any) -> str:
+        if v is None or v == "":
+            return ""
+        if isinstance(v, (datetime, date)):
+            return v.strftime("%d/%m/%Y")
+        return str(v).strip()
+
+    rows: list[dict[str, Any]] = []
+    for ridx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=1):
+        if not any(v not in (None, "") for v in row):
+            continue
+
+        def g(i: int) -> str:
+            return str(row[i]).strip() if 0 <= i < len(row) and row[i] is not None else ""
+
+        def gd(i: int) -> str:
+            return fmt_date(row[i] if 0 <= i < len(row) else None)
+
+        def gp(i: int) -> str:
+            """อ่าน path ไฟล์เอกสาร → absolute path (อิงโฟลเดอร์ของไฟล์ Excel)"""
+            s = g(i)
+            if not s:
+                return ""
+            p = Path(s.replace("\\", "/").strip())
+            if not p.is_absolute():
+                p = base_dir / p
+            return str(p)
+
+        rec = {
+            # ขั้นตอน 1
+            "seq": g(i_no) or str(ridx),
+            "prefix": g(i_prefix),
+            "name": g(i_name),
+            "nationality": g(i_nat),
+            "sex": g(i_sex),
+            "birthdate": gd(i_birth),
+            # 2.2 ที่อยู่ที่ติดต่อได้
+            "addr_no": g(i_addr_no),
+            "addr_moo": g(i_addr_moo),
+            "addr_soi": g(i_addr_soi),
+            "addr_road": g(i_addr_road),
+            "addr_prov": g(i_addr_prov),
+            "addr_dist": g(i_addr_dist),
+            "addr_subdist": g(i_addr_sub),
+            # 2.3 เอกสารแสดงการได้รับอนุญาต
+            "stay_doc_type": g(i_doc_type),
+            "doc_no": g(i_doc_no),
+            "doc_place": g(i_doc_place),
+            "doc_issue": gd(i_doc_issue),
+            "doc_expire": gd(i_doc_expire),
+            # การตรวจลงตรา (วีซ่า)
+            "visa_no": g(i_visa_no),
+            "visa_type": g(i_visa_type),
+            "visa_place": g(i_visa_place),
+            "visa_issue": gd(i_visa_issue),
+            "visa_expire": gd(i_visa_expire),
+            # 2.4 ตรวจคนเข้าเมือง
+            "imm_office": g(i_imm),
+            "arrival_date": gd(i_arrival),
+            "stay_until": gd(i_stay_until),
+            # หน้า 2/2: โดยจะมาทำงาน
+            "work_place": g(i_work_place),
+            "work_biz": g(i_work_biz),
+            # หน้า 2/2: เอกสารแสดงการอนุญาตหรือการรับรอง
+            "auth_no": g(i_auth_no),
+            "auth_by": g(i_auth_by),
+            "auth_issue": gd(i_auth_issue),
+            "auth_expire": gd(i_auth_expire),
+            # ขั้นตอน 3: แนบเอกสาร (path ไฟล์)
+            "doc_passport": gp(i_doc_passport),
+            "doc_entry": gp(i_doc_entry),
+            "doc_contract": gp(i_doc_contract),
+            "doc_medical": gp(i_doc_medical),
+            "doc_photo": gp(i_doc_photo),
+            "doc_bt46": gp(i_doc_bt46),
+            "doc_poa_agent": gp(i_doc_poa_agent),
+            "doc_poa_stamp": gp(i_doc_poa_stamp),
+            "doc_id_grantor": gp(i_doc_id_grantor),
+            "doc_id_grantee": gp(i_doc_id_grantee),
+            "doc_workpermit": gp(i_doc_workpermit),
+            "doc_others": [gp(j) for j in i_doc_others if gp(j)],
+            # ผลลัพธ์เดิมที่ระบบเคยเขียนกลับ (resume/skip)
+            "done_submit_status": g(i_done_status),
+            "done_request_no": g(i_done_req),
+            # บัญชี login รายแถว (รองรับยื่นหลาย Username) — ว่าง = ใช้บัญชีหลัก
+            "username": g(i_username),
+            "row_index": ridx,
+        }
+        if rec["name"] or rec["birthdate"]:
+            rows.append(rec)
+    return rows
+
+
+def _select_option_by_text(page: Page, sel_id: str, want: str) -> bool:
+    """เลือก option ของ <select id=sel_id> ที่ข้อความตรง/ใกล้เคียงกับ want
+    ลำดับการจับคู่: ตรงเป๊ะ → contains → ขึ้นต้นด้วย (ข้าม 'กรุณาเลือก')
+    """
+    return bool(page.evaluate(
+        r"""(args) => {
+          const { id, want } = args;
+          const s = document.getElementById(id);
+          if (!s) return false;
+          const norm = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+          const w = norm(want);
+          if (!w) return false;
+          const opts = Array.from(s.options).filter(o => norm(o.textContent) !== 'กรุณาเลือก'.toLowerCase());
+          let opt = opts.find(o => norm(o.textContent) === w);
+          if (!opt) opt = opts.find(o => norm(o.textContent).includes(w));
+          if (!opt) opt = opts.find(o => w.includes(norm(o.textContent)) && norm(o.textContent).length >= 2);
+          if (!opt) return false;
+          s.value = opt.value;
+          s.dispatchEvent(new Event('change', { bubbles: true }));
+          if (window.jQuery) { try { jQuery(s).trigger('change'); } catch (e) {} }
+          return true;
+        }""",
+        {"id": sel_id, "want": want},
+    ))
+
+
+def _select2_pick(page: Page, sel_id: str, want: str, log=print) -> bool:
+    """เลือก option ของ <select id=sel_id> ที่ถูกครอบด้วย select2 — แบบ user จริง
+    1) set ค่า native select + ยิง change ให้ครบ (input/change + jQuery + select2:select)
+    2) ถ้า select2 UI ไม่สะท้อนค่า → คลิกเปิด dropdown แล้วคลิก option ที่ตรงข้อความ
+    คืน True เมื่อค่าถูกเลือก (select2 UI สะท้อนค่า หรือ native ตรงเมื่อไม่มี select2)
+    """
+    norm = lambda x: "".join(str(x or "").split()).lower()
+    w = norm(want)
+    if not w:
+        return False
+
+    # (A) ตั้งค่า native + ยิง event ครบชุด (ครอบคลุม select2 ที่ผูกผ่าน jQuery)
+    set_ok = bool(page.evaluate(
+        r"""(args) => {
+          const { id, want } = args;
+          const s = document.getElementById(id);
+          if (!s) return false;
+          const norm = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+          const w = norm(want);
+          const opts = Array.from(s.options).filter(o => norm(o.textContent) !== 'กรุณาเลือก'.toLowerCase());
+          let opt = opts.find(o => norm(o.textContent) === w)
+                 || opts.find(o => norm(o.textContent).includes(w))
+                 || opts.find(o => w.includes(norm(o.textContent)) && norm(o.textContent).length >= 2);
+          if (!opt) return false;
+          s.value = opt.value;
+          s.dispatchEvent(new Event('input', { bubbles: true }));
+          s.dispatchEvent(new Event('change', { bubbles: true }));
+          if (window.jQuery) {
+            try {
+              const $s = jQuery(s);
+              $s.val(opt.value);
+              $s.trigger('change');
+              $s.trigger({ type: 'select2:select', params: { data: { id: opt.value, text: opt.textContent } } });
+            } catch (e) {}
+          }
+          return true;
+        }""",
+        {"id": sel_id, "want": want},
+    ))
+
+    def select2_reflects() -> bool:
+        return bool(page.evaluate(
+            r"""(args) => {
+              const { id, want } = args;
+              const s = document.getElementById(id);
+              if (!s) return false;
+              const norm = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+              const w = norm(want);
+              let rendered = null;
+              const sib = s.nextElementSibling;
+              if (sib && sib.classList && sib.classList.contains('select2')) {
+                rendered = sib.querySelector('.select2-selection__rendered');
+              }
+              if (!rendered) {
+                const cont = document.querySelector('.select2-selection__rendered');
+                rendered = cont || null;
+              }
+              if (!rendered) return true; // ไม่มี select2 → native พอ
+              return norm(rendered.textContent).includes(w);
+            }""",
+            {"id": sel_id, "want": want},
+        ))
+
+    if select2_reflects():
+        return set_ok
+
+    # (C) คลิกเปิด select2 dropdown แล้วเลือก option ที่ตรง (แบบ user)
+    try:
+        opened = bool(page.evaluate(
+            r"""(id) => {
+              const s = document.getElementById(id);
+              if (!s) return false;
+              let container = (s.nextElementSibling && s.nextElementSibling.classList && s.nextElementSibling.classList.contains('select2'))
+                ? s.nextElementSibling : null;
+              if (!container && s.parentElement) {
+                container = s.parentElement.querySelector('.select2');
+              }
+              const sel = container && container.querySelector('.select2-selection');
+              if (!sel) return false;
+              sel.scrollIntoView({ block: 'center' });
+              sel.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+              sel.click();
+              return true;
+            }""",
+            sel_id,
+        ))
+        if opened:
+            page.wait_for_timeout(300)
+            picked = bool(page.evaluate(
+                r"""(want) => {
+                  const norm = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+                  const w = norm(want);
+                  const opts = Array.from(document.querySelectorAll('.select2-results__option'));
+                  let opt = opts.find(o => norm(o.textContent) === w)
+                         || opts.find(o => norm(o.textContent).includes(w))
+                         || opts.find(o => w.includes(norm(o.textContent)) && norm(o.textContent).length >= 2);
+                  if (!opt) return false;
+                  opt.scrollIntoView({ block: 'center' });
+                  opt.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                  opt.click();
+                  return true;
+                }""",
+                want,
+            ))
+            page.wait_for_timeout(300)
+            if picked:
+                return True
+    except Exception as e:
+        log(f"      ⚠ select2 pick error: {str(e)[:80]}")
+
+    return set_ok
+
+
+def _open_bt30_form(page: Page, log=print) -> bool:
+    """เปิดฟอร์ม บต.30 (MT_59_MOU_RENEWAL) ผ่านเมนูบริการ
+    flow: หน้าหลัก → 'เมนูบริการ' → openCity('tab_RENEW_REQ') → คลิก #MT_59_MOU_RENEWAL
+    (onclick = setFormTypeRenew(...) ซึ่งตั้งค่า form แล้วนำทางไป /WorkPermit?...ft=RENEW_REQ)
+    """
+    try:
+        page.goto("https://eworkpermit.doe.go.th/", wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_timeout(2000)
+    except Exception as e:
+        log(f"      ✗ เปิดหน้าหลักไม่สำเร็จ: {e}")
+        return False
+
+    # 1) คลิก 'เมนูบริการ'
+    clicked = page.evaluate(r"""() => {
+        const a = document.querySelector('a.lang_menu_service')
+          || Array.from(document.querySelectorAll('a,button'))
+               .find(x => /เมนูบริการ/.test((x.textContent || '').trim()));
+        if (a) { a.click(); return true; }
+        return false;
+    }""")
+    if not clicked:
+        log("      ✗ ไม่พบลิงก์ 'เมนูบริการ'")
+        return False
+    page.wait_for_timeout(1200)
+
+    # 2) เปิดหมวด 'การยื่นขอต่ออายุใบอนุญาตทำงาน' (tab_RENEW_REQ) แล้วคลิก MT_59_MOU_RENEWAL
+    page.evaluate(r"""() => {
+        try { if (typeof openCity === 'function') openCity('tab_RENEW_REQ', new Event('click')); } catch (e) {}
+    }""")
+    page.wait_for_timeout(900)
+    ok = page.evaluate(r"""() => {
+        const t = document.querySelector('#MT_59_MOU_RENEWAL');
+        if (t) { t.click(); return true; }
+        return false;
+    }""")
+    if not ok:
+        log("      ✗ ไม่พบเมนู #MT_59_MOU_RENEWAL (แบบ บต.30)")
+        return False
+
+    # 3) รอเข้าหน้าฟอร์ม + ปุ่ม 'ค้นหาข้อมูลคนต่างด้าว' พร้อม
+    try:
+        page.wait_for_url("**/WorkPermit**", timeout=30_000)
+    except PWTimeoutError:
+        log(f"      ⚠ ยังไม่เข้าฟอร์ม (URL={page.url}) — ลองรอ element ต่อ")
+    page.wait_for_timeout(2500)
+    try:
+        page.wait_for_function(
+            r"""() => Array.from(document.querySelectorAll('button,a'))
+                  .some(e => /search_alien_modal\.show/.test(e.getAttribute('onclick') || ''))""",
+            timeout=20_000,
+        )
+        return True
+    except PWTimeoutError:
+        log(f"      ✗ เปิดฟอร์ม บต.30 ไม่สำเร็จ (URL={page.url})")
+        return False
+
+
+def _bt30_field_errors(page: Page) -> str:
+    """อ่านข้อความ validation (label.error) ที่แสดงอยู่ในฟอร์ม"""
+    try:
+        return page.evaluate(r"""() => {
+            return Array.from(document.querySelectorAll('label.error, .error'))
+              .filter(e => e.offsetParent !== null && (e.textContent || '').trim())
+              .map(e => e.textContent.trim()).slice(0, 6).join(' | ');
+        }""") or ""
+    except Exception:
+        return ""
+
+
+def _bt30_fill_search_one(
+    page: Page,
+    rec: dict[str, Any],
+    screenshot_dir: Path,
+    log=print,
+) -> dict[str, Any]:
+    """เปิด modal 'ค้นหาข้อมูลคนต่างด้าว' → กรอกข้อมูล 1 คน → กดบันทึก → เก็บผล
+    คืน {status, note, screenshot}
+    """
+    seq = rec.get("seq", "?")
+    name = rec.get("name", "")
+    base = _safe_filename(f"{seq}_{name}")
+    res: dict[str, Any] = {"status": "", "note": "", "screenshot": ""}
+
+    try:
+        # เปิด modal ค้นหาข้อมูลคนต่างด้าว
+        opened = page.evaluate(r"""() => {
+            const b = Array.from(document.querySelectorAll('button,a'))
+              .find(e => /search_alien_modal\.show/.test(e.getAttribute('onclick') || ''));
+            if (b) { b.click(); return true; }
+            return false;
+        }""")
+        if not opened:
+            res["status"] = "FAIL"
+            res["note"] = "ไม่พบปุ่ม 'ค้นหาข้อมูลคนต่างด้าว'"
+            return res
+        page.wait_for_selector("#btn_search_alien_submit", state="visible", timeout=10_000)
+        page.wait_for_timeout(600)
+
+        # คำนำหน้า (select)
+        if rec.get("prefix") and not _select_option_by_text(page, "alien_prefix", rec["prefix"]):
+            log(f"      ⚠ เลือกคำนำหน้า '{rec['prefix']}' ไม่ได้")
+        # ชื่อ (text) — ใส่ชื่อเต็มตาม Excel
+        page.evaluate(
+            r"""(v) => {
+              const t = document.getElementById('other_name');
+              if (t) {
+                t.value = v;
+                t.dispatchEvent(new Event('input', { bubbles: true }));
+                t.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }""", name,
+        )
+        # สัญชาติ (select)
+        if rec.get("nationality") and not _select_option_by_text(page, "nationality_al", rec["nationality"]):
+            log(f"      ⚠ เลือกสัญชาติ '{rec['nationality']}' ไม่ได้")
+        # เพศ (select)
+        if rec.get("sex") and not _select_option_by_text(page, "sexCheck", rec["sex"]):
+            log(f"      ⚠ เลือกเพศ '{rec['sex']}' ไม่ได้")
+        # วันเกิด (datepicker text, dd/mm/yyyy ค.ศ.)
+        if rec.get("birthdate"):
+            page.evaluate(
+                r"""(v) => {
+                  const t = document.getElementById('birthDateCheck');
+                  if (t) {
+                    t.removeAttribute('readonly');
+                    t.value = v;
+                    t.dispatchEvent(new Event('input', { bubbles: true }));
+                    t.dispatchEvent(new Event('change', { bubbles: true }));
+                    t.dispatchEvent(new Event('blur', { bubbles: true }));
+                    if (window.jQuery) { try { jQuery(t).trigger('change'); } catch (e) {} }
+                  }
+                }""", rec["birthdate"],
+            )
+        page.wait_for_timeout(400)
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_filled.png"), full_page=True)
+            res["screenshot"] = f"{base}_filled.png"
+        except Exception:
+            pass
+
+        # กดบันทึก (#btn_search_alien_submit)
+        page.evaluate(r"""() => { const b = document.getElementById('btn_search_alien_submit'); if (b) b.click(); }""")
+        page.wait_for_timeout(2800)
+
+        alert = _capture_register_alert(page)
+        errs = _bt30_field_errors(page)
+        modal_open = page.evaluate(
+            r"""() => { const b = document.getElementById('btn_search_alien_submit'); return !!(b && b.offsetParent !== null); }"""
+        )
+
+        # บันทึก screenshot หลังกด
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_aftersave.png"), full_page=True)
+            res["screenshot"] = f"{base}_aftersave.png"
+        except Exception:
+            pass
+
+        if alert and any(k in alert for k in ("เสร็จสมบูรณ์", "เรียบร้อยแล้ว", "เรียบร้อย", "สำเร็จแล้ว")):
+            # ระบบเพิ่มข้อมูลคนต่างด้าวที่ต้องการดำเนินการแทนเรียบร้อย (= บันทึกค้นหาสำเร็จ)
+            res["status"] = "SUCCESS"
+            res["note"] = alert[:400]
+            _close_register_alert(page)  # กดปุ่ม 'ปิด' — ไม่กด 'ยินยอม' (อยู่นอกขอบเขต Step 1)
+        elif alert and any(k in alert for k in ("ไม่พบ", "ไม่ถูกต้อง", "ผิดพลาด", "ไม่สำเร็จ", "ไม่สามารถ", "ซ้ำ", "กรอกข้อมูล")):
+            res["status"] = "ALERT"
+            res["note"] = alert[:400]
+            _close_register_alert(page)
+        elif alert:
+            res["status"] = "REVIEW"
+            res["note"] = alert[:400]
+            _close_register_alert(page)
+        elif errs:
+            res["status"] = "VALIDATE"
+            res["note"] = f"ฟอร์มแจ้งเตือน: {errs}"[:300]
+        elif not modal_open:
+            res["status"] = "SUCCESS"
+            res["note"] = "บันทึกค้นหา (modal ปิด)"
+        else:
+            res["status"] = "REVIEW"
+            res["note"] = "modal ยังเปิดอยู่หลังกดบันทึก — ตรวจสอบ screenshot"
+        return res
+    except Exception as e:
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_error.png"), full_page=True)
+            res["screenshot"] = f"{base}_error.png"
+        except Exception:
+            pass
+        res["status"] = "ERROR"
+        res["note"] = str(e)[:300]
+        return res
+
+
+# ====================== บต.30 ขั้นตอนที่ 2 (กรอกรายละเอียดคำขอ) ======================
+
+def _bt30_fill_text(page: Page, field_id: str, value: str) -> None:
+    """กรอก <input id=field_id> ด้วย value (ปลด readonly + dispatch input/change/keyup)"""
+    if value is None or value == "":
+        return
+    page.evaluate(
+        r"""(args) => {
+          const t = document.getElementById(args.id);
+          if (!t) return;
+          t.removeAttribute('readonly');
+          t.value = args.v;
+          t.dispatchEvent(new Event('input', { bubbles: true }));
+          t.dispatchEvent(new Event('change', { bubbles: true }));
+          t.dispatchEvent(new Event('keyup', { bubbles: true }));
+        }""",
+        {"id": field_id, "v": str(value)},
+    )
+
+
+def _bt30_fill_date(page: Page, field_id: str, value: str) -> None:
+    """กรอก datepicker (dd/mm/yyyy ค.ศ.) — ปลด readonly + set value + dispatch + jQuery trigger"""
+    if not value:
+        return
+    page.evaluate(
+        r"""(args) => {
+          const t = document.getElementById(args.id);
+          if (!t) return;
+          t.removeAttribute('readonly');
+          t.value = args.v;
+          t.dispatchEvent(new Event('input', { bubbles: true }));
+          t.dispatchEvent(new Event('change', { bubbles: true }));
+          t.dispatchEvent(new Event('blur', { bubbles: true }));
+          if (window.jQuery) { try { jQuery(t).trigger('change'); jQuery(t).trigger('blur'); } catch (e) {} }
+        }""",
+        {"id": field_id, "v": str(value)},
+    )
+
+
+def _bt30_wait_select_option(page: Page, sel_id: str, want: str, timeout: int = 9000) -> bool:
+    """รอจน <select id=sel_id> มี option ที่ตรง/ใกล้เคียง want (สำหรับ dropdown cascading จังหวัด→อำเภอ→ตำบล)"""
+    if not want:
+        return False
+    try:
+        page.wait_for_function(
+            r"""(args) => {
+              const s = document.getElementById(args.id);
+              if (!s) return false;
+              const norm = x => String(x || '').replace(/\s+/g,'').toLowerCase();
+              const w = norm(args.want);
+              return Array.from(s.options).some(o => {
+                const t = norm(o.textContent);
+                return t && t !== 'กรุณาเลือก'.toLowerCase() && (t === w || t.includes(w) || w.includes(t));
+              });
+            }""",
+            arg={"id": sel_id, "want": want},
+            timeout=timeout,
+        )
+        return True
+    except PWTimeoutError:
+        return False
+
+
+def _bt30_dismiss_news(page: Page, log=print) -> None:
+    """ปิด popup ข่าวสาร/ประชาสัมพันธ์ บนหน้ารายละเอียด (gentle — ไม่กด Escape เพื่อไม่ปิด modal ที่กำลังจะเปิด)"""
+    try:
+        page.evaluate(r"""() => {
+          document.querySelectorAll('.modal').forEach(m => {
+            const txt = (m.textContent || '');
+            if (/ข่าวสาร|ประชาสัมพันธ์/.test(txt)) {
+              const x = m.querySelector('.close, [data-dismiss="modal"], button');
+              if (x) { try { x.click(); } catch (e) {} }
+              try { if (window.jQuery) jQuery(m).modal('hide'); } catch (e) {}
+              m.classList.remove('show'); m.style.display = 'none';
+            }
+          });
+          document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('overflow');
+          document.body.style.removeProperty('padding-right');
+        }""")
+    except Exception:
+        pass
+
+
+def _bt30_consent_next(page: Page, log=print) -> bool:
+    """2.1 ติ๊ก checkbox รับรอง (#check_truth) → กด 'ถัดไป' (#gonextSubmit) → รอเข้าหน้ารายละเอียด"""
+    checked = page.evaluate(r"""() => {
+        const matchTxt = el => {
+            let parts = [];
+            const lbl = el.closest('label') || (el.id ? document.querySelector(`label[for="${el.id}"]`) : null);
+            if (lbl) parts.push(lbl.textContent || '');
+            let p = el.parentElement, lvl = 0;
+            while (p && lvl < 5) { parts.push(p.textContent || ''); p = p.parentElement; lvl++; }
+            return parts.join(' ');
+        };
+        let cb = document.getElementById('check_truth');
+        if (!cb || cb.offsetParent === null) {
+            cb = Array.from(document.querySelectorAll('input[type=checkbox]'))
+                .find(c => c.offsetParent !== null &&
+                    /ขอรับรองว่า|มีความประสงค์ในการยื่นคำขอ|ได้รับความยินยอม/.test(matchTxt(c)));
+        }
+        if (!cb) return false;
+        if (!cb.checked) {
+            cb.click();
+            if (!cb.checked) {
+                cb.checked = true;
+                cb.dispatchEvent(new Event('change', { bubbles: true }));
+                cb.dispatchEvent(new Event('click', { bubbles: true }));
+            }
+        }
+        return true;
+    }""")
+    if not checked:
+        log("      ⚠ ไม่พบ checkbox รับรอง (2.1) — ลองเดินหน้าต่อ")
+    page.wait_for_timeout(500)
+
+    clicked = page.evaluate(r"""() => {
+        const b = document.querySelector('#gonextSubmit:not(.d-none)') || document.getElementById('gonextSubmit');
+        if (b) { b.click(); return true; }
+        const b2 = Array.from(document.querySelectorAll('button,a'))
+          .find(x => /openSubmitPage/.test(x.getAttribute('onclick') || ''));
+        if (b2) { b2.click(); return true; }
+        return false;
+    }""")
+    if not clicked:
+        log("      ✗ ไม่พบปุ่ม 'ถัดไป' (2.1 / #gonextSubmit)")
+        return False
+    page.wait_for_timeout(1500)
+    # ถ้ามี SweetAlert ยืนยัน
+    try:
+        page.evaluate(r"""() => {
+            const b = document.querySelector('.swal2-confirm');
+            if (b && b.offsetParent !== null) b.click();
+        }""")
+    except Exception:
+        pass
+    try:
+        page.wait_for_url("**/RenewMOU/FormRenewMOU**", timeout=25_000)
+    except PWTimeoutError:
+        log(f"      ⚠ ยังไม่เข้าหน้ารายละเอียด (URL={page.url})")
+    page.wait_for_timeout(2500)
+    _bt30_dismiss_news(page, log=log)
+    return True
+
+
+def _bt30_fill_address(page: Page, rec: dict[str, Any], log=print) -> dict[str, Any]:
+    """2.2 เปิด modal 'ที่อยู่ที่ติดต่อได้' → กรอกที่อยู่ → บันทึก (#btn_current_address_save)"""
+    res = {"ok": False, "note": ""}
+    notes: list[str] = []
+    opened = page.evaluate(r"""() => {
+        const b = Array.from(document.querySelectorAll('button,a'))
+          .find(x => /ModalEditAlienComponentCurrenAddress/.test(x.getAttribute('onclick') || ''));
+        if (b) { b.click(); return true; }
+        try {
+            if (typeof ModalEditAlienComponentCurrenAddress !== 'undefined') {
+                ModalEditAlienComponentCurrenAddress.init({ event: new Event('click') });
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }""")
+    if not opened:
+        res["note"] = "ไม่พบปุ่มแก้ไขที่อยู่ที่ติดต่อได้"
+        return res
+    try:
+        page.wait_for_selector("#btn_current_address_save", state="visible", timeout=12_000)
+    except PWTimeoutError:
+        res["note"] = "modal ที่อยู่ไม่แสดง"
+        return res
+    page.wait_for_timeout(700)
+
+    _bt30_fill_text(page, "tbx_current_address_desc", rec.get("addr_no", ""))
+    _bt30_fill_text(page, "tbx_current_address_village_building", rec.get("addr_moo", ""))
+    _bt30_fill_text(page, "tbx_current_address_soi", rec.get("addr_soi", ""))
+    _bt30_fill_text(page, "tbx_current_address_road", rec.get("addr_road", ""))
+
+    # cascading: จังหวัด → เขต/อำเภอ → แขวง/ตำบล (ต้องรอ option โหลดก่อนเลือกตัวถัดไป)
+    if rec.get("addr_prov"):
+        if _select_option_by_text(page, "ddl_current_address_prov_id", rec["addr_prov"]):
+            page.wait_for_timeout(1200)
+        else:
+            notes.append(f"จังหวัด '{rec['addr_prov']}'?")
+    if rec.get("addr_dist"):
+        _bt30_wait_select_option(page, "ddl_current_address_dist_id", rec["addr_dist"])
+        if _select_option_by_text(page, "ddl_current_address_dist_id", rec["addr_dist"]):
+            page.wait_for_timeout(1200)
+        else:
+            notes.append(f"อำเภอ '{rec['addr_dist']}'?")
+    if rec.get("addr_subdist"):
+        _bt30_wait_select_option(page, "ddl_current_address_subdist_id", rec["addr_subdist"])
+        if not _select_option_by_text(page, "ddl_current_address_subdist_id", rec["addr_subdist"]):
+            notes.append(f"ตำบล '{rec['addr_subdist']}'?")
+        page.wait_for_timeout(800)
+
+    page.evaluate(r"""() => { const b = document.getElementById('btn_current_address_save'); if (b) b.click(); }""")
+    page.wait_for_timeout(1800)
+    alert = _capture_register_alert(page)
+    if alert:
+        if any(k in alert for k in ("ไม่", "ผิดพลาด", "กรุณา")):
+            notes.append(alert[:150])
+        _close_register_alert(page)
+    still = page.evaluate(
+        r"""() => { const b = document.getElementById('btn_current_address_save'); return !!(b && b.offsetParent !== null); }"""
+    )
+    res["ok"] = not still
+    res["note"] = ("; ".join(notes)) or ("บันทึกที่อยู่" if res["ok"] else "modal ยังเปิดหลังบันทึก")
+    return res
+
+
+def _bt30_fill_staypermit(page: Page, rec: dict[str, Any], log=print) -> dict[str, Any]:
+    """2.3+2.4 เปิด modal 'ข้อมูลเพิ่มเติม' (#staypermitModal) → กรอกเอกสาร/วีซ่า/ตม. → บันทึก"""
+    res = {"ok": False, "note": ""}
+    notes: list[str] = []
+    page.evaluate(r"""() => {
+        try {
+            if (typeof ModalEditAlienComponentStayPermit !== 'undefined')
+                ModalEditAlienComponentStayPermit.init({ event: new Event('click'), form_type_id: 'MT_59', alien_emp_relate_id: '' });
+        } catch (e) {}
+    }""")
+    page.wait_for_timeout(2500)
+    # init เติมข้อมูลแต่ไม่ show modal → บังคับแสดง
+    page.evaluate(r"""() => {
+        if (window.jQuery) { try { jQuery('#staypermitModal').modal('show'); } catch (e) {} }
+        const m = document.getElementById('staypermitModal');
+        if (m) { m.classList.add('show'); m.style.display = 'block'; }
+    }""")
+    try:
+        page.wait_for_selector("#btn_staypermit_save", state="visible", timeout=10_000)
+    except PWTimeoutError:
+        res["note"] = "modal 'ข้อมูลเพิ่มเติม' ไม่แสดง"
+        return res
+    page.wait_for_timeout(700)
+
+    # ประเภทเอกสารแสดงการได้รับอนุญาต (Excel ไม่มีคอลัมน์ → default หนังสือเดินทาง ตามข้อมูล passport)
+    doc_type = rec.get("stay_doc_type") or "หนังสือเดินทาง"
+    if not _select_option_by_text(page, "stay-permission-type-selector", doc_type):
+        notes.append(f"ประเภทเอกสาร '{doc_type}'?")
+    page.wait_for_timeout(700)
+
+    # เลขที่เอกสาร / สถานที่ออกให้ / ประเทศ (จากสัญชาติ) / วันที่
+    _bt30_fill_text(page, "travelDocIdCheck", rec.get("doc_no", ""))
+    _bt30_fill_text(page, "placeIssuanceDocTravel", rec.get("doc_place", ""))
+    if rec.get("nationality"):
+        _select_option_by_text(page, "countryTravelDocSelect", rec["nationality"])
+    _bt30_fill_date(page, "dateOfStartTravelDoc", rec.get("doc_issue", ""))
+    _bt30_fill_date(page, "dateOfTravelDocExpiry", rec.get("doc_expire", ""))
+
+    # การตรวจลงตรา (วีซ่า)
+    _bt30_fill_text(page, "surveillanceId", rec.get("visa_no", ""))
+    if rec.get("visa_type") and not _select_option_by_text(page, "typeOfSurveillance", rec["visa_type"]):
+        notes.append("ประเภทวีซ่า?")
+    _bt30_fill_text(page, "surveillancePlace", rec.get("visa_place", ""))
+    _bt30_fill_date(page, "surveillanceDate", rec.get("visa_issue", ""))
+    _bt30_fill_date(page, "surveillanceExpire", rec.get("visa_expire", ""))
+
+    # 2.4 ตรวจคนเข้าเมือง
+    if rec.get("imm_office") and not _select_option_by_text(page, "arrivalInTheKingdomApproveTypeNew", rec["imm_office"]):
+        notes.append(f"ด่าน/ตม. '{rec['imm_office']}'?")
+    _bt30_fill_date(page, "arrivalInTheKingdomDate", rec.get("arrival_date", ""))
+    _bt30_fill_date(page, "arrivalInTheKingdomExpire", rec.get("stay_until", ""))
+    page.wait_for_timeout(500)
+
+    page.evaluate(r"""() => { const b = document.getElementById('btn_staypermit_save'); if (b) b.click(); }""")
+    page.wait_for_timeout(2200)
+    alert = _capture_register_alert(page)
+    if alert:
+        if any(k in alert for k in ("ไม่", "ผิดพลาด", "กรุณา")):
+            notes.append(alert[:150])
+        _close_register_alert(page)
+    still = page.evaluate(
+        r"""() => { const b = document.getElementById('btn_staypermit_save'); return !!(b && b.offsetParent !== null); }"""
+    )
+    res["ok"] = not still
+    res["note"] = ("; ".join(notes)) or ("บันทึกข้อมูลเพิ่มเติม" if res["ok"] else "modal ยังเปิดหลังบันทึก")
+    return res
+
+
+def _bt30_step2_next(page: Page, log=print) -> dict[str, Any]:
+    """2.5 กดปุ่ม 'ถัดไป' (#validateRenewcheck) บนหน้ารายละเอียด (หยุดที่ขอบเขตนี้ — ไม่ส่งคำขอจริง)"""
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    # ติ๊ก checkbox ยืนยันข้อมูล (จำเป็นต่อการกดถัดไป) ถ้ามีและมองเห็น
+    page.evaluate(r"""() => {
+        const cb = document.getElementById('check_truth');
+        if (cb && cb.offsetParent !== null && !cb.checked) {
+            cb.click();
+            if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+        }
+    }""")
+    page.wait_for_timeout(400)
+    clicked = page.evaluate(r"""() => {
+        const b = document.getElementById('validateRenewcheck');
+        if (b) { b.click(); return true; }
+        const b2 = Array.from(document.querySelectorAll('button,a'))
+          .find(x => /ถัดไป/.test((x.textContent || '').trim()) && /btn-next|action-button/.test(x.className || ''));
+        if (b2) { b2.click(); return true; }
+        return false;
+    }""")
+    if not clicked:
+        res["note"] = "ไม่พบปุ่ม 'ถัดไป' (2.5 / #validateRenewcheck)"
+        return res
+    page.wait_for_timeout(2500)
+    alert = _capture_register_alert(page)
+    res["ok"] = True
+    res["note"] = (alert[:200] if alert else "กดถัดไป (2.5) แล้ว")
+    return res
+
+
+def _bt30_select2_by_prefix(page: Page, id_prefix: str, want: str, fuzzy: bool = True) -> dict[str, Any]:
+    """เลือก option ของ <select> (select2) ที่ id ขึ้นต้นด้วย id_prefix (id เป็นแบบไดนามิก)
+    ลำดับการจับคู่: ค่าปัจจุบันตรงอยู่แล้ว → ตรงเป๊ะ → contains/reverse-contains
+    ถ้า fuzzy=True เพิ่มการเทียบ 'ป้ายนำหน้า' ก่อน ':' (เช่น สำนักงาน/สาขา) + ตัวเลขในข้อความ
+    + คำที่ซ้ำกัน และถ้าค่าปัจจุบันมีป้ายนำหน้าตรงกับที่ต้องการอยู่แล้ว จะคงค่าเดิม
+    (ระบบ preselect ไว้ถูกต้อง แม้ข้อความใน Excel จะพิมพ์ต่างเล็กน้อย)
+    คืน {ok, kept?, text?, reason?}
+    """
+    return page.evaluate(
+        r"""(args) => {
+          const { prefix, want, fuzzy } = args;
+          const s = document.querySelector(`select[id^="${prefix}"]`);
+          if (!s) return { ok:false, reason:'no-select' };
+          const norm = x => String(x||'').replace(/\s+/g,'').toLowerCase();
+          const w = norm(want);
+          if (!w) return { ok:false, reason:'empty-want' };
+          const isPh = t => /กรุณาเลือก/.test(t||'');
+          const opts = Array.from(s.options).filter(o => !isPh(o.textContent||''));
+          const cur = s.options[s.selectedIndex] || null;
+          const apply = (opt) => {
+            try {
+              s.value = opt.value;
+              if (window.jQuery) { jQuery(s).val(opt.value).trigger('change'); }
+              s.dispatchEvent(new Event('change', { bubbles:true }));
+            } catch(e) {}
+            return { ok:true, text:(opt.textContent||'').trim() };
+          };
+          if (cur && !isPh(cur.textContent||'') && norm(cur.textContent) === w)
+            return { ok:true, kept:true, text:(cur.textContent||'').trim() };
+          let opt = opts.find(o => norm(o.textContent) === w);
+          if (opt) return apply(opt);
+          opt = opts.find(o => norm(o.textContent).includes(w)
+                            || (w.includes(norm(o.textContent)) && norm(o.textContent).length >= 3));
+          if (opt) return apply(opt);
+          if (!fuzzy) {
+            if (cur && !isPh(cur.textContent||'') && s.value)
+              return { ok:true, kept:true, text:(cur.textContent||'').trim() };
+            return { ok:false, reason:'no-match' };
+          }
+          const lead = x => norm(String(x||'').split(':')[0]);
+          const digs = x => (String(x||'').match(/\d+/g) || []);
+          const words = x => (norm(x).match(/[ก-๙a-z0-9]{2,}/g) || []);
+          const wLead = lead(want), wDig = digs(want), wWords = words(want);
+          if (cur && !isPh(cur.textContent||'') && s.value && wLead && lead(cur.textContent) === wLead)
+            return { ok:true, kept:true, text:(cur.textContent||'').trim() };
+          const score = (o) => {
+            const t = o.textContent || '';
+            let sc = 0;
+            if (wLead && lead(t) === wLead) sc += 100;
+            const od = digs(t);
+            sc += od.filter(d => wDig.includes(d)).length * 10;
+            const ow = words(t);
+            sc += ow.filter(x => wWords.includes(x)).length;
+            return sc;
+          };
+          let best=null, bestSc=-1;
+          for (const o of opts) { const sc = score(o); if (sc > bestSc) { bestSc = sc; best = o; } }
+          if (best && bestSc >= 100) return apply(best);
+          if (cur && !isPh(cur.textContent||'') && s.value)
+            return { ok:true, kept:true, text:(cur.textContent||'').trim() };
+          if (best && bestSc > 0) return apply(best);
+          return { ok:false, reason:'no-fuzzy' };
+        }""",
+        {"prefix": id_prefix, "want": want, "fuzzy": fuzzy},
+    )
+
+
+def _bt30_fill_page2(page: Page, rec: dict[str, Any], log=print) -> dict[str, Any]:
+    """หน้า 2/2 ของ 'กรอกข้อมูลคำขอ':
+    2.2.1 หัวข้อ 'โดยจะมาทำงาน' → สถานที่ทำงาน/สาขา + ประเภทกิจการ (select2 id ไดนามิก)
+    2.2.2 หัวข้อ 'เอกสารแสดงการอนุญาตหรือการรับรอง' → เลขที่, ออกให้โดย, วันที่ออกเอกสาร, วันที่เอกสารหมดอายุ
+    คืน {ok, note}
+    """
+    res = {"ok": False, "note": ""}
+    notes: list[str] = []
+    try:
+        _bt30_dismiss_news(page, log=log)
+        page.wait_for_timeout(500)
+
+        # 2.2.1 สถานที่ทำงาน/สาขา (select2)
+        want_place = rec.get("work_place", "")
+        if want_place:
+            r = _bt30_select2_by_prefix(page, "workplace_full_address_emp_", want_place, fuzzy=True)
+            tag = "คงค่าเดิม" if r.get("kept") else ("OK" if r.get("ok") else "X")
+            notes.append(f"สถานที่ทำงาน:{tag}")
+            page.wait_for_timeout(1000)  # เผื่อ cascade โหลดประเภทกิจการใหม่
+
+        # ประเภทกิจการ (ขึ้นกับสถานที่ทำงาน)
+        want_biz = rec.get("work_biz", "")
+        if want_biz:
+            rb = _bt30_select2_by_prefix(page, "bus_type_name_th_emp_", want_biz, fuzzy=False)
+            tag = "คงค่าเดิม" if rb.get("kept") else ("OK" if rb.get("ok") else "X")
+            notes.append(f"ประเภทกิจการ:{tag}")
+
+        # 2.2.2 เอกสารแสดงการอนุญาตหรือการรับรอง (text + datepicker)
+        if rec.get("auth_no"):
+            _bt30_fill_text(page, "alien_cert_no", rec["auth_no"])
+        if rec.get("auth_by"):
+            _bt30_fill_text(page, "alien_cert_issue_at", rec["auth_by"])
+        if rec.get("auth_issue"):
+            _bt30_fill_date(page, "alien_cert_issue_dt", rec["auth_issue"])
+        if rec.get("auth_expire"):
+            _bt30_fill_date(page, "alien_cert_expired_dt", rec["auth_expire"])
+        notes.append("เอกสารอนุญาต:กรอกแล้ว")
+        page.wait_for_timeout(400)
+
+        res["ok"] = True
+        res["note"] = " | ".join(notes)
+        return res
+    except Exception as e:
+        res["note"] = (" | ".join(notes) + " | " + str(e))[:300]
+        return res
+
+
+def _bt30_page2_next(page: Page, log=print) -> dict[str, Any]:
+    """หน้า 2/2: กดปุ่ม 'ถัดไป' (#NextStepTwoPageOne) ไปขั้น 'แนบเอกสาร'
+    (หยุดที่ขอบเขตนี้ — ยังไม่แนบไฟล์/ไม่ส่งคำขอ/ไม่ชำระเงิน)
+    """
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    clicked = page.evaluate(r"""() => {
+        const b = document.getElementById('NextStepTwoPageOne');
+        if (b) { b.click(); return true; }
+        const b2 = Array.from(document.querySelectorAll('button,a'))
+          .find(x => /ถัดไป/.test((x.textContent || '').trim())
+                  && /NextStep|btn-next|action-button/.test((x.className || '') + (x.id || '')));
+        if (b2) { b2.click(); return true; }
+        return false;
+    }""")
+    if not clicked:
+        res["note"] = "ไม่พบปุ่ม 'ถัดไป' (#NextStepTwoPageOne)"
+        return res
+    page.wait_for_timeout(2800)
+    alert = _capture_register_alert(page)
+    res["ok"] = True
+    res["note"] = (alert[:200] if alert else "กดถัดไป (หน้า 2/2) แล้ว")
+    return res
+
+
+# ---- ขั้นตอน 3: แนบเอกสาร (attach documents) ----------------------------------
+# JS: หา file input จริงของแต่ละประเภทเอกสาร (id=file_name_NN, onchange=selectFileupload)
+# โดยจับคู่จากข้อความของแถว (row label) กับ keyword ของแต่ละช่อง (กันชน group-alt 34/35)
+_BT30_RESOLVE_DOC_JS = r"""(slots) => {
+  const txt = e => (e.textContent || '').replace(/\s+/g, ' ').trim();
+  const norm = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+  const inputs = Array.from(document.querySelectorAll('input[type=file]'))
+    .filter(e => /selectFileupload/.test(e.getAttribute('onchange') || ''))
+    .map(e => {
+      let row = e, best = '';
+      for (let up = 0; up < 8 && row; up++) {
+        row = row.parentElement;
+        if (row) {
+          const t = txt(row);
+          if (t.length > 10 && /เอกสาร|สำเนา|ใบ|รูปถ่าย|หนังสือ|บัตร|อนุญาต|บต\.|มอบอำนาจ|อากร|เวชกรรม/.test(t)) {
+            best = t; break;
+          }
+        }
+      }
+      return { id: e.id, rowText: best || txt(e.parentElement || e) };
+    });
+  const used = new Set();
+  const out = {};
+  for (const [key, kws] of slots) {
+    let found = '';
+    for (const inp of inputs) {
+      if (used.has(inp.id)) continue;
+      const rt = norm(inp.rowText);
+      if (kws.some(k => rt.includes(norm(k)))) { found = inp.id; used.add(inp.id); break; }
+    }
+    out[key] = found;
+  }
+  return out;
+}"""
+
+# ลำดับช่องเอกสาร (key ใน rec, keyword จับแถว, ป้ายแสดงผล)
+_BT30_DOC_SLOTS: list[tuple[str, list[str], str]] = [
+    ("doc_passport", ["สำเนาหนังสือเดินทาง"], "3.1 สำเนาหนังสือเดินทาง"),
+    ("doc_entry", ["หลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร"], "3.2 หลักฐานการอนุญาตเข้าราชอาณาจักร"),
+    ("doc_contract", ["สำเนาสัญญาจ้าง"], "3.3 สำเนาสัญญาจ้าง"),
+    ("doc_medical", ["เวชกรรม", "ใบรับรองแพทย์"], "3.4 ใบรับรองแพทย์"),
+    ("doc_photo", ["รูปถ่าย"], "3.5 รูปถ่าย 3x4"),
+    ("doc_bt46", ["บต.46"], "3.6 บต.46"),
+    ("doc_poa_agent", ["ดำเนินการแทน"], "3.7 หนังสือมอบอำนาจผู้ดำเนินการแทน"),
+    ("doc_poa_stamp", ["อากรแสตมป์"], "3.8 ใบมอบอำนาจติดอากรแสตมป์"),
+    ("doc_id_grantor", ["ประชาชนของผู้มอบอำนาจ"], "3.9 บัตร ปชช.ผู้มอบอำนาจ"),
+    ("doc_id_grantee", ["ประชาชนของผู้รับมอบอำนาจ"], "4.0 บัตร ปชช.ผู้รับมอบอำนาจ"),
+    ("doc_workpermit", ["ใบอนุญาตทำงาน"], "4.1 ใบอนุญาตทำงาน"),
+]
+
+# ── ขนาดไฟล์แนบสูงสุดที่ระบบ e-WorkPermit ยอมรับ (ต่อ 1 ไฟล์) ──
+_BT30_MAX_DOC_MB: float = 4.0
+
+
+def _bt30_collect_doc_paths(rec: dict[str, Any]) -> list[tuple[str, str]]:
+    """รวม (label, path) ของไฟล์เอกสารทั้งหมดที่จะแนบของคนต่างด้าว 1 แถว
+    (3.1–4.1 ตาม _BT30_DOC_SLOTS + 4.2 เอกสารอื่นๆ) — เฉพาะช่องที่กรอก path ไว้
+    """
+    items: list[tuple[str, str]] = []
+    for key, _kws, label in _BT30_DOC_SLOTS:
+        p = (rec.get(key) or "").strip()
+        if p:
+            items.append((label, p))
+    for i, p in enumerate((rec.get("doc_others") or []), start=1):
+        if p:
+            items.append((f"4.2 เอกสารอื่นๆ #{i}", p))
+    return items
+
+
+def _bt30_oversized_docs(
+    rec: dict[str, Any], limit_mb: float = _BT30_MAX_DOC_MB
+) -> list[dict[str, Any]]:
+    """ตรวจไฟล์เอกสารของ 1 แถวที่ 'มีอยู่จริง แต่ขนาดเกิน' limit (default 4 MB)
+    คืนรายการ {label, name, mb, path} (ไฟล์ที่หาไม่พบจะข้าม — ให้ขั้นแนบรายงาน 'ไม่พบไฟล์' เอง)
+    """
+    limit = int(limit_mb * 1024 * 1024)
+    out: list[dict[str, Any]] = []
+    for label, path in _bt30_collect_doc_paths(rec):
+        try:
+            p = Path(path)
+            if p.is_file():
+                sz = p.stat().st_size
+                if sz > limit:
+                    out.append({"label": label, "name": p.name,
+                                "mb": round(sz / 1024 / 1024, 2), "path": str(p)})
+        except OSError:
+            pass
+    return out
+
+
+def _bt30_preflight_doc_sizes(
+    records: list[dict[str, Any]], log=print, limit_mb: float = _BT30_MAX_DOC_MB
+) -> list[dict[str, Any]]:
+    """สแกนขนาดไฟล์เอกสารของทุกแถว 'ก่อน' เริ่มทำงานจริง — รายงานไฟล์ที่เกิน limit
+    คืนรายการปัญหา [{row, seq, name, label, file, mb}] (ว่าง = ผ่านหมด)
+    เรียกตอนต้น run_bt30 เพื่อให้ผู้ใช้แก้ไฟล์ก่อนยื่น (ระบบจำกัด 4 MB/ไฟล์)
+    """
+    problems: list[dict[str, Any]] = []
+    for rec in records:
+        for ov in _bt30_oversized_docs(rec, limit_mb):
+            problems.append({
+                "row": rec.get("row_index"), "seq": rec.get("seq"),
+                "name": rec.get("name", ""), "label": ov["label"],
+                "file": ov["name"], "mb": ov["mb"],
+            })
+    if problems:
+        log(f"  ⚠ ตรวจขนาดไฟล์แนบ: พบ {len(problems)} ไฟล์เกิน {limit_mb:.0f} MB "
+            f"(ระบบจำกัดไม่เกิน {limit_mb:.0f} MB/ไฟล์ — ต้องย่อก่อนยื่น):")
+        for p in problems:
+            log(f"      • แถว {p['row']} {p['name']} | {p['label']}: "
+                f"{p['file']} = {p['mb']} MB")
+    else:
+        log(f"  ✓ ตรวจขนาดไฟล์แนบ: ทุกไฟล์ ≤ {limit_mb:.0f} MB")
+    return problems
+
+
+def _bt30_handle_crop_modal(page: Page, log=print) -> bool:
+    """ช่องรูปภาพที่ต้องครอป (เช่น 3.5 รูปถ่าย 3x4, doc id=42) เมื่อแนบไฟล์ภาพจะเด้งโมดอล
+    #crop-modal (Cropper.js) ขึ้นมา ต้องตั้งกรอบให้ครอบเต็มรูป (อัตราส่วน 3:4) แล้วกด 'บันทึก'
+    (#save-crop-button) มิฉะนั้นโมดอลจะค้างและบล็อกการบันทึกเอกสารถัดไป (เช่น 4.2)
+    คืน True ถ้าพบและจัดการโมดอลครอปแล้ว, False ถ้าไม่มีโมดอลครอป
+    """
+    # 1) รอดูว่ามีโมดอลครอปเด้งขึ้นไหม (FileReader อ่านภาพ → $('#crop-modal').modal('show'))
+    appeared = False
+    for _ in range(12):  # รอสูงสุด ~6 วินาที
+        try:
+            shown = bool(page.evaluate(r"""() => {
+                const m = document.getElementById('crop-modal');
+                return !!(m && (m.classList.contains('show')
+                    || (getComputedStyle(m).display !== 'none' && m.offsetParent !== null)));
+            }"""))
+        except Exception:
+            shown = False
+        if shown:
+            appeared = True
+            break
+        page.wait_for_timeout(500)
+    if not appeared:
+        return False
+    # 2) รอ Cropper พร้อม (global cropper + รูปโหลดเสร็จ)
+    try:
+        page.wait_for_function(r"""() => {
+            const img = document.getElementById('crop-image');
+            return !!(window.cropper && img && img.complete && img.naturalWidth > 0);
+        }""", timeout=8000)
+    except PWTimeoutError:
+        pass
+    page.wait_for_timeout(500)
+    # 3) ตั้งกรอบครอปให้ครอบพื้นที่ 3:4 ใหญ่สุด กึ่งกลางรูป (= ครอปภาพให้พอดีทั้งรูป)
+    try:
+        page.evaluate(r"""() => {
+            const cr = window.cropper;
+            if (!cr || typeof cr.getCanvasData !== 'function') return;
+            const c = cr.getCanvasData();
+            const ar = 3 / 4;            // กว้าง:สูง = 3:4
+            let w = c.width, h = w / ar; // h = w * 4/3
+            if (h > c.height) { h = c.height; w = h * ar; }
+            cr.setCropBoxData({
+                left: c.left + (c.width - w) / 2,
+                top: c.top + (c.height - h) / 2,
+                width: w,
+                height: h,
+            });
+        }""")
+    except Exception:
+        pass
+    page.wait_for_timeout(300)
+    # 4) กดบันทึก (#save-crop-button → getCroppedCanvas().toBlob → modal hide + resolve)
+    try:
+        page.evaluate(r"""() => { const b = document.getElementById('save-crop-button'); if (b) b.click(); }""")
+    except Exception:
+        pass
+    # 5) รอโมดอลครอปปิด (toBlob เป็น async)
+    closed = False
+    for _ in range(20):  # รอสูงสุด ~10 วินาที
+        page.wait_for_timeout(500)
+        try:
+            closed = bool(page.evaluate(r"""() => {
+                const m = document.getElementById('crop-modal');
+                return !m || !(m.classList.contains('show'));
+            }"""))
+        except Exception:
+            closed = False
+        if closed:
+            break
+    page.wait_for_timeout(600)
+    log("        \u2713 3.5 ครอปรูปถ่าย (3:4) แล้วบันทึก")
+    return True
+
+
+def _bt30_upload_doc(page: Page, input_id: str, abs_path: str, log=print) -> dict[str, Any]:
+    """แนบไฟล์ลงช่องเอกสาร 1 ช่อง (set_input_files บน input ซ่อน → AJAX อัปโหลด)
+    ยืนยันสำเร็จเมื่อปุ่มลบ closefilerequest("NN",...) ปรากฏ
+    หมายเหตุ: ช่องรูปภาพ (เช่น 3.5 รูปถ่าย) จะเด้งโมดอลครอป → จัดการผ่าน _bt30_handle_crop_modal
+    """
+    res = {"ok": False, "note": ""}
+    p = Path(abs_path)
+    if not abs_path or not p.exists():
+        res["note"] = f"ไม่พบไฟล์ ({p.name if abs_path else 'ว่าง'})"
+        return res
+    try:
+        sz = p.stat().st_size
+        if sz > _BT30_MAX_DOC_MB * 1024 * 1024:
+            res["note"] = (f"ไฟล์เกิน {_BT30_MAX_DOC_MB:.0f}MB "
+                           f"({sz / 1024 / 1024:.2f}MB) — ย่อก่อนยื่น: {p.name}")
+            return res
+    except OSError:
+        pass
+    num = input_id.replace("file_name_", "")
+    needle = f'closefilerequest("{num}"'
+    try:
+        page.set_input_files(f"#{input_id}", str(p))
+    except Exception as e:
+        res["note"] = f"แนบไฟล์ล้มเหลว: {e}"[:120]
+        return res
+    # ถ้าเป็นไฟล์ภาพ อาจเด้งโมดอลครอป (3.5 รูปถ่าย 3x4) → ตั้งกรอบ 3:4 เต็มรูปแล้วกดบันทึก
+    cropped = False
+    if p.suffix.lower() in (".jpg", ".jpeg", ".png"):
+        cropped = _bt30_handle_crop_modal(page, log=log)
+    done = False
+    for _ in range(40):  # รอสูงสุด ~24 วินาที
+        page.wait_for_timeout(600)
+        try:
+            done = bool(page.evaluate(
+                r"""(needle) => Array.from(document.querySelectorAll('[onclick]'))
+                      .some(e => (e.getAttribute('onclick') || '').includes(needle))""",
+                needle,
+            ))
+        except Exception:
+            done = False
+        if done:
+            break
+    if not done and cropped:
+        # ยืนยันอีกทาง: creatfileCrop เซ็ตไฟล์เข้า #file_name_NN แล้วหรือยัง
+        try:
+            done = bool(page.evaluate(
+                "(id) => { const e = document.getElementById('file_name_' + id); return !!(e && e.files && e.files.length > 0); }",
+                num,
+            ))
+        except Exception:
+            pass
+    res["ok"] = done
+    res["note"] = (f"{p.name}" if done else f"อัปโหลดไม่ยืนยัน ({p.name})")
+    return res
+
+
+def _bt30_attach_others(page: Page, paths: list[str], log=print) -> dict[str, Any]:
+    """4.2 เอกสารอื่นๆที่เกี่ยวข้อง — แนบทีละไฟล์ผ่านโมดอล 'เพิ่มเอกสาร' (#AddFileOrther)
+    ต่อ 1 ไฟล์: เปิดโมดอล → แนบไฟล์ที่ #file_other_N (onchange=AddNewFileOrther) →
+    รอ reader.onload เซ็ต #file_name_select_N → กรอกชื่อเอกสาร (#text_file_name_00/_N) →
+    ยืนยัน (SaveAddFileOrther) → โมดอลปิด
+    ยืนยันสำเร็จเมื่อรายการ '#ShowtxtBox_File .checklength' เพิ่มขึ้น
+    """
+    res = {"ok": False, "note": "", "n_ok": 0}
+    valid = [p for p in paths if p and Path(p).exists()]
+    n_ok = 0
+    for idx, ap in enumerate(paths, 1):
+        p = Path(ap)
+        if not ap or not p.exists():
+            log(f"        ✗ 4.2 ไฟล์ที่ {idx}: ไม่พบไฟล์ ({p.name if ap else 'ว่าง'})")
+            continue
+        try:
+            if p.stat().st_size > _BT30_MAX_DOC_MB * 1024 * 1024:
+                log(f"        ✗ 4.2 ไฟล์ที่ {idx}: เกิน {_BT30_MAX_DOC_MB:.0f}MB "
+                    f"({p.stat().st_size / 1024 / 1024:.2f}MB) — ย่อก่อนยื่น ({p.name})")
+                continue
+        except OSError:
+            pass
+        try:
+            n0 = int(page.evaluate(
+                "() => document.querySelectorAll('.checklength').length"))
+            opened = page.evaluate(r"""() => {
+                const b = Array.from(document.querySelectorAll('button,a,label'))
+                  .find(e => /เพิ่มเอกสาร/.test((e.textContent || '').trim())
+                        || /OncOpenModalAddFile\(/.test(e.getAttribute('onclick') || ''));
+                if (b) { b.click(); return true; }
+                return false;
+            }""")
+            if not opened:
+                log("        ✗ 4.2 ไม่พบปุ่ม 'เพิ่มเอกสาร'")
+                break
+            try:
+                page.wait_for_selector("#AddFileOrther.show", timeout=8000)
+            except PWTimeoutError:
+                page.wait_for_timeout(1500)
+
+            # หา input ที่กำลังรอแนบ (onchange=AddNewFileOrther) → ได้เลขช่อง N
+            try:
+                page.wait_for_function(r"""() =>
+                  Array.from(document.querySelectorAll('#AddFileOrther input[type=file]'))
+                    .some(e => /AddNewFileOrther/.test(e.getAttribute('onchange') || ''))
+                """, timeout=6000)
+            except PWTimeoutError:
+                pass
+            fid = page.evaluate(r"""() => {
+                const list = Array.from(document.querySelectorAll('#AddFileOrther input[type=file]'))
+                  .filter(e => /AddNewFileOrther/.test(e.getAttribute('onchange') || ''));
+                return list.length ? list[list.length - 1].id : '';
+            }""")
+            if not fid:
+                log(f"        ✗ 4.2 ไฟล์ที่ {idx}: ไม่พบช่องแนบไฟล์ในโมดอล")
+                page.evaluate("() => { if (window.jQuery) { try { jQuery('#AddFileOrther').modal('hide'); } catch (e) {} } }")
+                page.wait_for_timeout(600)
+                continue
+            num = fid.replace("file_other_", "")
+            text_id = "text_file_name_00" if num == "0" else f"text_file_name_{num}"
+
+            # แนบไฟล์ที่ช่องเฉพาะ (ทริกเกอร์ onchange=AddNewFileOrther)
+            page.set_input_files(f"#{fid}", str(p))
+
+            # รอ reader.onload เซ็ต #file_name_select_N (= อัปโหลดไฟล์เข้า hidden_file_up เสร็จ)
+            got_sel = False
+            for _ in range(20):  # สูงสุด ~10 วินาที
+                v = page.evaluate(
+                    "(id) => { const e = document.getElementById(id); return e ? (e.value || '') : ''; }",
+                    f"file_name_select_{num}")
+                if v:
+                    got_sel = True
+                    break
+                page.wait_for_timeout(500)
+            if not got_sel:
+                log(f"        ✗ 4.2 ไฟล์ที่ {idx}: อัปโหลดไม่เสร็จ (file_name_select ว่าง) ({p.name})")
+                page.evaluate("() => { if (window.jQuery) { try { jQuery('#AddFileOrther').modal('hide'); } catch (e) {} } }")
+                page.wait_for_timeout(600)
+                continue
+
+            # กรอกชื่อเอกสาร (ใช้ id ที่ถูกต้อง — onload เซ็ตชื่อไฟล์ไว้แล้ว, เขียนทับเป็นชื่อสะอาด)
+            page.evaluate(r"""(args) => {
+                const t = document.getElementById(args.id);
+                if (t) {
+                  t.value = args.name;
+                  t.dispatchEvent(new Event('input', { bubbles: true }));
+                  t.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }""", {"id": text_id, "name": p.stem})
+            page.wait_for_timeout(300)
+
+            # ยืนยัน — เรียก SaveAddFileOrther() ตรงๆ (หน้านี้มีปุ่ม #buttonSaveFileSelect ซ้ำ 2 ปุ่ม
+            # การ getElementById().click() จะโดนปุ่มแรกที่ไม่ผูก onclick → ฟังก์ชันไม่ทำงาน)
+            # ฟังก์ชันอ่าน $("#file_other_0")/$("#text_file_name_00") ซึ่งมีชุดเดียว จึงเรียกตรงได้ปลอดภัย
+            page.evaluate(r"""() => {
+                try {
+                    if (typeof window.SaveAddFileOrther === 'function') { window.SaveAddFileOrther(); return 'called'; }
+                } catch (e) { return 'ERR:' + e; }
+                const b = document.getElementById('buttonSaveFileSelect');
+                if (b) { b.click(); return 'clicked'; }
+                return 'none';
+            }""")
+            page.wait_for_timeout(500)
+
+            # ยืนยันสำเร็จเมื่อจำนวน .checklength (getElementDoc) เพิ่มขึ้น
+            ok_added = False
+            for _ in range(16):  # รอรายการเพิ่มขึ้นสูงสุด ~8 วินาที
+                try:
+                    n1 = int(page.evaluate(
+                        "() => document.querySelectorAll('.checklength').length"))
+                except Exception:
+                    n1 = n0
+                if n1 > n0:
+                    ok_added = True
+                    break
+                page.wait_for_timeout(500)
+
+            # ปิดโมดอลถ้ายังเปิดอยู่
+            page.evaluate(
+                "() => { if (window.jQuery) { try { jQuery('#AddFileOrther').modal('hide'); } catch (e) {} } }")
+            page.wait_for_timeout(900)
+
+            if ok_added:
+                n_ok += 1
+                log(f"        ✓ 4.2 ไฟล์ที่ {idx}: {p.name}")
+            else:
+                log(f"        ✗ 4.2 ไฟล์ที่ {idx}: ไม่ยืนยัน ({p.name})")
+        except Exception as e:
+            log(f"        ✗ 4.2 ไฟล์ที่ {idx} ผิดพลาด: {str(e)[:80]}")
+            try:
+                page.evaluate(
+                    "() => { if (window.jQuery) { try { jQuery('#AddFileOrther').modal('hide'); } catch (e) {} } }")
+            except Exception:
+                pass
+            page.wait_for_timeout(600)
+    res["n_ok"] = n_ok
+    res["ok"] = bool(valid) and n_ok == len(valid)
+    res["note"] = f"{n_ok}/{len(valid)} ไฟล์"
+    return res
+
+
+
+def _bt30_fill_attachments(page: Page, rec: dict[str, Any], log=print) -> dict[str, Any]:
+    """แนบเอกสารครบทุกประเภทตาม path ใน Excel (3.1–4.1 + 4.2 เอกสารอื่นๆ)
+    คืน {ok, note}
+    """
+    res = {"ok": False, "note": ""}
+    notes: list[str] = []
+    try:
+        _bt30_dismiss_news(page, log=log)
+        page.wait_for_timeout(600)
+
+        mapping = page.evaluate(
+            _BT30_RESOLVE_DOC_JS, [[key, kws] for key, kws, _ in _BT30_DOC_SLOTS])
+
+        n_ok = 0
+        n_try = 0
+        for key, _kws, label in _BT30_DOC_SLOTS:
+            path = (rec.get(key) or "").strip()
+            if not path:
+                continue
+            n_try += 1
+            input_id = mapping.get(key) or ""
+            if not input_id:
+                notes.append(f"{label}:ไม่พบช่อง")
+                log(f"        ✗ {label} — ไม่พบช่องอัปโหลดบนหน้า")
+                continue
+            r = _bt30_upload_doc(page, input_id, path, log=log)
+            if r["ok"]:
+                n_ok += 1
+            notes.append(f"{label}:{'OK' if r['ok'] else 'X'}")
+            log(f"        {'✓' if r['ok'] else '✗'} {label} — {r['note']}")
+            page.wait_for_timeout(400)
+
+        # 4.2 เอกสารอื่นๆที่เกี่ยวข้อง (แนบทีละไฟล์)
+        others = rec.get("doc_others") or []
+        others = [o for o in others if o]
+        if others:
+            ro = _bt30_attach_others(page, others, log=log)
+            n_ok += ro.get("n_ok", 0)
+            n_try += len([o for o in others if Path(o).exists()])
+            notes.append(f"4.2 เอกสารอื่นๆ:{ro['note']}")
+            log(f"      {'✓' if ro['ok'] else '⚠'} 4.2 เอกสารอื่นๆที่เกี่ยวข้อง — {ro['note']}")
+
+        res["ok"] = n_try > 0 and n_ok == n_try
+        res["note"] = f"แนบ {n_ok}/{n_try} | " + " ".join(notes)
+        return res
+    except Exception as e:
+        res["note"] = (" ".join(notes) + " | " + str(e))[:400]
+        return res
+
+
+def _bt30_attach_next(page: Page, log=print) -> dict[str, Any]:
+    """แนบเอกสาร: กดปุ่ม 'ถัดไป' (#nextstepcheckfile) เพื่อไปขั้นถัดไป
+    (หยุดที่ขอบเขตนี้ — ไม่ส่งคำขอ/ไม่ยืนยันตัวตน/ไม่ชำระเงิน)
+    """
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    clicked = page.evaluate(r"""() => {
+        const b = document.getElementById('nextstepcheckfile');
+        if (b) { b.click(); return true; }
+        const b2 = Array.from(document.querySelectorAll('button,a'))
+          .find(x => /ถัดไป/.test((x.textContent || '').trim())
+                  && /next|step/i.test((x.id || '') + (x.className || '')));
+        if (b2) { b2.click(); return true; }
+        return false;
+    }""")
+    if not clicked:
+        res["note"] = "ไม่พบปุ่ม 'ถัดไป' (#nextstepcheckfile)"
+        return res
+    page.wait_for_timeout(2800)
+    alert = _capture_register_alert(page)
+    res["ok"] = True
+    res["note"] = (alert[:200] if alert else "กดถัดไป (แนบเอกสาร) แล้ว")
+    return res
+
+
+def _bt30_click_next_generic(
+    page: Page, prefer_id: str | None, label: str, log=print, wait_ms: int = 3000
+) -> dict[str, Any]:
+    """กดปุ่ม 'ถัดไป' แบบทั่วไป — ใช้ id ที่ระบุก่อน (ถ้ามองเห็น+ใช้งานได้)
+    ไม่งั้นเลือกปุ่ม 'ถัดไป' ที่มองเห็น+ใช้งานได้ตัวสุดท้ายบนหน้า
+    (ใช้กับ Step 4 = เอกสารนายจ้าง 2/2 และ Step 5.1 = สรุปคำขอ 1/2 ที่ปุ่มไม่มี id)
+    """
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    clicked = page.evaluate(
+        r"""(pid) => {
+        const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+        if (pid) { const b = document.getElementById(pid); if (b && !b.disabled && vis(b)) { b.click(); return 'id'; } }
+        const cand = Array.from(document.querySelectorAll('button,a'))
+            .filter(e => vis(e) && !e.disabled && /ถัดไป/.test((e.textContent || '').trim())
+                && (e.textContent || '').trim().length < 20
+                && !/ย้อนกลับ|ยกเลิก/.test((e.textContent || '').trim()));
+        if (cand.length) { cand[cand.length - 1].click(); return 'generic'; }
+        return '';
+    }""",
+        prefer_id,
+    )
+    if not clicked:
+        res["note"] = f"ไม่พบปุ่มถัดไป ({label})"
+        return res
+    page.wait_for_timeout(wait_ms)
+    _bt30_dismiss_news(page, log=log)
+    res["ok"] = True
+    res["note"] = f"กดถัดไป ({label}) แล้ว [{clicked}]"
+    return res
+
+
+def _bt30_step5_confirm_next(page: Page, log=print) -> dict[str, Any]:
+    """Step 5.2 (สรุปคำขอ หน้า 2/2): ติ๊ก checkbox 'ข้าพเจ้าได้ตรวจสอบข้อมูล...ถูกต้อง' (#check_truth)
+    แล้วกดถัดไป (#nextstepfour59 — จะ enable หลังติ๊ก)
+    """
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    ck = page.evaluate(
+        r"""() => {
+        const c = document.getElementById('check_truth');
+        if (!c) return 'no-checkbox';
+        if (!c.checked) { c.click(); if (!c.checked) { c.checked = true; c.dispatchEvent(new Event('change', {bubbles:true})); } }
+        return c.checked ? 'checked' : 'fail';
+    }"""
+    )
+    if ck != "checked":
+        res["note"] = f"ติ๊กยืนยันข้อมูลไม่ได้ ({ck})"
+        return res
+    page.wait_for_timeout(800)
+    # รอปุ่มถัดไป enable
+    for _ in range(12):
+        st = page.evaluate(
+            "() => { const b = document.getElementById('nextstepfour59'); "
+            "return b ? (b.disabled ? 'disabled' : 'enabled') : 'none'; }"
+        )
+        if st in ("enabled", "none"):
+            break
+        page.wait_for_timeout(400)
+    nx = page.evaluate(
+        r"""() => {
+        const b = document.getElementById('nextstepfour59');
+        if (b && !b.disabled) { b.click(); return 'id'; }
+        const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+        const cand = Array.from(document.querySelectorAll('button,a'))
+            .filter(e => vis(e) && !e.disabled && /ถัดไป/.test((e.textContent || '').trim())
+                && (e.textContent || '').trim().length < 20
+                && !/ย้อนกลับ|ยกเลิก/.test((e.textContent || '').trim()));
+        if (cand.length) { cand[cand.length - 1].click(); return 'generic'; }
+        return '';
+    }"""
+    )
+    if not nx:
+        res["note"] = "ติ๊กยืนยันข้อมูลแล้วแต่กดถัดไปไม่ได้"
+        return res
+    page.wait_for_timeout(3500)
+    _bt30_dismiss_news(page, log=log)
+    res["ok"] = True
+    res["note"] = f"ติ๊กยืนยันข้อมูล + กดถัดไป แล้ว [{nx}]"
+    return res
+
+
+def _bt30_step6_upload_identity(page: Page, log=print) -> dict[str, Any]:
+    """Step 6.1 (วิธีการยืนยันตัวตน): กด 'อัปโหลดภาพ' (OncOpenModalAddFileIden) → โมดอล #AddFileIden
+    → กด 'บันทึก' โดยไม่แนบไฟล์จริง (เรียก SaveAddFileIden() → identify() ซึ่ง enable ปุ่มถัดไป
+    #button_skip_next เสมอ ไม่ว่าผลตรวจใบหน้าจะผ่านหรือไม่) → กดถัดไป
+
+    *** ขอบเขตใหม่ — หยุดหลังกดถัดไปนี้ ไม่ส่งคำขอ/ไม่ยืนยันตัวตนจริง/ไม่ชำระเงิน ***
+    """
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    # เปิดโมดอล 'อัปโหลดภาพ'
+    opened = page.evaluate(
+        r"""() => {
+        const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+        const b = Array.from(document.querySelectorAll('button,a'))
+            .find(e => vis(e) && /OncOpenModalAddFileIden/.test(e.getAttribute('onclick') || ''));
+        if (b) { b.click(); return 'btn'; }
+        if (typeof window.OncOpenModalAddFileIden === 'function') { window.OncOpenModalAddFileIden(); return 'fn'; }
+        return '';
+    }"""
+    )
+    if not opened:
+        res["note"] = "ไม่พบปุ่ม 'อัปโหลดภาพ' (OncOpenModalAddFileIden)"
+        return res
+    # รอโมดอลแสดง
+    shown = False
+    for _ in range(15):
+        if page.evaluate(
+            "() => { const m = document.getElementById('AddFileIden'); return !!(m && m.classList.contains('show')); }"
+        ):
+            shown = True
+            break
+        page.wait_for_timeout(300)
+    if not shown:
+        res["note"] = "เปิดโมดอลอัปโหลดภาพไม่สำเร็จ"
+        return res
+    page.wait_for_timeout(600)
+    # กด 'บันทึก' — เรียก SaveAddFileIden() ตรงๆ (ปุ่ม #buttonSaveFileSelect มีหลายตัวบนหน้า เหมือน 4.2)
+    saved = page.evaluate(
+        r"""() => {
+        try {
+            if (typeof window.SaveAddFileIden === 'function') { window.SaveAddFileIden(); return 'called'; }
+        } catch (e) { return 'ERR:' + e; }
+        const b = document.querySelector('#AddFileIden #buttonSaveFileSelect');
+        if (b) { b.click(); return 'clicked'; }
+        return 'none';
+    }"""
+    )
+    log(f"        · กดบันทึก (ยืนยันตัวตน ไม่แนบไฟล์จริง) → {saved}")
+    # identify() ยิง AJAX แล้ว enable #button_skip_next — รอจน enable (~12s)
+    enabled = False
+    for _ in range(30):
+        st = page.evaluate(
+            "() => { const b = document.getElementById('button_skip_next'); "
+            "return b ? (b.disabled ? 'disabled' : 'enabled') : 'none'; }"
+        )
+        if st == "enabled":
+            enabled = True
+            break
+        if st == "none":
+            break
+        page.wait_for_timeout(400)
+    if not enabled:
+        # สำรอง: ปุ่มยังไม่ enable (เช่น AJAX ตรวจใบหน้าไม่ตอบ) — ใช้เส้นทางข้ามการยืนยัน
+        # identify() เองก็ตั้ง disabled=false ปุ่มนี้ทุกกรณีอยู่แล้ว จึงบังคับ enable ได้สอดคล้องกับตรรกะหน้าเว็บ
+        page.evaluate(
+            r"""() => {
+            try { if (typeof window.SaveAddFileIden_none_verify === 'function') window.SaveAddFileIden_none_verify(); } catch (e) {}
+            const b = document.getElementById('button_skip_next'); if (b) b.disabled = false;
+        }"""
+        )
+        page.wait_for_timeout(800)
+        log("        · ปุ่มถัดไปยังไม่พร้อม — ใช้เส้นทางข้ามการยืนยัน (none_verify) แล้วบังคับ enable")
+    # ปิดโมดอลถ้ายังค้าง
+    page.evaluate("() => { try { jQuery('#AddFileIden').modal('hide'); } catch (e) {} }")
+    page.wait_for_timeout(500)
+    # กดถัดไป (#button_skip_next) — ขอบเขตสุดท้าย (หยุดที่นี่)
+    nx = page.evaluate(
+        r"""() => {
+        const b = document.getElementById('button_skip_next');
+        if (b) { b.disabled = false; b.click(); return 'id'; }
+        return '';
+    }"""
+    )
+    if not nx:
+        res["note"] = "กดถัดไป (ยืนยันตัวตน #button_skip_next) ไม่ได้"
+        return res
+    page.wait_for_timeout(3000)
+    alert = _capture_register_alert(page)
+    res["ok"] = True
+    res["note"] = (
+        alert[:150] if alert else f"อัปโหลดภาพ+บันทึก(ไม่แนบไฟล์จริง)+ถัดไป แล้ว [save={saved}, enabled={enabled}]"
+    )
+    return res
+
+
+def _bt30_step7_submit(page: Page, log=print) -> dict[str, Any]:
+    """Step 7 (ชำระเงิน): เลือกช่องทาง e-Payment (ถ้ายังไม่เลือก) แล้วกด 'ถัดไป' = *ส่งคำขอจริง*
+
+    *** สำคัญมาก — ขั้นตอนนี้ย้อนกลับไม่ได้ (เป็นการยื่นคำขอจริง) เรียกเฉพาะเมื่อ do_submit=True ***
+    มี guard นิรภัย: ต้องตรวจพบว่าเป็นหน้า 'ชำระเงิน' จริง (พบ 'วิธีการชำระเงิน'/'e-Payment'/
+    'รายการชำระเงิน'/'ค่ายื่นคำขอ') ก่อนจึงจะกดถัดไป ไม่งั้นยกเลิกเพื่อกันส่งผิดหน้า
+    """
+    res = {"ok": False, "note": ""}
+    _bt30_dismiss_news(page, log=log)
+    # ── SAFETY GUARD: ยืนยันว่าอยู่หน้า 'ชำระเงิน' จริงก่อนกดส่ง ──
+    on_payment = page.evaluate(
+        r"""() => /วิธีการชำระเงิน|e-?Payment|รายการชำระเงิน|ค่ายื่นคำขอ/i.test(document.body.innerText || '')"""
+    )
+    if not on_payment:
+        res["note"] = "ไม่ใช่หน้าชำระเงิน — ยกเลิกการส่งคำขอเพื่อความปลอดภัย"
+        log("      ⛔ Step 7: ไม่พบหน้าชำระเงิน — ไม่กดส่งคำขอ (กันส่งผิดหน้า)")
+        return res
+    # เลือกช่องทาง e-Payment ถ้ายังไม่ถูกเลือก
+    page.evaluate(
+        r"""() => {
+        const cks = Array.from(document.querySelectorAll('input[type=checkbox],input[type=radio]'));
+        for (const c of cks) {
+            const lbl = ((c.closest('label') && c.closest('label').innerText) || (c.parentElement && c.parentElement.innerText) || '');
+            if (/e-?Payment|ชำระเงินผ่าน/i.test(lbl) && !c.checked) {
+                c.click();
+                if (!c.checked) { c.checked = true; c.dispatchEvent(new Event('change', {bubbles:true})); }
+            }
+        }
+    }"""
+    )
+    page.wait_for_timeout(500)
+    # กด 'ถัดไป' (ปุ่มส่งคำขอ) — เลือกปุ่มที่มองเห็น+ใช้งานได้ตัวสุดท้าย
+    clicked = page.evaluate(
+        r"""() => {
+        const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+            return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+        const cand = Array.from(document.querySelectorAll('button,a'))
+            .filter(e => vis(e) && !e.disabled && /ถัดไป/.test((e.textContent || '').trim())
+                && (e.textContent || '').trim().length < 20
+                && !/ย้อนกลับ|ยกเลิก/.test((e.textContent || '').trim()));
+        if (cand.length) { cand[cand.length - 1].click(); return true; }
+        return false;
+    }"""
+    )
+    if not clicked:
+        res["note"] = "ไม่พบปุ่มถัดไป (หน้าชำระเงิน)"
+        return res
+    log("      · Step 7: กดถัดไป (ส่งคำขอ) แล้ว — รอหน้าผลสำเร็จ...")
+    # รอหน้าผลสำเร็จ (เผื่อมีโมดอลยืนยันก็กดยืนยันให้)
+    ok_success = False
+    for _ in range(25):
+        if page.evaluate(
+            r"""() => /เลขที่คำขอ|ส่งใบคำขอ.*เรียบร้อย|เรียบร้อยแล้ว|E-?Tracking|พิมพ์แบบฟอร์มการชำระเงิน/i.test(document.body.innerText || '')"""
+        ):
+            ok_success = True
+            break
+        page.evaluate(
+            r"""() => {
+            const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+            const b = Array.from(document.querySelectorAll('.swal2-confirm,button,a'))
+                .find(e => vis(e) && /^(ยืนยัน|ตกลง|confirm|ใช่|ส่งคำขอ)/i.test((e.textContent || '').trim())
+                    && (e.textContent || '').trim().length < 20);
+            if (b) b.click();
+        }"""
+        )
+        page.wait_for_timeout(1000)
+    _bt30_dismiss_news(page, log=log)
+    res["ok"] = ok_success
+    res["note"] = ("ส่งคำขอแล้ว — พบหน้าผลสำเร็จ" if ok_success
+                   else "กดถัดไปแล้ว แต่ยังไม่พบหน้าผลสำเร็จ (โปรดตรวจสอบด้วยตนเอง)")
+    return res
+
+
+def _bt30_parse_payment_pdf(pdf_bytes: bytes) -> dict[str, str]:
+    """แยกข้อมูลสำคัญจากไฟล์ PDF 'ใบแจ้งชำระเงิน' (Bill Payment)
+
+    หน้าผลสำเร็จของระบบโหลด 'ค่า' (เลขที่คำขอ/วันที่/ยอดเงิน) แบบ async ทีหลัง ทำให้ scrape DOM
+    ไม่เสถียร แต่ไฟล์ PDF ใบแจ้งชำระเงินมีโครงสร้างคงที่และเชื่อถือได้ จึงใช้เป็นแหล่งข้อมูลหลัก
+    คืน dict: request_no, bill_no, amount, due, txn_date, ref1, ref2, alien_ref (หาไม่พบ = '')
+    """
+    out = {"request_no": "", "bill_no": "", "amount": "", "due": "",
+           "txn_date": "", "ref1": "", "ref2": "", "alien_ref": ""}
+    if not pdf_bytes:
+        return out
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        txt = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+    except Exception:
+        return out
+    import re as _re
+
+    def g(pat: str) -> str:
+        m = _re.search(pat, txt)
+        return m.group(1).strip() if m else ""
+
+    out["request_no"] = g(r"\(Request No\.\)\s*([0-9]{8,})")
+    out["bill_no"] = g(r"\(Bill Payment No\.\)\s*([0-9]{8,})")
+    out["due"] = g(r"\(Payment Due Date\)\s*([0-9]{2}-[0-9]{2}-[0-9]{4}\s+[0-9]{1,2}:[0-9]{2})")
+    out["txn_date"] = g(r"\(Transaction Date\)\s*([0-9]{2}-[0-9]{2}-[0-9]{4}\s+[0-9]{1,2}:[0-9]{2})")
+    mref = _re.search(r"Ref\. No\. 1\s*Ref\. No\. 2\s*([0-9]{6,})\s+([0-9]{6,})", txt)
+    if mref:
+        out["ref1"], out["ref2"] = mref.group(1), mref.group(2)
+    out["amount"] = (g(r"Total Amount\s*([0-9,]+\.[0-9]{2})")
+                     or g(r"\(Amount\)\s*([0-9,]+\.[0-9]{2})"))
+    out["alien_ref"] = g(r"\b([A-Z]{2}[0-9]{12,})\b")
+    return out
+
+
+def _bt30_step8_capture_print(page: Page, rec: dict[str, Any], screenshot_dir: Path, log=print) -> dict[str, Any]:
+    """Step 8 (หน้าผลสำเร็จ): 8.1 เก็บรายละเอียดทั้งหมด + 8.2 ดาวน์โหลด 'ใบแจ้งชำระเงิน'
+
+    8.2 ดาวน์โหลดได้ครั้งเดียว → ลองซ้ำสูงสุด 3 ครั้งถ้ายังไม่ได้ไฟล์ และเตือนชัดเจนถ้าล้มเหลว
+    บันทึกไฟล์ลง reports/bt30_submitted/  (PDF + JSON ข้อมูลหน้า)
+    """
+    res: dict[str, Any] = {"ok": False, "note": "", "request_no": "", "pdf_file": "", "data_file": ""}
+    submitted_dir = screenshot_dir.parent / "bt30_submitted"
+    submitted_dir.mkdir(parents=True, exist_ok=True)
+    seq = rec.get("seq", "?")
+    name = rec.get("name", "")
+
+    # ── รอหน้าผลสำเร็จโหลดค่าจริง (กันจับตอนยังเป็น spinner/โหลด async ไม่เสร็จ) ──
+    for _ in range(20):
+        loaded = page.evaluate(
+            r"""() => {
+            const t = document.body.innerText || '';
+            // ปรากฏเลขชุดยาว (เลขที่คำขอ/อ้างอิง) หรือ ปุ่มพิมพ์ใบชำระเงิน = โหลดเสร็จแล้ว
+            return /\d{10,}/.test(t) || /พิมพ์.{0,8}ชำระเงิน/.test(t);
+        }"""
+        )
+        if loaded:
+            break
+        page.wait_for_timeout(1000)
+    page.wait_for_timeout(800)
+
+    # ── 8.1 เก็บข้อมูลหน้าผลสำเร็จ (best-effort; แหล่งข้อมูลหลักคือ PDF ใน 8.3) ──
+    data = page.evaluate(
+        r"""() => {
+        const lines = (document.body.innerText || '').split('\n').map(s => s.trim()).filter(s => s.length);
+        const after = (re) => {
+            for (let i = 0; i < lines.length; i++) {
+                if (re.test(lines[i])) {
+                    const same = lines[i].replace(re, '').trim();
+                    if (same) return same;
+                    if (i + 1 < lines.length) return lines[i + 1];
+                }
+            }
+            return '';
+        };
+        const out = {};
+        out.request_no = (after(/^เลขที่คำขอ/) || '').replace(/[^0-9]/g, '');
+        out.subject = after(/^ระบบได้รับคำขอเรื่อง/);
+        out.submit_date = after(/^วันที่ยื่นคำขอ/);
+        out.alien = after(/^คนต่างด้าว/);
+        out.pay_method = after(/^วิธีการชำระเงิน/);
+        out.ref1 = (after(/^หมายเลขอ้างอิง\s*1/) || '').replace(/[^0-9]/g, '');
+        out.ref2 = (after(/^หมายเลขอ้างอิง\s*2/) || '').replace(/[^0-9]/g, '');
+        out.amount = after(/^ยอดชำระ/);
+        const m = (document.body.innerText || '').match(/ภายในวันที่\s*([^\n]+)/);
+        out.due = m ? m[1].trim() : '';
+        out.full_text = (document.body.innerText || '');
+        return out;
+    }"""
+    )
+    dom_request_no = (data.get("request_no") or "").strip()
+
+    base = _safe_filename(f"{seq}_{name}_step8_success")
+    try:
+        page.screenshot(path=str(screenshot_dir / f"{base}.png"), full_page=True)
+    except Exception:
+        pass
+
+    # ── 8.2 ดาวน์โหลด 'พิมพ์แบบฟอร์มการชำระเงิน' (ดาวน์โหลดได้ครั้งเดียว → ลองซ้ำถ้าพลาด) ──
+    def _do_click():
+        page.evaluate(
+            r"""() => {
+            const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+            const b = Array.from(document.querySelectorAll('button,a'))
+                .find(e => vis(e) && /พิมพ์.{0,8}(ฟอร์ม).{0,8}ชำระเงิน|พิมพ์.{0,8}ชำระเงิน/.test((e.textContent || '').trim()));
+            if (b) b.click();
+        }"""
+        )
+
+    body: bytes = b""
+    err_last = ""
+    for attempt in range(1, 4):
+        b, err = _grab_pdf_after_click(page, _do_click, log=lambda *a: None)
+        if b and len(b) >= 500 and b[:5] == b"%PDF-":
+            body = b
+            break
+        err_last = err or "ไม่ได้ไฟล์"
+        log(f"        · ⚠ 8.2 ดาวน์โหลดใบชำระเงินครั้งที่ {attempt} ไม่สำเร็จ ({err_last}) — ลองใหม่")
+        page.wait_for_timeout(2500)
+
+    # ── 8.3 แยกข้อมูลจากไฟล์ PDF (แหล่งข้อมูลหลัก เชื่อถือได้กว่า DOM ที่โหลดแบบ async) ──
+    pdf_info = _bt30_parse_payment_pdf(body) if body else {}
+    request_no = dom_request_no or pdf_info.get("request_no", "")
+    if pdf_info:
+        data["request_no"] = request_no
+        for k in ("bill_no", "amount", "due", "txn_date", "ref1", "ref2", "alien_ref"):
+            v = pdf_info.get(k, "")
+            if v and not data.get(k):
+                data[k] = v
+    res["request_no"] = request_no
+    res["amount"] = pdf_info.get("amount", "") or data.get("amount", "")
+    res["due"] = pdf_info.get("due", "") or data.get("due", "")
+    res["data"] = data
+    log(f"        · 8.1 เลขที่คำขอ={request_no or '-'} | ยอด={res['amount'] or '-'} | "
+        f"ชำระภายใน={res['due'] or '-'} | อ้างอิง1={data.get('ref1','-')} อ้างอิง2={data.get('ref2','-')}"
+        + ("  [จาก PDF]" if pdf_info.get("request_no") and not dom_request_no else ""))
+
+    # ── บันทึกไฟล์ด้วยชื่อที่อิงเลขที่คำขอจริง ──
+    stem = _safe_filename(f"{request_no or seq}_{name}_submitted")
+    try:
+        (submitted_dir / f"{stem}.json").write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        res["data_file"] = f"{stem}.json"
+    except Exception as e:
+        log(f"        · ⚠ บันทึก JSON ไม่สำเร็จ: {e}")
+
+    if body:
+        # ชื่อไฟล์: {เลขที่คำขอ}_{เลขที่เอกสาร}_{ชื่อ}_payment.pdf
+        # ถ้าไม่มี 'เลขที่เอกสาร' (2.3 doc_no) → ใช้ 'เลขที่ (*เอกสารแสดงการอนุญาตหรือการรับรอง*)' (auth_no) แทน
+        doc_id = (rec.get("doc_no") or rec.get("auth_no") or "").strip()
+        name_parts: list[str] = []
+        for p in (request_no or seq, doc_id, name):
+            s = _safe_filename(p)
+            if p and s and s != "x":
+                name_parts.append(s)
+        pdf_name = "_".join(name_parts) + "_payment.pdf"
+        try:
+            (submitted_dir / pdf_name).write_bytes(body)
+            res["pdf_file"] = pdf_name
+            log(f"        · ✓ 8.2 ดาวน์โหลดใบชำระเงินแล้ว → bt30_submitted/{pdf_name} ({len(body)//1024} KB)")
+        except Exception as e:
+            log(f"        · ⚠ เขียนไฟล์ PDF ไม่สำเร็จ: {e}")
+    else:
+        log(f"        · ⛔ 8.2 ดาวน์โหลดใบชำระเงินไม่สำเร็จหลังลอง 3 ครั้ง ({err_last}) — "
+            f"กรุณาดาวน์โหลดเองทันที (เลขคำขอ {request_no or '-'}) เพราะดาวน์โหลดได้ครั้งเดียว")
+
+    res["ok"] = bool(request_no) and bool(res["pdf_file"])
+    res["note"] = (f"เลขคำขอ={request_no or '-'} | ยอด={res['amount'] or '-'} | "
+                   f"ชำระภายใน={res['due'] or '-'} | ใบชำระเงิน="
+                   + ("OK" if res["pdf_file"] else f"ล้มเหลว({err_last})"))
+    return res
+
+
+def _bt30_do_step2(
+    page: Page,
+    rec: dict[str, Any],
+    screenshot_dir: Path,
+    log=print,
+    do_submit: bool = False,
+) -> dict[str, Any]:
+    """รวมขั้นตอนที่ 2 (2.1–2.5) + หน้า 2/2 + แนบเอกสาร + Step 4–6.1 สำหรับคนต่างด้าว 1 คน
+    หลังเพิ่มข้อมูลในขั้นตอนที่ 1 สำเร็จ
+
+    do_submit=False (ค่าเริ่มต้น/ปลอดภัย): หยุดหลัง Step 6.1 — ไม่ส่งคำขอ/ไม่ชำระเงิน
+    do_submit=True  (*** ส่งคำขอจริง ***): ทำ Step 7 (ชำระเงิน+ส่งคำขอ) + Step 8
+      (เก็บข้อมูลหน้าผลสำเร็จ + ดาวน์โหลดใบแจ้งชำระเงิน) — ย้อนกลับไม่ได้
+    คืน {step2_status, step2_note, step2_screenshot, request_no, submit_pdf, submit_status}
+    """
+    seq = rec.get("seq", "?")
+    name = rec.get("name", "")
+    base = _safe_filename(f"{seq}_{name}_step2")
+    parts: list[str] = []
+    out = {"step2_status": "", "step2_note": "", "step2_screenshot": "",
+           "request_no": "", "submit_pdf": "", "submit_status": ""}
+    try:
+        # 2.1 รับรอง + ถัดไป
+        if not _bt30_consent_next(page, log=log):
+            out["step2_status"] = "FAIL"
+            out["step2_note"] = "2.1 รับรอง/ถัดไป ไม่สำเร็จ"
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_consentfail.png"), full_page=True)
+                out["step2_screenshot"] = f"{base}_consentfail.png"
+            except Exception:
+                pass
+            return out
+        parts.append("2.1 รับรอง+ถัดไป: OK")
+        log("      ✓ 2.1 รับรอง + ถัดไป → หน้ารายละเอียด")
+
+        # 2.2 ที่อยู่ที่ติดต่อได้
+        r_addr = _bt30_fill_address(page, rec, log=log)
+        parts.append(f"2.2 ที่อยู่: {'OK' if r_addr['ok'] else 'X'} {r_addr['note']}".strip())
+        log(f"      {'✓' if r_addr['ok'] else '⚠'} 2.2 ที่อยู่ที่ติดต่อได้ — {r_addr['note']}")
+
+        # 2.3+2.4 ข้อมูลเพิ่มเติม (เอกสาร/วีซ่า/ตม.)
+        r_stay = _bt30_fill_staypermit(page, rec, log=log)
+        parts.append(f"2.3+2.4 ข้อมูลเพิ่มเติม: {'OK' if r_stay['ok'] else 'X'} {r_stay['note']}".strip())
+        log(f"      {'✓' if r_stay['ok'] else '⚠'} 2.3+2.4 ข้อมูลเพิ่มเติม — {r_stay['note']}")
+
+        # screenshot ก่อนกดถัดไป
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_filled.png"), full_page=True)
+            out["step2_screenshot"] = f"{base}_filled.png"
+        except Exception:
+            pass
+
+        # 2.5 ถัดไป
+        r_next = _bt30_step2_next(page, log=log)
+        parts.append(f"2.5 ถัดไป: {'OK' if r_next['ok'] else 'X'} {r_next['note']}".strip())
+        log(f"      {'✓' if r_next['ok'] else '⚠'} 2.5 ถัดไป — {r_next['note']}")
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_afternext.png"), full_page=True)
+            out["step2_screenshot"] = f"{base}_afternext.png"
+        except Exception:
+            pass
+
+        # 2.6 หน้า 2/2: โดยจะมาทำงาน (สถานที่ทำงาน/ประเภทกิจการ) + เอกสารแสดงการอนุญาตหรือการรับรอง
+        r_page2 = {"ok": False, "note": "ข้าม (2.5 ไม่สำเร็จ)"}
+        r_p2next = {"ok": False, "note": "ข้าม"}
+        if r_next["ok"]:
+            page.wait_for_timeout(1500)
+            r_page2 = _bt30_fill_page2(page, rec, log=log)
+            parts.append(f"2.6 หน้า2/2: {'OK' if r_page2['ok'] else 'X'} {r_page2['note']}".strip())
+            log(f"      {'✓' if r_page2['ok'] else '⚠'} 2.6 หน้า 2/2 (โดยจะมาทำงาน/เอกสารอนุญาต) — {r_page2['note']}")
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_page2filled.png"), full_page=True)
+                out["step2_screenshot"] = f"{base}_page2filled.png"
+            except Exception:
+                pass
+
+            # 2.7 ถัดไป (หน้า 2/2 → แนบเอกสาร)
+            r_p2next = _bt30_page2_next(page, log=log)
+            parts.append(f"2.7 ถัดไป(2/2): {'OK' if r_p2next['ok'] else 'X'} {r_p2next['note']}".strip())
+            log(f"      {'✓' if r_p2next['ok'] else '⚠'} 2.7 ถัดไป (หน้า 2/2) — {r_p2next['note']}")
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_page2next.png"), full_page=True)
+                out["step2_screenshot"] = f"{base}_page2next.png"
+            except Exception:
+                pass
+
+        # 2.8 แนบเอกสาร (3.1–4.1 + 4.2 เอกสารอื่นๆ) + 2.9 ถัดไป
+        r_attach = {"ok": False, "note": "ข้าม (2.7 ไม่สำเร็จ)"}
+        r_attnext = {"ok": False, "note": "ข้าม"}
+        r_emp_next = {"ok": False, "note": "ข้าม"}       # Step 4 เอกสารนายจ้าง 2/2
+        r_sum1_next = {"ok": False, "note": "ข้าม"}      # Step 5.1 สรุปคำขอ 1/2
+        r_sum2_confirm = {"ok": False, "note": "ข้าม"}   # Step 5.2 สรุปคำขอ 2/2 (ยืนยันข้อมูล)
+        r_iden = {"ok": False, "note": "ข้าม"}           # Step 6.1 วิธีการยืนยันตัวตน
+        r_step7 = {"ok": False, "note": "ข้าม (ไม่ส่งคำขอ)"}   # Step 7 ชำระเงิน+ส่งคำขอ
+        r_step8 = {"ok": False, "note": "ข้าม"}           # Step 8 เก็บข้อมูล+ดาวน์โหลดใบชำระเงิน
+        if r_p2next["ok"]:
+            page.wait_for_timeout(2500)
+            r_attach = _bt30_fill_attachments(page, rec, log=log)
+            parts.append(f"2.8 แนบเอกสาร: {'OK' if r_attach['ok'] else 'X'} {r_attach['note']}".strip())
+            log(f"      {'✓' if r_attach['ok'] else '⚠'} 2.8 แนบเอกสาร — {r_attach['note']}")
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_attachfilled.png"), full_page=True)
+                out["step2_screenshot"] = f"{base}_attachfilled.png"
+            except Exception:
+                pass
+
+            # 2.9 ถัดไป (แนบเอกสาร) — เฉพาะเมื่อแนบครบ เพื่อกันถูกบล็อกจากเอกสารบังคับที่ขาด
+            if r_attach["ok"]:
+                r_attnext = _bt30_attach_next(page, log=log)
+                parts.append(f"2.9 ถัดไป(แนบ): {'OK' if r_attnext['ok'] else 'X'} {r_attnext['note']}".strip())
+                log(f"      {'✓' if r_attnext['ok'] else '⚠'} 2.9 ถัดไป (แนบเอกสาร) — {r_attnext['note']}")
+                try:
+                    page.screenshot(path=str(screenshot_dir / f"{base}_attachnext.png"), full_page=True)
+                    out["step2_screenshot"] = f"{base}_attachnext.png"
+                except Exception:
+                    pass
+            else:
+                parts.append("2.9 ถัดไป(แนบ): ข้าม (แนบไม่ครบ)")
+
+        # Step 4–6.1 (หลังแนบเอกสาร 2.9) — เดินต่อจนถึง 'ยืนยันตัวตน' แล้วหยุด (ขอบเขตใหม่)
+        # *** ไม่ส่งคำขอ / ไม่ยืนยันตัวตนจริง / ไม่ชำระเงิน ***
+        if r_attnext["ok"]:
+            # Step 4: เอกสารนายจ้าง (แนบเอกสาร หน้า 2/2) — กดถัดไป
+            page.wait_for_timeout(2500)
+            r_emp_next = _bt30_click_next_generic(
+                page, "NextStepThreePageOneRenew", "4 เอกสารนายจ้าง 2/2", log=log)
+            parts.append(f"4 เอกสารนายจ้าง: {'OK' if r_emp_next['ok'] else 'X'} {r_emp_next['note']}".strip())
+            log(f"      {'✓' if r_emp_next['ok'] else '⚠'} 4 เอกสารนายจ้าง (หน้า 2/2) — {r_emp_next['note']}")
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_step4.png"), full_page=True)
+                out["step2_screenshot"] = f"{base}_step4.png"
+            except Exception:
+                pass
+
+            # Step 5.1: สรุปคำขอ หน้า 1/2 — กดถัดไป
+            if r_emp_next["ok"]:
+                r_sum1_next = _bt30_click_next_generic(page, None, "5.1 สรุปคำขอ 1/2", log=log)
+                parts.append(f"5.1 สรุปคำขอ 1/2: {'OK' if r_sum1_next['ok'] else 'X'} {r_sum1_next['note']}".strip())
+                log(f"      {'✓' if r_sum1_next['ok'] else '⚠'} 5.1 สรุปคำขอ (หน้า 1/2) — {r_sum1_next['note']}")
+                try:
+                    page.screenshot(path=str(screenshot_dir / f"{base}_step5_1.png"), full_page=True)
+                    out["step2_screenshot"] = f"{base}_step5_1.png"
+                except Exception:
+                    pass
+
+            # Step 5.2: สรุปคำขอ หน้า 2/2 — ติ๊กยืนยันข้อมูล + กดถัดไป
+            if r_sum1_next["ok"]:
+                r_sum2_confirm = _bt30_step5_confirm_next(page, log=log)
+                parts.append(f"5.2 ยืนยันข้อมูล: {'OK' if r_sum2_confirm['ok'] else 'X'} {r_sum2_confirm['note']}".strip())
+                log(f"      {'✓' if r_sum2_confirm['ok'] else '⚠'} 5.2 สรุปคำขอ (หน้า 2/2) ยืนยันข้อมูล — {r_sum2_confirm['note']}")
+                try:
+                    page.screenshot(path=str(screenshot_dir / f"{base}_step5_2.png"), full_page=True)
+                    out["step2_screenshot"] = f"{base}_step5_2.png"
+                except Exception:
+                    pass
+
+            # Step 6.1: วิธีการยืนยันตัวตน — อัปโหลดภาพ + บันทึก (ไม่แนบไฟล์จริง) + ถัดไป (ขอบเขตสุดท้าย)
+            if r_sum2_confirm["ok"]:
+                page.wait_for_timeout(1500)
+                r_iden = _bt30_step6_upload_identity(page, log=log)
+                parts.append(f"6.1 ยืนยันตัวตน: {'OK' if r_iden['ok'] else 'X'} {r_iden['note']}".strip())
+                log(f"      {'✓' if r_iden['ok'] else '⚠'} 6.1 วิธีการยืนยันตัวตน — {r_iden['note']}")
+                try:
+                    page.screenshot(path=str(screenshot_dir / f"{base}_step6.png"), full_page=True)
+                    out["step2_screenshot"] = f"{base}_step6.png"
+                except Exception:
+                    pass
+
+            # Step 7–8 (ชำระเงิน+ส่งคำขอจริง + เก็บข้อมูล+ดาวน์โหลดใบชำระเงิน)
+            # *** IRREVERSIBLE — ทำเฉพาะเมื่อ do_submit=True เท่านั้น (ค่าเริ่มต้น False = หยุดที่ 6.1) ***
+            if do_submit and r_iden["ok"]:
+                page.wait_for_timeout(1500)
+                r_step7 = _bt30_step7_submit(page, log=log)
+                parts.append(f"7 ส่งคำขอ: {'OK' if r_step7['ok'] else 'X'} {r_step7['note']}".strip())
+                log(f"      {'✓' if r_step7['ok'] else '⚠'} 7 ชำระเงิน/ส่งคำขอ — {r_step7['note']}")
+                try:
+                    page.screenshot(path=str(screenshot_dir / f"{base}_step7.png"), full_page=True)
+                    out["step2_screenshot"] = f"{base}_step7.png"
+                except Exception:
+                    pass
+                if r_step7["ok"]:
+                    r_step8 = _bt30_step8_capture_print(page, rec, screenshot_dir, log=log)
+                    parts.append(f"8 ใบชำระเงิน: {'OK' if r_step8['ok'] else 'X'} {r_step8['note']}".strip())
+                    log(f"      {'✓' if r_step8['ok'] else '⚠'} 8 เก็บข้อมูล+ดาวน์โหลดใบชำระเงิน — {r_step8['note']}")
+                    out["request_no"] = r_step8.get("request_no", "")
+                    out["submit_pdf"] = r_step8.get("pdf_file", "")
+                    out["submit_status"] = "SUBMITTED" if r_step8.get("request_no") else "UNKNOWN"
+
+        ok_all = (r_addr["ok"] and r_stay["ok"] and r_next["ok"]
+                  and r_page2["ok"] and r_p2next["ok"]
+                  and r_attach["ok"] and r_attnext["ok"]
+                  and r_emp_next["ok"] and r_sum1_next["ok"]
+                  and r_sum2_confirm["ok"] and r_iden["ok"])
+        if do_submit:
+            ok_all = ok_all and r_step7["ok"] and r_step8["ok"]
+        out["step2_status"] = "SUCCESS" if ok_all else "PARTIAL"
+        out["step2_note"] = " | ".join(parts)[:900]
+        return out
+    except Exception as e:
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_error.png"), full_page=True)
+            out["step2_screenshot"] = f"{base}_error.png"
+        except Exception:
+            pass
+        out["step2_status"] = "ERROR"
+        out["step2_note"] = (" | ".join(parts) + " | " + str(e))[:500]
+        return out
+
+
+def _save_bt30_report(rows: list[dict[str, Any]], out_path: Path, log=print) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "บต.30"
+    headers = ["ลำดับ", "คำนำหน้า", "ชื่อ", "สัญชาติ", "เพศ", "วันเกิด",
+               "สถานะ", "หมายเหตุ", "Screenshot",
+               "สถานะขั้นตอน2", "หมายเหตุขั้นตอน2", "Screenshot2",
+               "สถานะส่งคำขอ", "เลขที่คำขอ", "ไฟล์ใบชำระเงิน"]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for r in rows:
+        ws.append([
+            r.get("seq", ""), r.get("prefix", ""), r.get("name", ""),
+            r.get("nationality", ""), r.get("sex", ""), r.get("birthdate", ""),
+            r.get("status", ""), r.get("note", ""), r.get("screenshot", ""),
+            r.get("step2_status", ""), r.get("step2_note", ""), r.get("step2_screenshot", ""),
+            r.get("submit_status", ""), r.get("request_no", ""), r.get("submit_pdf", ""),
+        ])
+    widths = [8, 12, 28, 16, 8, 14, 12, 44, 28, 14, 50, 30, 14, 18, 32]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out_path)
+    log(f"บันทึกรายงาน: {out_path}")
+
+
+# คอลัมน์ผลลัพธ์ที่ระบบเขียนกลับเข้าไฟล์ Excel ต้นทาง (ต่อท้ายขวาสุดถ้ายังไม่มี)
+_BT30_WB_COLS = [
+    "สถานะระบบ", "สถานะส่งคำขอ", "เลขที่คำขอ",
+    "ไฟล์ใบชำระเงิน", "วันที่ทำรายการ", "หมายเหตุระบบ",
+]
+
+
+def _bt30_writeback_excel(excel_path: Path, row: dict[str, Any], log=print) -> bool:
+    """เขียนผลลัพธ์รายแถวกลับเข้าไฟล์ Excel ต้นทาง (เพิ่มคอลัมน์ผลที่ขวาสุดถ้ายังไม่มี)
+    จับคู่แถวด้วย row['row_index'] (แถว Excel = row_index + 1 เพราะข้อมูลเริ่มแถว 2)
+    คืน True ถ้าบันทึกสำเร็จ — ใช้สำหรับติดตามสถานะ + resume/skip คนที่ทำเสร็จแล้ว
+    """
+    try:
+        excel_path = Path(excel_path)
+        wb = load_workbook(excel_path)
+        ws = wb.active
+        hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
+        col_idx: dict[str, int] = {}
+        for name in _BT30_WB_COLS:
+            if name in hdr:
+                col_idx[name] = hdr.index(name) + 1
+            else:
+                new_c = len(hdr) + 1
+                ws.cell(row=1, column=new_c, value=name)
+                hdr.append(name)
+                col_idx[name] = new_c
+        try:
+            ridx = int(row.get("row_index", 0))
+        except (TypeError, ValueError):
+            ridx = 0
+        if ridx <= 0:
+            return False
+        excel_row = ridx + 1  # ข้อมูลเริ่มแถว 2
+        vals = {
+            "สถานะระบบ": row.get("step2_status") or row.get("status") or "",
+            "สถานะส่งคำขอ": row.get("submit_status", ""),
+            "เลขที่คำขอ": row.get("request_no", ""),
+            "ไฟล์ใบชำระเงิน": row.get("submit_pdf", ""),
+            "วันที่ทำรายการ": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "หมายเหตุระบบ": (row.get("step2_note") or row.get("note") or "")[:250],
+        }
+        for name, v in vals.items():
+            ws.cell(row=excel_row, column=col_idx[name], value=v)
+        wb.save(excel_path)
+        return True
+    except PermissionError:
+        log(f"      ⚠ เขียนผลกลับ Excel ไม่ได้ (ไฟล์ {Path(excel_path).name} อาจเปิดค้างอยู่) — กรุณาปิดไฟล์แล้วลองใหม่")
+        return False
+    except Exception as e:
+        log(f"      ⚠ เขียนผลกลับ Excel ไม่สำเร็จ: {e}")
+        return False
+
+
+def _bt30_resolve_groups(
+    records: list[dict[str, Any]],
+    accounts: dict[str, dict[str, str]],
+    fallback_cfg: dict[str, str],
+    log=print,
+) -> list[tuple[dict[str, str], list[dict[str, Any]]]]:
+    """จัดกลุ่ม records ตามคอลัมน์ Username (รักษาลำดับที่ปรากฏในไฟล์) เพื่อ login ทีละบัญชี
+    คืนค่า: [(login_cfg, [records...]), ...]
+      - แถวที่เว้น Username ว่าง → ใช้ fallback_cfg (บัญชีหลัก/ค่าจากหน้าโปรแกรม)
+      - Username ที่ไม่พบใน UsernameLogin.xlsx → เตือนแล้ว fallback ไปบัญชีหลัก
+      - แถว Username เดียวกันถูกรวมไว้กลุ่มเดียว (login ครั้งเดียวต่อบัญชี)
+    """
+    order: list[str] = []
+    buckets: dict[str, list[dict[str, Any]]] = {}
+    cfgs: dict[str, dict[str, str]] = {}
+    for rec in records:
+        uname = (rec.get("username") or "").strip()
+        key = uname.lower() or "\x00default"
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+            if not uname:
+                cfgs[key] = fallback_cfg
+            else:
+                acct = accounts.get(key)
+                if acct:
+                    cfgs[key] = {
+                        "username": acct["username"],
+                        "password": acct["password"],
+                        "user_type": acct["type"],
+                        "method": acct.get("method") or fallback_cfg.get("method", "E-Workpermit"),
+                    }
+                else:
+                    log(f"  ⚠ ไม่พบบัญชี '{uname}' ใน UsernameLogin.xlsx — "
+                        f"ใช้บัญชีหลัก ({fallback_cfg.get('username','')}) แทน")
+                    cfgs[key] = fallback_cfg
+        buckets[key].append(rec)
+    return [(cfgs[k], buckets[k]) for k in order]
+
+
+def run_bt30(
+    cfg: dict,
+    excel_input: Path,
+    login_excel: Path,
+    out_path: Path,
+    row_range: str | None = None,
+    do_step2: bool = True,
+    do_submit: bool = False,
+    skip_done: bool = True,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด บต.30 — ยื่นต่ออายุใบอนุญาตทำงานตาม MoU
+    - Login จาก UsernameLogin.xlsx: ถ้า from_bt30.xlsx มีคอลัมน์ 'Username' จะจัดกลุ่มตาม
+      บัญชีแล้ว login แยกทีละกลุ่ม (รองรับยื่นหลาย Username ในไฟล์เดียว) — แถวที่เว้นว่าง/
+      ไม่พบบัญชี ใช้บัญชีหลัก (บัญชีแรกใน UsernameLogin.xlsx) หรือค่าใน cfg
+    - do_step2=False : ขั้นตอนที่ 1 เท่านั้น — เปิดฟอร์มครั้งเดียว วนเพิ่มคนต่างด้าวทุกแถว แล้วกดบันทึก
+    - do_step2=True  : ทำครบขั้นตอนที่ 1+2 แบบรายคน (1 แถว = 1 คำขอ): เปิดฟอร์มใหม่ →
+      ค้นหา/บันทึกคนต่างด้าว → 2.1 รับรอง+ถัดไป → 2.2 ที่อยู่ → 2.3+2.4 ข้อมูลเพิ่มเติม →
+      2.5 ถัดไป → 2.6 หน้า 2/2 → 2.7 ถัดไป → 2.8 แนบเอกสาร (13 ไฟล์) → 2.9 ถัดไป →
+      Step 4 เอกสารนายจ้าง (ถัดไป) → Step 5.1 สรุปคำขอ 1/2 (ถัดไป) →
+      Step 5.2 สรุปคำขอ 2/2 (ติ๊กยืนยันข้อมูล+ถัดไป) → Step 6.1 ยืนยันตัวตน
+      (อัปโหลดภาพ+บันทึก ไม่แนบไฟล์จริง+ถัดไป)
+    - do_submit=False (ค่าเริ่มต้น/ปลอดภัย): หยุดหลัง Step 6.1 — ไม่ส่งคำขอ/ไม่ชำระเงิน
+    - do_submit=True  (*** ส่งคำขอจริง — ย้อนกลับไม่ได้ ***): ทำ Step 7 (ชำระเงิน e-Payment + ถัดไป = ส่งคำขอ)
+      → Step 8 (เก็บข้อมูลหน้าผลสำเร็จทั้งหมด + ดาวน์โหลดใบแจ้งชำระเงิน) → ไฟล์ลง reports/bt30_submitted/
+    - เขียนผลกลับเข้าไฟล์ Excel ต้นทางรายแถว (คอลัมน์ขวาสุด: สถานะระบบ/สถานะส่งคำขอ/เลขที่คำขอ/
+      ไฟล์ใบชำระเงิน/วันที่ทำรายการ/หมายเหตุระบบ) ทันทีที่ทำแต่ละแถวเสร็จ
+    - skip_done=True (ค่าเริ่มต้น): ข้ามแถวที่มี 'เลขที่คำขอ' อยู่แล้ว (ส่งคำขอไปแล้ว) อัตโนมัติ —
+      กันส่งซ้ำ/ทำซ้ำ และรองรับการรันต่อ (resume) หลังหยุดกลางคัน
+    """
+    out_path = _timestamped_path(out_path)
+    records = _read_bt30_excel(excel_input)
+    accounts = (_read_login_accounts(login_excel)
+                if login_excel and Path(login_excel).exists() else {})
+    total = len(records)
+    indices = _parse_row_range(row_range, total)
+    selected = [records[i - 1] for i in indices]
+    mode_txt = "ขั้นตอน 1+2 (รายคน)" if do_step2 else "ขั้นตอน 1 เท่านั้น"
+    log(f"[1/3] อ่าน {Path(excel_input).name}: {total} แถว → จะทำ {len(selected)} แถว "
+        f"({row_range or 'ทั้งหมด'}) | โหมด: {mode_txt}")
+    log(f"      ไฟล์รายงาน: {out_path.name}")
+
+    # ตรวจขนาดไฟล์แนบทุกแถวก่อนเริ่ม (ระบบจำกัด 4 MB/ไฟล์) — เฉพาะโหมดที่มีการแนบเอกสาร
+    if do_step2:
+        _bt30_preflight_doc_sizes(selected, log=log)
+
+    if accounts:
+        acct = next(iter(accounts.values()))
+        login_cfg = {
+            "username": acct["username"], "password": acct["password"],
+            "user_type": acct["type"],
+            "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+        }
+    else:
+        login_cfg = {k: cfg.get(k, "") for k in ("username", "password", "user_type", "method")}
+    if not login_cfg.get("username") or not login_cfg.get("password"):
+        raise ValueError("ไม่พบบัญชี login — กรุณาระบุ UsernameLogin.xlsx หรือกรอก Username/Password")
+    log(f"      บัญชีหลัก (fallback): {login_cfg['username']} ({login_cfg.get('user_type','')})")
+
+    screenshot_dir = out_path.parent / "bt30_screenshots"
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    results: list[dict[str, Any]] = []
+    success = 0
+    if progress:
+        try: progress(0, len(selected))
+        except Exception: pass
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        ctx = browser.new_context(
+            locale="th-TH", ignore_https_errors=True,
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        try:
+            if do_step2:
+                # --- รายคน: จัดกลุ่มตามคอลัมน์ Username → login แยกทีละบัญชี →
+                #     เปิดฟอร์มใหม่ทุกแถว แล้วทำขั้นตอน 1 + 2 ให้ครบ ---
+                groups = _bt30_resolve_groups(selected, accounts, login_cfg, log=log)
+                multi = len(groups) > 1
+                if multi:
+                    log(f"[2/3] พบ {len(groups)} บัญชี (Username) ในรายการ — จะ login แยกทีละกลุ่ม")
+                k = 0
+                cancelled = False
+                for gi, (gcfg, grecs) in enumerate(groups, start=1):
+                    if cancelled or (is_cancelled and is_cancelled()):
+                        break
+                    gtag = f"[กลุ่ม {gi}/{len(groups)}] " if multi else ""
+                    log(f"[2/3] {gtag}เข้าสู่ระบบ: {gcfg['username']} "
+                        f"({gcfg.get('user_type','')}) — {len(grecs)} รายการ")
+                    try:
+                        if gi > 1:
+                            _logout_safely(page)
+                            page.wait_for_timeout(800)
+                        login(page, gcfg)
+                        page.wait_for_timeout(1500)
+                    except Exception as e:
+                        log(f"      ✗ login ไม่สำเร็จ ({gcfg['username']}): {e} — "
+                            f"ข้ามกลุ่มนี้ {len(grecs)} รายการ")
+                        for rec in grecs:
+                            k += 1
+                            row = {**rec, "status": "LOGIN_FAIL",
+                                   "note": f"login ไม่สำเร็จ ({gcfg['username']}): {str(e)[:150]}",
+                                   "screenshot": "",
+                                   "step2_status": "LOGIN_FAIL",
+                                   "step2_note": f"ข้าม — login บัญชี {gcfg['username']} ไม่สำเร็จ"}
+                            results.append(row)
+                            _bt30_writeback_excel(excel_input, row, log=log)
+                            if progress:
+                                try: progress(k, len(selected))
+                                except Exception: pass
+                            _save_bt30_report(results, out_path, log=lambda *a: None)
+                        continue
+                    for rec in grecs:
+                        if is_cancelled and is_cancelled():
+                            log("[!] ผู้ใช้ยกเลิก — หยุด")
+                            cancelled = True
+                            break
+                        k += 1
+                        log(f"  ({k}/{len(selected)}) แถว {rec['row_index']}: "
+                            f"{rec.get('prefix','')} {rec.get('name','')} | "
+                            f"{rec.get('nationality','')} | {rec.get('sex','')} | {rec.get('birthdate','')}")
+                        if skip_done and rec.get("done_request_no"):
+                            log(f"      ⏭ ข้าม — ส่งคำขอไปแล้ว (เลขที่คำขอ {rec['done_request_no']})")
+                            results.append({**rec, "status": "SKIP_DONE",
+                                            "note": f"ส่งคำขอแล้ว (เลขที่คำขอ {rec['done_request_no']})",
+                                            "screenshot": "",
+                                            "step2_status": "SKIP_DONE",
+                                            "step2_note": "ข้าม — ส่งคำขอแล้วก่อนหน้า",
+                                            "submit_status": rec.get("done_submit_status") or "SUBMITTED",
+                                            "request_no": rec["done_request_no"],
+                                            "submit_pdf": ""})
+                            if progress:
+                                try: progress(k, len(selected))
+                                except Exception: pass
+                            _save_bt30_report(results, out_path, log=lambda *a: None)
+                            continue
+                        if not _open_bt30_form(page, log=log):
+                            results.append({**rec, "status": "FORM_FAIL",
+                                            "note": "เปิดฟอร์ม บต.30 ไม่สำเร็จ", "screenshot": ""})
+                            _save_bt30_report(results, out_path, log=lambda *a: None)
+                            continue
+                        res = _bt30_fill_search_one(page, rec, screenshot_dir, log=log)
+                        row = {**rec, **res}
+                        log(f"      → ขั้นตอน1: {res.get('status')}"
+                            + (f" | {res['note']}" if res.get("note") else ""))
+                        if res.get("status") == "SUCCESS":
+                            res2 = _bt30_do_step2(page, rec, screenshot_dir, log=log, do_submit=do_submit)
+                            row.update(res2)
+                            if res2.get("step2_status") == "SUCCESS":
+                                success += 1
+                            log(f"      → ขั้นตอน2: {res2.get('step2_status')}")
+                        else:
+                            row.update({"step2_status": "SKIP",
+                                        "step2_note": "ข้ามขั้นตอน 2 เพราะขั้นตอน 1 ไม่สำเร็จ"})
+                        results.append(row)
+                        _bt30_writeback_excel(excel_input, row, log=log)
+                        if progress:
+                            try: progress(k, len(selected))
+                            except Exception: pass
+                        _save_bt30_report(results, out_path, log=lambda *a: None)
+            else:
+                # --- ขั้นตอน 1 เท่านั้น: login บัญชีหลัก เปิดฟอร์มครั้งเดียว วนเพิ่มทุกแถว ---
+                log("[2/3] เข้าสู่ระบบ...")
+                login(page, login_cfg)
+                page.wait_for_timeout(1500)
+                if not _open_bt30_form(page, log=log):
+                    log("[!] เปิดฟอร์ม บต.30 ไม่สำเร็จ — ยุติ")
+                    for rec in selected:
+                        results.append({**rec, "status": "FORM_FAIL",
+                                        "note": "เปิดฟอร์ม บต.30 ไม่สำเร็จ", "screenshot": ""})
+                    _save_bt30_report(results, out_path, log=log)
+                    return 0, out_path
+                log("      ✓ เปิดฟอร์ม บต.30 สำเร็จ — เริ่มกรอกข้อมูลคนต่างด้าว")
+                for k, rec in enumerate(selected, start=1):
+                    if is_cancelled and is_cancelled():
+                        log("[!] ผู้ใช้ยกเลิก — หยุด")
+                        break
+                    log(f"  ({k}/{len(selected)}) แถว {rec['row_index']}: "
+                        f"{rec.get('prefix','')} {rec.get('name','')} | "
+                        f"{rec.get('nationality','')} | {rec.get('sex','')} | {rec.get('birthdate','')}")
+                    res = _bt30_fill_search_one(page, rec, screenshot_dir, log=log)
+                    row1 = {**rec, **res}
+                    results.append(row1)
+                    _bt30_writeback_excel(excel_input, row1, log=log)
+                    if res.get("status") == "SUCCESS":
+                        success += 1
+                    log(f"      → {res.get('status')}" + (f" | {res['note']}" if res.get("note") else ""))
+                    if progress:
+                        try: progress(k, len(selected))
+                        except Exception: pass
+                    _save_bt30_report(results, out_path, log=lambda *a: None)
+        finally:
+            ctx.close(); browser.close()
+
+    _save_bt30_report(results, out_path, log=log)
+    log(f"[3/3] สรุป: สำเร็จ {success} / {len(selected)} รายการ "
+        f"(ดู screenshots ใน {screenshot_dir.name}/)")
+    return success, out_path
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  โหมด บต.44 — การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน
+#  ซึ่งไม่กระทบในใบอนุญาต (CHANGE_EMPLOYER) — ขั้นตอนที่ 1: ค้นหา+บันทึกข้อมูลคนต่างด้าว
+#  ใช้ฟอร์มค้นหาคนต่างด้าวชุดเดียวกับ บต.30 ต่างกันแค่เมนูที่นำทางเข้าฟอร์ม
+# ════════════════════════════════════════════════════════════════════════════
+def _read_bt44_excel(path: Path) -> list[dict[str, Any]]:
+    """อ่าน from_bt44.xlsx (ขั้นตอน 1-3)
+    คอลัมน์: No., คำนำหน้า, หมายเลขอ้างอิงของคนต่างด้าว (ออปชัน), ชื่อ, สัญชาติ, เพศ, เกิดวันที่,
+             เลขที่ใบอนุญาตทำงาน, เลขที่-ที่อยู่ที่ติดต่อได้, หมู่ที่/อาคาร, ซอย, ถนน, จังหวัด, เขต/อำเภอ, แขวง/ตำบล,
+             ประเภทการค้นหา-เปลี่ยนนายจ้าง, ระบุ-เปลี่ยนนายจ้าง, เหตุผลการเปลี่ยนนายจ้าง,
+             อื่น ๆ (โปรดระบุ), สถานที่ทำงาน/สาขา, ประเภทกิจการ, ประเภทงานที่ขออนุญาต, ลักษณะงาน
+    """
+    wb = load_workbook(path, data_only=True)
+    ws = wb.active
+    hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
+
+    def col(*names: str) -> int:
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if h == nm:
+                    return i
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if nm and nm in h:
+                    return i
+        return -1
+
+    i_no = col("No.", "No", "ลำดับ", "ลําดับ")
+    i_prefix = col("คำนำหน้า", "คํานําหน้า", "Prefix", "Title")
+    i_ref = col("หมายเลขอ้างอิงของคนต่างด้าว", "หมายเลขอ้างอิง", "เลขอ้างอิง", "alien_id")
+    i_name = col("ชื่อ", "ชื่อ-สกุล", "Name")
+    i_nat = col("สัญชาติ", "Nationality")
+    i_sex = col("เพศ", "Sex", "Gender")
+    i_birth = col("เกิดวันที่", "วันเกิด", "วันเดือนปีเกิด", "BirthDate", "DOB", "Birth")
+    i_username = col("Username", "username", "ชื่อผู้ใช้")
+    
+    # Step 2 fields
+    i_workpermit = col("เลขที่ใบอนุญาตทำงาน", "ใบอนุญาตทำงาน", "WorkPermitNo")
+    i_addr_no = col("เลขที่-ที่อยู่ที่ติดต่อได้", "เลขที่")
+    i_addr_moo = col("หมู่ที่/อาคาร-ที่อยู่ที่ติดต่อได้", "หมู่ที่")
+    i_addr_soi = col("ซอย-ที่อยู่ที่ติดต่อได้", "ซอย")
+    i_addr_road = col("ถนน-ที่อยู่ที่ติดต่อได้", "ถนน")
+    i_addr_prov = col("จังหวัด-ที่อยู่ที่ติดต่อได้", "จังหวัด")
+    i_addr_dist = col("เขต/อำเภอ-ที่อยู่ที่ติดต่อได้", "เขต/อำเภอ")
+    i_addr_subdist = col("แขวง/ตำบล-ที่อยู่ที่ติดต่อได้", "แขวง/ตำบล")
+    
+    # Step 3 fields
+    i_change_emp_search_type = col("ประเภทการค้นหา-เปลี่ยนนายจ้าง")
+    i_change_emp_keyword = col("ระบุ-เปลี่ยนนายจ้าง")
+    i_change_emp_reason = col("เหตุผลการเปลี่ยนนายจ้าง")
+    i_change_emp_reason_other = col("อื่น ๆ (โปรดระบุ)")
+    i_workplace_branch = col("สถานที่ทำงาน/สาขา", "สถานที่ทำงาน")
+    i_work_biz = col("ประเภทกิจการ")
+    i_work_permit_job = col("ประเภทงานที่ขออนุญาต")
+    i_work_detail = col("ลักษณะงาน")
+
+    # Step 4 — เอกสารแนบ (cols 23-33 เอกสารหลัก, 34-38 เอกสารอื่นๆ)
+    # จับคู่ช่องอัปโหลดบนเว็บด้วย data-document-th (ค่า TH) = หัวคอลัมน์ Excel (ตัด ' *' ออก)
+    # required อิงเครื่องหมาย * ในหัวคอลัมน์ + ช่องที่เว็บบังคับ (ใบอนุญาตทำงาน, รูปถ่าย ฯลฯ)
+    _bt44_doc_specs = [
+        # (header_base, required, is_photo, group)
+        ("สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้", True, False, ""),
+        ("สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง", True, False, ""),
+        ("ใบอนุญาตทำงาน", True, False, ""),
+        ("สำเนาหนังสือเดินทาง", False, False, "passport"),
+        ("สำเนาเอกสารใช้แทนหนังสือเดินทาง", False, False, "passport"),
+        ("สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร", False, False, "passport"),
+        ("รูปถ่าย ขนาด 3 x 4 ซม.", True, True, ""),
+        ("หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน", True, False, ""),
+        ("ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)", True, False, ""),
+        ("สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)", True, False, ""),
+        ("สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)", True, False, ""),
+    ]
+
+    def _strip_star(s: str) -> str:
+        s = (s or "").strip()
+        while s and s[-1] in ("*", " ", "\u00a0"):
+            s = s[:-1]
+        return s.strip()
+
+    def doc_col(base: str) -> int:
+        tgt = _strip_star(base)
+        for i, h in enumerate(hdr):
+            if _strip_star(h) == tgt:
+                return i
+        return -1
+
+    _bt44_doc_cols = [(doc_col(b), b, req, photo, grp) for (b, req, photo, grp) in _bt44_doc_specs]
+    i_other_docs = [col(f"เอกสารอื่นๆที่เกี่ยวข้อง {n}") for n in range(1, 6)]
+    base_dir = path.parent
+
+    def resolve_path(raw: str) -> str:
+        raw = (raw or "").strip().strip('"')
+        if not raw:
+            return ""
+        p = Path(raw)
+        if not p.is_absolute():
+            p = base_dir / raw
+        return str(p)
+
+    def fmt_date(v: Any) -> str:
+        if v is None or v == "":
+            return ""
+        if isinstance(v, (datetime, date)):
+            return v.strftime("%d/%m/%Y")
+        return str(v).strip()
+
+    rows: list[dict[str, Any]] = []
+    for ridx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=1):
+        if not any(v not in (None, "") for v in row):
+            continue
+
+        def g(i: int) -> str:
+            return str(row[i]).strip() if 0 <= i < len(row) and row[i] is not None else ""
+
+        rec = {
+            "seq": g(i_no) or str(ridx),
+            "prefix": g(i_prefix),
+            "alien_ref": g(i_ref),
+            "name": g(i_name),
+            "nationality": g(i_nat),
+            "sex": g(i_sex),
+            "birthdate": fmt_date(row[i_birth] if 0 <= i_birth < len(row) else None),
+            "username": g(i_username),
+            "row_index": ridx,
+            # Step 2 fields
+            "workpermit_no": g(i_workpermit),
+            "addr_no": g(i_addr_no),
+            "addr_moo": g(i_addr_moo),
+            "addr_soi": g(i_addr_soi),
+            "addr_road": g(i_addr_road),
+            "addr_prov": g(i_addr_prov),
+            "addr_dist": g(i_addr_dist),
+            "addr_subdist": g(i_addr_subdist),
+            # Step 3 fields
+            "change_emp_search_type": g(i_change_emp_search_type),
+            "change_emp_keyword": g(i_change_emp_keyword),
+            "change_emp_reason": g(i_change_emp_reason),
+            "change_emp_reason_other": g(i_change_emp_reason_other),
+            "workplace_branch": g(i_workplace_branch),
+            "work_biz": g(i_work_biz),
+            "work_permit_job": g(i_work_permit_job),
+            "work_detail": g(i_work_detail),
+        }
+        # Step 4 — เอกสารแนบ
+        rec["docs"] = [
+            {
+                "th_name": _strip_star(base),
+                "raw_path": (g(cidx) if cidx >= 0 else ""),
+                "path": resolve_path(g(cidx) if cidx >= 0 else ""),
+                "required": req,
+                "is_photo": photo,
+                "group": grp,
+            }
+            for (cidx, base, req, photo, grp) in _bt44_doc_cols
+        ]
+        rec["other_docs"] = [
+            {"raw_path": g(cidx), "path": resolve_path(g(cidx))}
+            for cidx in i_other_docs
+            if cidx >= 0 and g(cidx)
+        ]
+        if rec["name"] or rec["birthdate"]:
+            rows.append(rec)
+    return rows
+
+
+def _open_bt44_form(page: Page, log=print) -> bool:
+    """เปิดฟอร์ม บต.44 (CHANGE_EMPLOYER) ผ่านเมนูบริการ
+    flow: หน้าหลัก → 'เมนูบริการ' → openCity('tab_CHANGE_REQ') → คลิก #CHANGE_EMPLOYER
+    (นำทางไป /WorkPermit?...ft=CHANGE_REQ — ใช้ฟอร์มค้นหาคนต่างด้าวชุดเดียวกับ บต.30)
+    """
+    try:
+        page.goto("https://eworkpermit.doe.go.th/", wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_timeout(2000)
+    except Exception as e:
+        log(f"      ✗ เปิดหน้าหลักไม่สำเร็จ: {e}")
+        return False
+
+    # 1) คลิก 'เมนูบริการ'
+    clicked = page.evaluate(r"""() => {
+        const a = document.querySelector('a.lang_menu_service')
+          || Array.from(document.querySelectorAll('a,button'))
+               .find(x => /เมนูบริการ/.test((x.textContent || '').trim()));
+        if (a) { a.click(); return true; }
+        return false;
+    }""")
+    if not clicked:
+        log("      ✗ ไม่พบลิงก์ 'เมนูบริการ'")
+        return False
+    page.wait_for_timeout(1200)
+
+    # 2) เปิดหมวด 'การยื่นขอเปลี่ยนรายการในใบอนุญาตทำงาน' (tab_CHANGE_REQ) แล้วคลิก #CHANGE_EMPLOYER
+    page.evaluate(r"""() => {
+        try { if (typeof openCity === 'function') openCity('tab_CHANGE_REQ', new Event('click')); } catch (e) {}
+    }""")
+    page.wait_for_timeout(900)
+    ok = page.evaluate(r"""() => {
+        const t = document.querySelector('#CHANGE_EMPLOYER');
+        if (t) { t.click(); return true; }
+        return false;
+    }""")
+    if not ok:
+        log("      ✗ ไม่พบเมนู #CHANGE_EMPLOYER (แบบ บต.44)")
+        return False
+
+    # 3) รอเข้าหน้าฟอร์ม + ปุ่ม 'ค้นหาข้อมูลคนต่างด้าว' พร้อม
+    try:
+        page.wait_for_url("**/WorkPermit**", timeout=30_000)
+    except PWTimeoutError:
+        log(f"      ⚠ ยังไม่เข้าฟอร์ม (URL={page.url}) — ลองรอ element ต่อ")
+    page.wait_for_timeout(2500)
+    try:
+        page.wait_for_function(
+            r"""() => Array.from(document.querySelectorAll('button,a'))
+                  .some(e => /search_alien_modal\.show/.test(e.getAttribute('onclick') || ''))""",
+            timeout=20_000,
+        )
+        return True
+    except PWTimeoutError:
+        log(f"      ✗ เปิดฟอร์ม บต.44 ไม่สำเร็จ (URL={page.url})")
+        return False
+
+
+def _bt44_fill_search_one(
+    page: Page,
+    rec: dict[str, Any],
+    screenshot_dir: Path,
+    log=print,
+) -> dict[str, Any]:
+    """เปิด modal 'ค้นหาข้อมูลคนต่างด้าว' → กรอกข้อมูล 1 คน → กดบันทึก → จัดประเภทผลตาม modal
+    - modal แจ้ง 'เสร็จสมบูรณ์/เรียบร้อยแล้ว' → SUCCESS (ดำเนินการคนถัดไป)
+    - modal แจ้ง Error → ALERT/REVIEW (เก็บข้อความแจ้งเตือนใส่รายงาน แล้วข้ามไปคนถัดไป)
+    คืน {status, note, screenshot}
+    """
+    seq = rec.get("seq", "?")
+    name = rec.get("name", "")
+    base = _safe_filename(f"{seq}_{name}")
+    res: dict[str, Any] = {"status": "", "note": "", "screenshot": ""}
+
+    try:
+        # เปิด modal ค้นหาข้อมูลคนต่างด้าว
+        opened = page.evaluate(r"""() => {
+            const b = Array.from(document.querySelectorAll('button,a'))
+              .find(e => /search_alien_modal\.show/.test(e.getAttribute('onclick') || ''));
+            if (b) { b.click(); return true; }
+            return false;
+        }""")
+        if not opened:
+            res["status"] = "FAIL"
+            res["note"] = "ไม่พบปุ่ม 'ค้นหาข้อมูลคนต่างด้าว'"
+            return res
+        page.wait_for_selector("#btn_search_alien_submit", state="visible", timeout=10_000)
+        page.wait_for_timeout(600)
+
+        # เคลียร์ทุก field ใน modal ก่อนกรอก (กัน state ค้างจาก record ก่อน)
+        try:
+            page.evaluate(r"""() => {
+                const ids = ['alien_id','other_name','birthDateCheck'];
+                for (const id of ids) {
+                    const t = document.getElementById(id);
+                    if (t) {
+                        t.value = '';
+                        t.dispatchEvent(new Event('input', { bubbles: true }));
+                        t.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+                // reset select dropdowns ให้ค่าว่าง (option แรก) + sync select2 ถ้ามี
+                for (const sid of ['alien_prefix','nationality_al','sexCheck']) {
+                    const s = document.getElementById(sid);
+                    if (s && s.options.length > 0) {
+                        s.selectedIndex = 0;
+                        s.dispatchEvent(new Event('change', { bubbles: true }));
+                        if (window.jQuery) {
+                            try { jQuery(s).val('').trigger('change.select2'); } catch(e){}
+                        }
+                    }
+                }
+            }""")
+        except Exception:
+            pass
+        page.wait_for_timeout(300)
+
+        # หมายเลขอ้างอิงของคนต่างด้าว (#alien_id) — ออปชัน: กรอกถ้ามี / ล้างถ้าไม่มี (กันค่าค้างจากคนก่อน)
+        page.evaluate(
+            r"""(v) => {
+              const t = document.getElementById('alien_id');
+              if (t) {
+                t.value = v;
+                t.dispatchEvent(new Event('input', { bubbles: true }));
+                t.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }""", rec.get("alien_ref", "") or "",
+        )
+        # คำนำหน้า (select)
+        if rec.get("prefix") and not _select_option_by_text(page, "alien_prefix", rec["prefix"]):
+            log(f"      ⚠ เลือกคำนำหน้า '{rec['prefix']}' ไม่ได้")
+        # ชื่อ (text) — ใส่ชื่อเต็มตาม Excel
+        page.evaluate(
+            r"""(v) => {
+              const t = document.getElementById('other_name');
+              if (t) {
+                t.value = v;
+                t.dispatchEvent(new Event('input', { bubbles: true }));
+                t.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }""", name,
+        )
+        # สัญชาติ (select)
+        if rec.get("nationality") and not _select_option_by_text(page, "nationality_al", rec["nationality"]):
+            log(f"      ⚠ เลือกสัญชาติ '{rec['nationality']}' ไม่ได้")
+        # เพศ (select) — try multiple selectors
+        sex_val = rec.get("sex", "")
+        if sex_val:
+            sex_ok = _select_option_by_text(page, "sexCheck", sex_val)
+            if not sex_ok:
+                # fallback: try radio button หรือ button group
+                sex_ok = bool(page.evaluate(r"""(want) => {
+                    const norm = s => (s||'').replace(/\s+/g,' ').trim().toLowerCase();
+                    const w = norm(want);
+                    // ลองหา radio/checkbox ที่มี label match
+                    for (const rb of document.querySelectorAll('input[type="radio"], input[type="checkbox"]')) {
+                        if (!rb.offsetParent) continue;
+                        const lbl = rb.closest('label') || (rb.id ? document.querySelector(`label[for="${rb.id}"]`) : null);
+                        if (lbl && norm(lbl.textContent).includes(w)) {
+                            if (!rb.checked) rb.click();
+                            return true;
+                        }
+                    }
+                    return false;
+                }""", sex_val))
+            if not sex_ok:
+                log(f"      ⚠ เลือกเพศ '{sex_val}' ไม่ได้")
+        # วันเกิด (datepicker text, dd/mm/yyyy ค.ศ.)
+        if rec.get("birthdate"):
+            page.evaluate(
+                r"""(v) => {
+                  const t = document.getElementById('birthDateCheck');
+                  if (t) {
+                    t.removeAttribute('readonly');
+                    t.value = v;
+                    t.dispatchEvent(new Event('input', { bubbles: true }));
+                    t.dispatchEvent(new Event('change', { bubbles: true }));
+                    t.dispatchEvent(new Event('blur', { bubbles: true }));
+                    if (window.jQuery) { try { jQuery(t).trigger('change'); } catch (e) {} }
+                  }
+                }""", rec["birthdate"],
+            )
+        page.wait_for_timeout(400)
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_filled.png"), full_page=True)
+            res["screenshot"] = f"{base}_filled.png"
+        except Exception:
+            pass
+
+        # กดบันทึก (#btn_search_alien_submit)
+        page.evaluate(r"""() => { const b = document.getElementById('btn_search_alien_submit'); if (b) b.click(); }""")
+
+        # รอผลแบบสมาร์ท: รอจนกว่าจะมี 'alert/swal modal โผล่' หรือ 'modal ค้นหาปิด'
+        # (เดิม wait แบบ static 5s — record 2+ บางครั้ง AJAX ยังไม่เสร็จ → false positive)
+        try:
+            page.wait_for_function(
+                r"""() => {
+                    for (const sel of ['.swal2-popup', '.modal.show .alert', '.alert.show', '.toast.show']) {
+                        for (const el of document.querySelectorAll(sel)) {
+                            if (el.offsetParent !== null) return true;
+                        }
+                    }
+                    const modal = document.getElementById('search_alien_modal');
+                    return !(modal && modal.offsetParent !== null);
+                }""",
+                timeout=15_000,
+            )
+        except Exception:
+            pass
+        page.wait_for_timeout(1500)
+
+        alert = _capture_register_alert(page)
+        errs = _bt30_field_errors(page)
+        modal_open = page.evaluate(
+            r"""() => { const m = document.getElementById('search_alien_modal'); return !!(m && m.offsetParent !== null); }"""
+        )
+
+        # DEBUG: เก็บ snippet ของหน้าหลัง submit เพื่อ diagnose ว่าฟอร์มหลักมี text อะไรจริงๆ
+        try:
+            page_snippet = page.evaluate(
+                r"""() => {
+                    const t = document.body.innerText || '';
+                    return t.replace(/\s+/g, ' ').slice(0, 400);
+                }"""
+            )
+            log(f"      [Step1-DEBUG] modal_open={modal_open} | alert={alert!r} | "
+                f"page_snippet={page_snippet[:300]!r}")
+        except Exception:
+            pass
+
+        # บันทึก screenshot หลังกด (เก็บภาพ modal แจ้งเตือนไว้ในรายงาน)
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_aftersave.png"), full_page=True)
+            res["screenshot"] = f"{base}_aftersave.png"
+        except Exception:
+            pass
+
+        if alert and any(k in alert for k in ("เสร็จสมบูรณ์", "เรียบร้อยแล้ว", "เรียบร้อย", "สำเร็จแล้ว")):
+            # 'การค้นหาข้อมูลคนต่างด้าวเสร็จสมบูรณ์' = สำเร็จ → ดำเนินการคนถัดไป
+            res["status"] = "SUCCESS"
+            res["note"] = alert[:400]
+            _close_register_alert(page)  # กดปุ่ม 'ปิด' — ไม่กด 'ยินยอม' (อยู่นอกขอบเขต Step 1)
+        elif alert and any(k in alert for k in ("ไม่พบ", "ไม่ถูกต้อง", "ผิดพลาด", "ไม่สำเร็จ", "ไม่สามารถ", "ซ้ำ", "กรอกข้อมูล")):
+            # modal แจ้ง Error → เก็บข้อความไว้ทำรายงาน แล้วข้ามไปคนถัดไป
+            res["status"] = "ALERT"
+            res["note"] = alert[:400]
+            _close_register_alert(page)
+        elif alert:
+            res["status"] = "REVIEW"
+            res["note"] = alert[:400]
+            _close_register_alert(page)
+        elif errs:
+            res["status"] = "VALIDATE"
+            res["note"] = f"ฟอร์มแจ้งเตือน: {errs}"[:300]
+        elif not modal_open:
+            # modal ปิด → ถือเป็น SUCCESS (กลับมาเหมือน behavior เดิมที่ record 1 เคยทำงาน)
+            res["status"] = "SUCCESS"
+            res["note"] = "บันทึกค้นหา (modal ปิด)"
+        else:
+            res["status"] = "REVIEW"
+            res["note"] = "modal ยังเปิดอยู่หลังกดบันทึก — ตรวจสอบ screenshot"
+
+        # ถ้าไม่สำเร็จ ปิด modal ค้นหาที่ค้างอยู่ เพื่อเริ่มกรอกคนถัดไปแบบสะอาด
+        if res["status"] != "SUCCESS":
+            try:
+                page.evaluate(r"""() => {
+                    const b = Array.from(document.querySelectorAll('button,a'))
+                      .find(e => /search_alien_modal\.close/.test(e.getAttribute('onclick') || ''));
+                    if (b) b.click();
+                }""")
+                page.wait_for_timeout(500)
+            except Exception:
+                pass
+        return res
+    except Exception as e:
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_error.png"), full_page=True)
+            res["screenshot"] = f"{base}_error.png"
+        except Exception:
+            pass
+        res["status"] = "ERROR"
+        res["note"] = str(e)[:300]
+        return res
+
+
+# ====================== Helper: Loading Protection ======================
+
+def _wait_loading_disappeared(page: Page, timeout_ms: int = 12000, log=print, allow_modal: bool = False) -> bool:
+    """รอให้ loading spinner หายไป (อาจจะช้า/เร็วตามเว็บ)
+    - ทดสอบหลายรูปแบบของ spinner
+    - Retry หลายครั้ง
+    - ป้องกันการหมดเวลาโดยคืนค่า True ถ้ารอนานเกินไป
+    - allow_modal=True: ไม่นับ Bootstrap modal / SweetAlert popup ว่าเป็น loading
+      (แก้บั๊ก: เปิด modal อยู่แล้ว detector เข้าใจผิดว่าเป็น overlay loading → รอจนครบ timeout)
+    """
+    start = time.time()
+    max_wait = timeout_ms / 1000.0
+    
+    while time.time() - start < max_wait:
+        try:
+            # ตรวจสอบ spinner/overlay หลายรูปแบบ รวมทั้ง loading แบบจุดกลางจอ
+            has_spinner = page.evaluate(r"""(allowModal) => {
+                const isVisible = (elem) => {
+                    if (!elem) return false;
+                    const style = window.getComputedStyle(elem);
+                    return elem.offsetParent !== null &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden' &&
+                        style.opacity !== '0';
+                };
+                // element นี้เป็น/อยู่ใน modal หรือ swal popup หรือไม่ (ไม่ใช่ loading จริง)
+                const MODAL_SEL = '.modal, .modal-dialog, .modal-content, [role="dialog"], .swal2-popup, .swal2-modal, .swal2-container';
+                const inModal = (el) => !!(el && el.closest && el.closest(MODAL_SEL));
+                const modalVisible = () => {
+                    const ms = document.querySelectorAll('.modal.show, .modal.in, .modal-dialog, [role="dialog"], .swal2-popup, .swal2-container');
+                    for (const m of ms) { if (isVisible(m)) return true; }
+                    return false;
+                };
+                const modalOpen = allowModal && modalVisible();
+
+                // (1) ตัวบ่งชี้ "loading จริง" — class/aria เฉพาะเจาะจง → ตรวจเสมอ แม้อยู่ใน modal
+                //     เช่น spinner ระหว่าง AJAX ตอนกด 'ค้นหานายจ้าง' จะยังถูกจับได้ ไม่ถูกข้าม
+                const realSpinner = [
+                    '[class*="loading"]',
+                    '[class*="spinner"]',
+                    '.loader',
+                    '[role="progressbar"]',
+                    '[aria-busy="true"]'
+                ];
+                for (const selector of realSpinner) {
+                    for (const elem of document.querySelectorAll(selector)) {
+                        if (isVisible(elem)) return true;
+                    }
+                }
+
+                // (2) overlay/backdrop ที่กำกวม — ถ้าเป็น chrome ของ modal เองให้ข้ามเมื่อ allowModal
+                //     แต่ overlay loading เต็มจอ (ไม่ได้อยู่ใน .modal) จะยังถูกจับได้ตามปกติ
+                const ambiguous = ['.overlay'];
+                if (!allowModal) {
+                    ambiguous.push('[class*="modal-backdrop"]', '[class*="fade in"]');
+                }
+                for (const selector of ambiguous) {
+                    for (const elem of document.querySelectorAll(selector)) {
+                        if (!isVisible(elem)) continue;
+                        if (allowModal && inModal(elem)) continue;  // chrome ของ modal ไม่ใช่ loading
+                        return true;
+                    }
+                }
+
+                // ตรวจสอบ element กลางจอที่ดูเหมือน spinner (เช่น จุดวิ่ง) — ตรวจได้แม้ใน modal
+                // (เนื้อหา modal ที่เป็นข้อความ/ฟอร์มจะไม่เข้าเงื่อนไข spinner ด้านล่าง จึงปลอดภัย)
+                const cx = Math.floor(window.innerWidth / 2);
+                const cy = Math.floor(window.innerHeight / 2);
+                const center = document.elementFromPoint(cx, cy);
+                if (center) {
+                    const cls = (center.className || '').toString().toLowerCase();
+                    const style = window.getComputedStyle(center);
+                    const rect = center.getBoundingClientRect();
+                    const isDotLike = rect.width <= 40 && rect.height <= 40 &&
+                        (style.borderRadius.includes('50%') || style.borderRadius.includes('999'));
+
+                    if (isVisible(center) && (
+                        /load|spin|overlay|progress/.test(cls) ||
+                        center.getAttribute('role') === 'progressbar' ||
+                        center.closest('[class*="loading"], [class*="spinner"], .loader, [aria-busy="true"]') ||
+                        isDotLike
+                    )) {
+                        return true;
+                    }
+                }
+
+                // ตรวจสอบมี overlay ใหญ่ปิดจอ (ข้ามถ้ามี modal เปิดอยู่ — overlay คือ backdrop ของ modal)
+                if (!modalOpen) {
+                    const vw = window.innerWidth;
+                    const vh = window.innerHeight;
+                    const all = document.querySelectorAll('body *');
+                    for (const el of all) {
+                        if (!isVisible(el)) continue;
+                        if (allowModal && (inModal(el) || (el.querySelector && el.querySelector(MODAL_SEL)))) continue;
+                        const style = window.getComputedStyle(el);
+                        if (!['fixed', 'absolute'].includes(style.position)) continue;
+                        const rect = el.getBoundingClientRect();
+                        const areaRatio = (rect.width * rect.height) / Math.max(1, (vw * vh));
+                        const z = Number.parseInt(style.zIndex || '0', 10);
+                        if (areaRatio >= 0.35 && z >= 10) return true;
+                    }
+                }
+
+                return false;
+            }""", allow_modal)
+            
+            if not has_spinner:
+                elapsed = time.time() - start
+                log(f"      ✓ Loading finished ({elapsed:.1f}s)")
+                return True
+                
+            page.wait_for_timeout(300)  # Check every 300ms
+            
+        except Exception as e:
+            log(f"      ⚠ Loading check error: {str(e)[:80]}")
+            page.wait_for_timeout(500)
+    
+    elapsed = time.time() - start
+    log(f"      ⚠ Loading timeout ({elapsed:.1f}s/{timeout_ms}ms) - continuing anyway")
+    return False
+
+
+def _screenshot_when_ready(page: Page, path: Path, timeout_ms: int = 15000, log=print, allow_modal: bool = False) -> bool:
+    """Capture screenshot only when page is visually ready (no center loading spinner/overlay)."""
+    try:
+        _wait_loading_disappeared(page, timeout_ms=timeout_ms, log=log, allow_modal=allow_modal)
+
+        start = time.time()
+        max_wait = timeout_ms / 1000.0
+        while time.time() - start < max_wait:
+            center_busy = page.evaluate(r"""(allowModal) => {
+                const cx = Math.floor(window.innerWidth / 2);
+                const cy = Math.floor(window.innerHeight / 2);
+                const el = document.elementFromPoint(cx, cy);
+                if (!el) return false;
+                if (allowModal && el.closest && el.closest('.modal, .modal-dialog, [role="dialog"], .swal2-popup, .swal2-container')) return false;
+
+                const style = window.getComputedStyle(el);
+                const cls = (el.className || '').toString().toLowerCase();
+                const txt = (el.textContent || '').trim();
+                const visible = el.offsetParent !== null && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+                if (!visible) return false;
+
+                if (/load|spin|overlay|progress/.test(cls)) return true;
+                if (el.getAttribute('role') === 'progressbar' || el.closest('[aria-busy="true"]')) return true;
+                if (/^\.{3,}$/.test(txt) || /\u2022/.test(txt)) return true;
+                return false;
+            }""", allow_modal)
+            if not center_busy:
+                break
+            page.wait_for_timeout(300)
+
+        page.screenshot(path=str(path), full_page=True)
+        return True
+    except Exception:
+        return False
+
+
+def _safe_click_element(page: Page, find_script: str, element_name: str, retries: int = 3, log=print) -> bool:
+    """Click element with visibility check, scroll-into-view, and retries
+    
+    Args:
+        find_script: JavaScript code that assigns element to 'elem' variable
+                    e.g. "const elem = document.getElementById('btn');"
+    """
+    for attempt in range(retries):
+        try:
+            # First: find and scroll to element
+            found = page.evaluate(f"""() => {{
+                {find_script}
+                if (!elem) return false;
+                elem.scrollIntoView({{ behavior: 'instant', block: 'center' }});
+                return true;
+            }}""")
+            
+            if not found:
+                log(f"      ⚠ ไม่พบ {element_name} (attempt {attempt + 1}/{retries})")
+                if attempt < retries - 1:
+                    page.wait_for_timeout(400)
+                continue
+            
+            page.wait_for_timeout(200)
+            
+            # Second: verify visibility and click
+            clicked = page.evaluate(f"""() => {{
+                {find_script}
+                if (!elem) return false;
+                
+                // Check visibility
+                const style = window.getComputedStyle(elem);
+                if (style.display === 'none' || style.visibility === 'hidden' || 
+                    style.opacity === '0' || elem.offsetParent === null) {{
+                    return false;
+                }}
+
+                // Must be top-most at element center to avoid click through overlay
+                const r = elem.getBoundingClientRect();
+                const cx = Math.floor(r.left + (r.width / 2));
+                const cy = Math.floor(r.top + (r.height / 2));
+                const topElem = document.elementFromPoint(cx, cy);
+                if (!topElem || (topElem !== elem && !elem.contains(topElem))) {{
+                    return false;
+                }}
+                
+                // Click
+                elem.click();
+                return true;
+            }}""")
+            
+            if clicked:
+                log(f"      ✓ Clicked '{element_name}'")
+                return True
+            
+            log(f"      ⚠ {element_name} ไม่ visible หรือ click ไม่สำเร็จ")
+            if attempt < retries - 1:
+                page.wait_for_timeout(400)
+                
+        except Exception as e:
+            log(f"      ⚠ Error clicking {element_name}: {str(e)[:80]}")
+            if attempt < retries - 1:
+                page.wait_for_timeout(400)
+    
+    return False
+
+
+def _bt44_step2_consent(page: Page, log=print) -> bool:
+    """ขั้นตอน 2.1: หา checkbox ข้อมูลใจสำสัญญา แล้วกด ถัดไป
+    ข้อความ: 'ข้าพเจ้าขอรับรองว่า มีความประสงค์ในการยื่นคำขอใบอนุญาตแทนคนต่างด้าวหรือนายจ้าง...'
+    
+    ป้องกัน Loading: - ใช้ wait_loading_disappeared() เพื่ออรประเป็นการอร wait loading ได้อย่างเหมาะสม
+    - Multiple retries สำหรับการหา element
+    - Visibility verification ก่อน click
+    """
+    try:
+        log("      Step 2.1: Checking consent...")
+
+        # Step 1: เช็ก checkbox แบบ user interaction (เหมือนคนกดจริง)
+        checkbox_clicked = False
+        for attempt in range(1, 4):
+            try:
+                chk = page.locator("#check_truth").first
+                if chk.count() > 0:
+                    chk.scroll_into_view_if_needed()
+                    # check() เป็น interaction จริงพร้อม firing events
+                    if not chk.is_checked():
+                        chk.check(timeout=5000, force=True)
+                    checkbox_clicked = True
+                
+                # Fallback: กด label ถ้า check() ไม่สำเร็จ
+                if not checkbox_clicked or (chk.count() > 0 and not chk.is_checked()):
+                    lbl = page.locator("label", has_text="ข้าพเจ้าขอรับรอง").first
+                    if lbl.count() > 0:
+                        lbl.scroll_into_view_if_needed()
+                        lbl.click(timeout=5000, force=True)
+                        checkbox_clicked = True
+
+                # ยืนยันผลหลัง interaction
+                if chk.count() > 0 and chk.is_checked():
+                    checkbox_clicked = True
+                    break
+            except Exception:
+                checkbox_clicked = False
+
+            page.wait_for_timeout(350)
+
+        # Verify ว่าติ๊กสำเร็จจริง
+        checkbox_checked = False
+        try:
+            checkbox_checked = page.locator("#check_truth").first.is_checked()
+        except Exception:
+            checkbox_checked = bool(page.evaluate(r"""() => {
+                const chk = document.getElementById('check_truth');
+                return !!(chk && chk.checked);
+            }"""))
+
+        if not checkbox_clicked or not checkbox_checked:
+            log("      ⚠ ไม่สามารถติ๊ก checkbox ข้อมูลใจสำสัญญาแบบ user click ได้")
+            return False
+
+        log("      ✓ Consent checkbox clicked by user-like interaction")
+        page.wait_for_timeout(500)
+
+        # ปิดโมดัลที่อาจค้างอยู่ก่อนกดถัดไป
+        try:
+            page.evaluate(r"""() => {
+                const visibleModals = Array.from(document.querySelectorAll('.modal, .swal2-popup, [role="dialog"]'))
+                  .filter(m => m.offsetParent !== null);
+                for (const m of visibleModals) {
+                    const btn = Array.from(m.querySelectorAll('button,a'))
+                      .find(b => /ปิด|ยืนยัน|ตกลง|ok/i.test((b.textContent || '').trim()) && b.offsetParent !== null);
+                    if (btn) btn.click();
+                }
+            }""")
+            page.wait_for_timeout(400)
+        except Exception:
+            pass
+
+        # Step 2: รอ loading รอบแรก
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log)
+
+        # Step 3: คลิกปุ่ม 'ถัดไป' แบบ user-like (Playwright click) ก่อน
+        click_info = None
+        for attempt in range(1, 5):
+            try:
+                next_btn = page.locator("#gonextSubmit").first
+                next_btn.click(timeout=5000, force=True)
+                click_info = {
+                    "clicked": True,
+                    "reason": "ok",
+                    "text": "ถัดไป",
+                    "id": "gonextSubmit",
+                    "cls": ""
+                }
+                break
+            except Exception:
+                pass
+
+            # Fallback: ค้นหาปุ่มถัดไปจาก DOM
+            click_info = page.evaluate(r"""() => {
+            const chk = document.getElementById('check_truth') ||
+              Array.from(document.querySelectorAll('input[type="checkbox"]'))
+              .find(c => {
+                const lbl = c.closest('label') || document.querySelector(`label[for="${c.id}"]`);
+                const txt = (lbl?.textContent || c.parentElement?.textContent || '').trim();
+                return /ข้าพเจ้าขอรับรอง/.test(txt);
+              });
+            if (!chk) return { clicked: false, reason: 'checkbox-not-found' };
+
+            const chkRect = chk.getBoundingClientRect();
+            const candidates = Array.from(document.querySelectorAll('button, a, [role="button"]'))
+              .filter(b => {
+                const txt = (b.textContent || '').trim();
+                if (!/ถัดไป|NEXT|Next/i.test(txt)) return false;
+                const style = window.getComputedStyle(b);
+                return b.offsetParent !== null && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+              })
+              .map(b => {
+                const r = b.getBoundingClientRect();
+                const dx = (r.left + r.width / 2) - (chkRect.left + chkRect.width / 2);
+                const dy = (r.top + r.height / 2) - (chkRect.top + chkRect.height / 2);
+                return { b, dist: Math.sqrt(dx * dx + dy * dy) };
+              })
+              .sort((x, y) => x.dist - y.dist);
+
+            if (!candidates.length) return { clicked: false, reason: 'next-not-found' };
+
+            const btn = candidates[0].b;
+            btn.scrollIntoView({ behavior: 'instant', block: 'center' });
+
+            try {
+                btn.click();
+            } catch (e) {
+                btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+            }
+
+            return {
+                clicked: true,
+                reason: 'ok',
+                text: (btn.textContent || '').trim(),
+                id: btn.id || '',
+                cls: (btn.className || '').toString().slice(0, 80)
+            };
+        }""")
+
+            if click_info and click_info.get("clicked"):
+                break
+
+            reason = (click_info or {}).get("reason", "unknown")
+            log(f"      ⚠ Click 'ถัดไป' attempt {attempt}/4 failed ({reason})")
+
+            # ถ้าถูก overlay บัง ให้รอ loading แล้วลองใหม่
+            if reason in ("next-covered-by-overlay", "next-not-found"):
+                _wait_loading_disappeared(page, timeout_ms=6000, log=log)
+            page.wait_for_timeout(600)
+
+        if not click_info or not click_info.get("clicked"):
+            reason = (click_info or {}).get("reason", "unknown")
+            log(f"      ⚠ Click 'ถัดไป' failed ({reason})")
+            return False
+
+        log(
+            "      ✓ Clicked Next | "
+            f"text='{click_info.get('text', '')}' id='{click_info.get('id', '')}' class='{click_info.get('cls', '')}'"
+        )
+
+        # Step 4: รอ loading หลัง click
+        page.wait_for_timeout(1000)
+        _wait_loading_disappeared(page, timeout_ms=12000, log=log)
+        page.wait_for_timeout(500)
+
+        # Step 5: ยืนยันว่า transition ออกจากหน้า checkbox แล้วจริง
+        ready = page.evaluate(r"""() => {
+            const isVisible = (el) => {
+                if (!el) return false;
+                const st = window.getComputedStyle(el);
+                return el.offsetParent !== null && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
+            };
+
+            const consentChk = document.getElementById('check_truth');
+            const consentStillVisible = isVisible(consentChk);
+
+            const headingEls = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,label,span,div,section'));
+            const hasThaiAddressHeading = headingEls.some(el => {
+                const txt = (el.textContent || '').trim();
+                return /ที่อยู่ในประเทศไทย/.test(txt) && isVisible(el);
+            });
+
+            const hasEmployerSection = headingEls.some(el => {
+                const txt = (el.textContent || '').trim();
+                return /ข้อมูลนายจ้างที่ต้องการดำเนินการแทน/.test(txt) && isVisible(el);
+            });
+
+            const hasEditInAddressBlock = Array.from(document.querySelectorAll('button,a,[role="button"],span,div'))
+              .some(el => {
+                if (!isVisible(el)) return false;
+                const txt = (el.textContent || '').trim();
+                if (!/แก้ไขข้อมูล|แก้ไข|edit/i.test(txt)) return false;
+                const block = el.closest('section,div,fieldset');
+                const btxt = (block?.textContent || '').trim();
+                return /ที่อยู่ในประเทศไทย/.test(btxt);
+              });
+
+            return { consentStillVisible, hasThaiAddressHeading, hasEditInAddressBlock, hasEmployerSection };
+        }""")
+
+        if ready.get("consentStillVisible"):
+            try:
+                dbg_dir = Path("reports") / "bt44_screenshots"
+                dbg_dir.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(dbg_dir / "step2_1_transition_fail_consent_visible.png"), full_page=True)
+            except Exception:
+                pass
+            log("      ⚠ หลังคลิก 'ถัดไป' ยังอยู่หน้า consent (checkbox ยังมองเห็น)")
+            return False
+
+        # บางเคสจะเข้าหน้า "ข้อมูลนายจ้าง" ก่อน ต้องกดถัดไปอีกครั้ง
+        if (not ready.get("hasThaiAddressHeading")
+                and not ready.get("hasEditInAddressBlock")
+                and ready.get("hasEmployerSection")):
+            log("      ⚠ อยู่หน้าข้อมูลนายจ้าง — ลองกด 'ถัดไป' อีกครั้ง")
+            extra_next = page.evaluate(r"""() => {
+                const btn = Array.from(document.querySelectorAll('button,a,[role="button"]'))
+                    .find(b => /ถัดไป|NEXT|Next/i.test((b.textContent || '').trim()) && b.offsetParent !== null);
+                if (!btn) return false;
+                btn.click();
+                return true;
+            }""")
+            if extra_next:
+                page.wait_for_timeout(1000)
+                _wait_loading_disappeared(page, timeout_ms=10000, log=log)
+                ready = page.evaluate(r"""() => {
+                    const isVisible = (el) => {
+                        if (!el) return false;
+                        const st = window.getComputedStyle(el);
+                        return el.offsetParent !== null && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
+                    };
+                    const hasThaiAddressHeading = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,label,span,div,section'))
+                        .some(el => /ที่อยู่ในประเทศไทย/.test((el.textContent || '').trim()) && isVisible(el));
+                    const hasEditInAddressBlock = Array.from(document.querySelectorAll('button,a,[role="button"],span,div'))
+                        .some(el => {
+                            if (!isVisible(el)) return false;
+                            const txt = (el.textContent || '').trim();
+                            if (!/แก้ไขข้อมูล|แก้ไข|edit/i.test(txt)) return false;
+                            const block = el.closest('section,div,fieldset');
+                            const btxt = (block?.textContent || '').trim();
+                            return /ที่อยู่ในประเทศไทย/.test(btxt);
+                        });
+                    return { hasThaiAddressHeading, hasEditInAddressBlock };
+                }""")
+
+        if not ready.get("hasThaiAddressHeading") and not ready.get("hasEditInAddressBlock"):
+            try:
+                dbg_dir = Path("reports") / "bt44_screenshots"
+                dbg_dir.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(dbg_dir / "step2_1_transition_fail_no_address_section.png"), full_page=True)
+                headings = page.evaluate(r"""() => Array.from(document.querySelectorAll('h1,h2,h3,h4,h5'))
+                    .map(h => (h.textContent || '').trim())
+                    .filter(Boolean)
+                    .slice(0, 8)""")
+                log(f"      DEBUG headings after next: {headings}")
+            except Exception:
+                pass
+            log("      ⚠ หลังคลิก 'ถัดไป' ยังไม่เจอ section ที่อยู่ในประเทศไทย")
+            return False
+
+        log("      ✓ Step 2.1 confirmed (transitioned to address step)")
+        return True
+
+    except Exception as e:
+        log(f"      ✗ Error in Step 2.1: {str(e)[:200]}")
+        return False
+
+
+def _bt44_step2_edit_address(page: Page, rec: dict[str, str], screenshot_dir: Path, log=print) -> dict[str, str]:
+    """ขั้นตอน 2.2: แก้ไขที่อยู่ในส่วน 'ที่อยู่ในประเทศไทย'
+    
+    ป้องกัน Loading:
+    - รอให้ loading หายไป ก่อน click ปุ่ม
+    - Multiple retries สำหรับการหา element
+    - Visibility verification ก่อน interaction
+    - Enhanced button finding: ค้นหาปุ่มแบบรอบด้านยิ่งขึ้น
+    """
+    res = {"status": "", "note": ""}
+    try:
+        log("      Step 2.2: Editing address...")
+        
+        # Wait for page loading after Step 2.1 navigation
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log)
+        page.wait_for_timeout(500)
+
+        # หา และกด ปุ่ม 'แก้ไขข้อมูล' ของส่วน "ที่อยู่ในประเทศไทย" โดยเฉพาะ
+        # (ห้ามไปจับปุ่มแก้ไขของส่วนอื่น เช่น ใบอนุญาตทำงาน, นายจ้าง, สถานประกอบการ)
+        edit_btn_script = r"""
+            let btn = null;
+
+            // ฟังก์ชันช่วย: ดึง "ข้อความเฉพาะของ element นั้น" (ไม่รวมข้อความลูก)
+            const ownText = (el) => Array.from(el.childNodes || [])
+                .filter(n => n.nodeType === 3)
+                .map(n => (n.textContent || '').trim())
+                .join(' ').trim();
+
+            // 1) หา heading element ที่ข้อความตรง "ที่อยู่ในประเทศไทย"
+            let heading = null;
+            const headEls = document.querySelectorAll(
+                'h1,h2,h3,h4,h5,h6,strong,b,legend,label,div,span,p'
+            );
+            for (const el of headEls) {
+                const t = ownText(el);
+                if (t === 'ที่อยู่ในประเทศไทย' || t === 'ที่อยู่ปัจจุบัน' || t === 'ที่อยู่ที่ติดต่อได้') {
+                    heading = el;
+                    break;
+                }
+            }
+
+            // 2) ถ้าเจอ heading → walk up parents (ระยะ 6 ชั้น) แล้วหาปุ่ม
+            //    "แก้ไขข้อมูล"/"แก้ไข" ที่อยู่ใน scope ใกล้กันเท่านั้น
+            const looksLikeEdit = (cand) => {
+                const txt = (cand.textContent || '').trim();
+                if (!txt || txt.length > 40) return false;
+                if (/^แก้ไขข้อมูล$/.test(txt)) return true;
+                if (/^แก้ไข$/.test(txt)) return true;
+                // กันชนกับปุ่ม "แก้ไขใบอนุญาตทำงาน", "แก้ไขเปลี่ยนนายจ้าง", "แก้ไขสถานประกอบการ"
+                if (/^แก้ไขข้อมูล\s*$/.test(txt)) return true;
+                return false;
+            };
+
+            if (heading) {
+                let scope = heading.parentElement;
+                for (let i = 0; i < 6 && scope && !btn; i++) {
+                    const candidates = scope.querySelectorAll(
+                        'button, a, [role="button"], [onclick], [ng-click]'
+                    );
+                    for (const cand of candidates) {
+                        if (looksLikeEdit(cand)) { btn = cand; break; }
+                    }
+                    scope = scope.parentElement;
+                }
+            }
+
+            // 3) Fallback: หา button ทั่วหน้าที่ข้อความตรง "แก้ไขข้อมูล" เป๊ะ
+            //    (ถ้ามีอันเดียวก็ใช้, ถ้ามีหลายอันให้เลือกอันที่ใกล้ heading ที่สุด)
+            if (!btn) {
+                const exact = [];
+                const all = document.querySelectorAll('button, a, [role="button"], [onclick]');
+                for (const cand of all) {
+                    const txt = (cand.textContent || '').trim();
+                    if (txt === 'แก้ไขข้อมูล') exact.push(cand);
+                }
+                if (exact.length === 1) {
+                    btn = exact[0];
+                } else if (exact.length > 1 && heading) {
+                    // เลือกอันที่ DOM-distance ใกล้ heading ที่สุด
+                    const hRect = heading.getBoundingClientRect();
+                    let bestDist = Infinity;
+                    for (const c of exact) {
+                        const cr = c.getBoundingClientRect();
+                        const dy = Math.abs(cr.top - hRect.top);
+                        const dx = Math.abs(cr.left - hRect.left);
+                        const d = dy * 4 + dx;  // weight แนวตั้งมากกว่า
+                        if (d < bestDist) { bestDist = d; btn = c; }
+                    }
+                } else if (exact.length > 1) {
+                    btn = exact[0];
+                }
+            }
+
+            elem = btn || null;
+        """
+        
+        if not _safe_click_element(page, edit_btn_script, "ปุ่ม 'แก้ไขข้อมูล'", retries=4, log=log):
+            log("      ⚠ ไม่พบปุ่ม 'แก้ไขข้อมูล' - ข้ามไป Step 2.3")
+            res["status"] = "ALERT"
+            res["note"] = "ไม่พบปุ่มแก้ไขที่อยู่ - ข้ามไป"
+            return res
+
+        # รอ modal เปิด + พร้อมกรอก — ใช้ rect-based visibility (รองรับ position:fixed
+        # ที่ offsetParent เป็น null เสมอ → เดิมรอจนครบ 8s ฟรี ๆ ทำให้ช้า ~15s)
+        try:
+            page.wait_for_function(
+                r"""() => {
+                    const vis = (el) => {
+                        if (!el) return false;
+                        const st = getComputedStyle(el);
+                        if (st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return false;
+                        const r = el.getBoundingClientRect();
+                        return r.width > 0 && r.height > 0;
+                    };
+                    // โมดัลที่มองเห็น (รองรับทั้ง .modal มาตรฐานและ custom dialog)
+                    const sels = '.modal, .modal-dialog, .modal-content, [role="dialog"], .swal2-popup';
+                    for (const m of document.querySelectorAll(sels)) { if (vis(m)) return true; }
+                    // หรือมีปุ่ม 'บันทึก' ที่มองเห็นแล้ว = โมดัลพร้อม
+                    for (const b of document.querySelectorAll('button, a')) {
+                        if (/บันทึก/.test((b.textContent || '').trim()) && vis(b)) return true;
+                    }
+                    return false;
+                }""",
+                timeout=4000,
+            )
+        except Exception:
+            pass
+        _wait_loading_disappeared(page, timeout_ms=3000, log=log, allow_modal=True)
+
+        # ---- กรอกข้อมูลที่อยู่จาก Excel ----
+        # แยกเป็น 4 จังหวะ: text inputs → จังหวัด (รอ AJAX) → อำเภอ (รอ AJAX) → ตำบล
+        addr_data = {
+            "addr_no": str(rec.get("addr_no", "") or "").strip(),
+            "addr_moo": str(rec.get("addr_moo", "") or "").strip(),
+            "addr_soi": str(rec.get("addr_soi", "") or "").strip(),
+            "addr_road": str(rec.get("addr_road", "") or "").strip(),
+            "addr_prov": str(rec.get("addr_prov", "") or "").strip(),
+            "addr_dist": str(rec.get("addr_dist", "") or "").strip(),
+            "addr_subdist": str(rec.get("addr_subdist", "") or "").strip(),
+        }
+        log(f"      [Step2.2-DATA] addr_no={addr_data['addr_no']!r} moo={addr_data['addr_moo']!r} "
+            f"prov={addr_data['addr_prov']!r} dist={addr_data['addr_dist']!r} subdist={addr_data['addr_subdist']!r}")
+
+        # 1) Text inputs (เลขที่/หมู่/ซอย/ถนน) — match ด้วย name+id+placeholder+label
+        text_filled = page.evaluate(
+            r"""(d) => {
+                const out = { addr_no: false, addr_moo: false, addr_soi: false, addr_road: false };
+                // หา input ที่อยู่ใน modal เปิดอยู่ก่อน (ถ้าไม่มี modal ใช้ทั้ง document)
+                const visMod = Array.from(document.querySelectorAll(
+                    '.modal.show, .modal[style*="block"], .modal-dialog:not([style*="display: none"]), [role="dialog"]'
+                )).find(m => {
+                    const r = m.getBoundingClientRect();
+                    return r.width > 0 && r.height > 0;
+                });
+                const root = visMod || document;
+                const inputs = root.querySelectorAll('input[type="text"], input:not([type]), textarea');
+
+                const labelOf = (inp) => {
+                    let lab = '';
+                    if (inp.id) {
+                        const l = document.querySelector(`label[for="${inp.id}"]`);
+                        if (l) lab = (l.textContent || '').trim();
+                    }
+                    if (!lab) {
+                        const wrap = inp.closest('.form-group, .form-row, .row, div');
+                        if (wrap) {
+                            const l = wrap.querySelector('label');
+                            if (l) lab = (l.textContent || '').trim();
+                        }
+                    }
+                    return lab;
+                };
+
+                const fire = (inp) => {
+                    inp.dispatchEvent(new Event('input', { bubbles: true }));
+                    inp.dispatchEvent(new Event('change', { bubbles: true }));
+                    inp.dispatchEvent(new Event('blur', { bubbles: true }));
+                };
+
+                for (const inp of inputs) {
+                    const name = (inp.name || inp.id || '').toLowerCase();
+                    const placeholder = (inp.placeholder || '').toLowerCase();
+                    const label = labelOf(inp);
+                    const combined = (name + ' ' + placeholder + ' ' + label).toLowerCase();
+
+                    // ข้าม input ที่ไม่ใช่ของฟอร์มที่อยู่ (เช่น search box)
+                    if (inp.type === 'hidden' || inp.disabled) continue;
+
+                    // 'เลขที่' — ระวังชนกับ 'เลขที่เอกสาร', 'เลขประจำตัว', 'เลขที่ใบอนุญาต'
+                    if (!out.addr_no && d.addr_no &&
+                        (/(^|\s)เลขที่(\s|$)/.test(label) ||
+                         /address.*no|addr.*no|house.*no|no\.?$/.test(name) ||
+                         (combined.includes('เลขที่') &&
+                          !combined.includes('เอกสาร') &&
+                          !combined.includes('ใบอนุญาต') &&
+                          !combined.includes('ประจำตัว') &&
+                          !combined.includes('นิติ')))) {
+                        inp.value = d.addr_no; fire(inp); out.addr_no = true; continue;
+                    }
+                    if (!out.addr_moo && d.addr_moo &&
+                        (combined.includes('หมู่') || combined.includes('moo') || combined.includes('village'))) {
+                        inp.value = d.addr_moo; fire(inp); out.addr_moo = true; continue;
+                    }
+                    if (!out.addr_soi && d.addr_soi &&
+                        (combined.includes('ซอย') || combined.includes('soi') || combined.includes('alley'))) {
+                        inp.value = d.addr_soi; fire(inp); out.addr_soi = true; continue;
+                    }
+                    if (!out.addr_road && d.addr_road &&
+                        (combined.includes('ถนน') || combined.includes('road') || combined.includes('street'))) {
+                        inp.value = d.addr_road; fire(inp); out.addr_road = true; continue;
+                    }
+                }
+                return out;
+            }""",
+            addr_data,
+        )
+        log(f"      [Step2.2-FILL-TEXT] {text_filled}")
+
+        # 2) Dropdown chain: prov → wait → dist → wait → subdist (Dice fuzzy match)
+        def _select_addr_dropdown(kind: str, want: str) -> dict:
+            """kind: 'prov' | 'dist' | 'subdist' """
+            if not want:
+                return {"ok": False, "reason": "no_want"}
+            keywords_map = {
+                "prov": ["จังหวัด", "province", "provid"],
+                "dist": ["อำเภอ", "เขต", "district", "amphur", "amphoe"],
+                "subdist": ["ตำบล", "แขวง", "subdistrict", "tambon", "tambol"],
+            }
+            anti_keywords_map = {
+                "prov": ["อำเภอ", "เขต", "ตำบล", "แขวง"],
+                "dist": ["จังหวัด", "ตำบล", "แขวง"],
+                "subdist": ["จังหวัด", "อำเภอ"],
+            }
+            return page.evaluate(
+                r"""({ keys, antiKeys, want }) => {
+                    const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                    const compact = (s) => (s || '').replace(/\s+/g, '').toLowerCase();
+                    const bigrams = (s) => {
+                        const t = compact(s); const out = new Map();
+                        for (let i = 0; i < t.length - 1; i++) {
+                            const bg = t.slice(i, i + 2);
+                            out.set(bg, (out.get(bg) || 0) + 1);
+                        }
+                        return out;
+                    };
+                    const dice = (a, b) => {
+                        const A = bigrams(a), B = bigrams(b);
+                        if (A.size === 0 || B.size === 0) return 0;
+                        let inter = 0, totA = 0, totB = 0;
+                        for (const [, v] of A) totA += v;
+                        for (const [, v] of B) totB += v;
+                        for (const [bg, va] of A) {
+                            const vb = B.get(bg);
+                            if (vb) inter += Math.min(va, vb);
+                        }
+                        return (2 * inter) / (totA + totB);
+                    };
+
+                    // หา select ที่มองเห็น + ตรงประเภท (มี keyword + ไม่มี anti-keyword)
+                    const visMod = Array.from(document.querySelectorAll(
+                        '.modal.show, .modal[style*="block"], .modal-dialog:not([style*="display: none"]), [role="dialog"]'
+                    )).find(m => {
+                        const r = m.getBoundingClientRect();
+                        return r.width > 0 && r.height > 0;
+                    });
+                    const root = visMod || document;
+                    const selects = Array.from(root.querySelectorAll('select')).filter(s => {
+                        const r = s.getBoundingClientRect();
+                        return r.width > 0 && r.height > 0 && !s.disabled;
+                    });
+
+                    const labelOf = (sel) => {
+                        let lab = '';
+                        if (sel.id) {
+                            const l = document.querySelector(`label[for="${sel.id}"]`);
+                            if (l) lab = (l.textContent || '').trim();
+                        }
+                        if (!lab) {
+                            const wrap = sel.closest('.form-group, .form-row, .row, div');
+                            if (wrap) {
+                                const l = wrap.querySelector('label');
+                                if (l) lab = (l.textContent || '').trim();
+                            }
+                        }
+                        return lab;
+                    };
+
+                    let target = null;
+                    for (const sel of selects) {
+                        const ctx = (sel.name + ' ' + sel.id + ' ' + labelOf(sel)).toLowerCase();
+                        const hasKey = keys.some(k => ctx.includes(k.toLowerCase()));
+                        const hasAnti = antiKeys.some(k => ctx.includes(k.toLowerCase()));
+                        if (hasKey && !hasAnti) { target = sel; break; }
+                    }
+                    if (!target) return { ok: false, reason: 'no_select' };
+
+                    const opts = Array.from(target.options).filter(o => o.value && o.value !== '');
+                    if (opts.length === 0) return { ok: false, reason: 'no_option', selectId: target.id || target.name };
+
+                    const w = norm(want);
+                    let best = null, bestScore = -1;
+                    for (const o of opts) {
+                        const txt = norm(o.textContent || '');
+                        if (!txt) continue;
+                        let score;
+                        if (txt === w) score = 1.0;
+                        else if (txt.includes(w) || w.includes(txt)) score = 0.95;
+                        else score = dice(txt, w);
+                        if (score > bestScore) { bestScore = score; best = o; }
+                    }
+                    if (!best || bestScore < 0.4) {
+                        return {
+                            ok: false, reason: 'no_match', bestScore,
+                            bestText: best ? best.textContent.trim() : '',
+                            optCount: opts.length,
+                            sampleOpts: opts.slice(0, 5).map(o => o.textContent.trim()),
+                        };
+                    }
+                    target.value = best.value;
+                    target.dispatchEvent(new Event('input', { bubbles: true }));
+                    target.dispatchEvent(new Event('change', { bubbles: true }));
+                    // ถ้าเป็น select2/jQuery ลอง trigger ผ่าน $ ด้วย
+                    try {
+                        if (window.jQuery) {
+                            window.jQuery(target).trigger('change');
+                        }
+                    } catch (e) {}
+                    return {
+                        ok: true,
+                        score: bestScore,
+                        chosen: best.textContent.trim(),
+                        selectId: target.id || target.name,
+                    };
+                }""",
+                {"keys": keywords_map[kind], "antiKeys": anti_keywords_map[kind], "want": want},
+            )
+
+        # 2a) จังหวัด
+        prov_res = _select_addr_dropdown("prov", addr_data["addr_prov"])
+        log(f"      [Step2.2-FILL-PROV] {prov_res}")
+        # รอ AJAX โหลด options ของอำเภอ
+        if prov_res.get("ok"):
+            try:
+                page.wait_for_function(
+                    r"""() => {
+                        const sels = Array.from(document.querySelectorAll('select')).filter(s => {
+                            const ctx = (s.name + ' ' + s.id + ' ').toLowerCase();
+                            const lab = (() => {
+                                if (s.id) {
+                                    const l = document.querySelector(`label[for="${s.id}"]`);
+                                    if (l) return (l.textContent || '').toLowerCase();
+                                }
+                                return '';
+                            })();
+                            const all = ctx + lab;
+                            return /(อำเภอ|เขต|district|amphur|amphoe)/.test(all)
+                                && !/จังหวัด|ตำบล|แขวง/.test(all);
+                        });
+                        // อย่างน้อย 1 select มี options > 1 (รวม placeholder)
+                        return sels.some(s => Array.from(s.options).filter(o => o.value).length > 0);
+                    }""",
+                    timeout=8000,
+                )
+            except Exception:
+                log("      ⚠ Timeout รอ options อำเภอโหลด")
+            page.wait_for_timeout(400)
+
+        # 2b) อำเภอ
+        dist_res = _select_addr_dropdown("dist", addr_data["addr_dist"])
+        log(f"      [Step2.2-FILL-DIST] {dist_res}")
+        if dist_res.get("ok"):
+            try:
+                page.wait_for_function(
+                    r"""() => {
+                        const sels = Array.from(document.querySelectorAll('select')).filter(s => {
+                            const ctx = (s.name + ' ' + s.id + ' ').toLowerCase();
+                            const lab = (() => {
+                                if (s.id) {
+                                    const l = document.querySelector(`label[for="${s.id}"]`);
+                                    if (l) return (l.textContent || '').toLowerCase();
+                                }
+                                return '';
+                            })();
+                            const all = ctx + lab;
+                            return /(ตำบล|แขวง|subdistrict|tambon|tambol)/.test(all)
+                                && !/จังหวัด|อำเภอ/.test(all);
+                        });
+                        return sels.some(s => Array.from(s.options).filter(o => o.value).length > 0);
+                    }""",
+                    timeout=8000,
+                )
+            except Exception:
+                log("      ⚠ Timeout รอ options ตำบลโหลด")
+            page.wait_for_timeout(400)
+
+        # 2c) ตำบล
+        subdist_res = _select_addr_dropdown("subdist", addr_data["addr_subdist"])
+        log(f"      [Step2.2-FILL-SUBDIST] {subdist_res}")
+
+        # debug: ถ้า dropdown หาไม่เจอเลย → dump form HTML ลงไฟล์เพื่อ probe
+        if (not prov_res.get("ok")) or (not dist_res.get("ok")) or (not subdist_res.get("ok")):
+            try:
+                form_html = page.evaluate(
+                    r"""() => {
+                        const m = Array.from(document.querySelectorAll(
+                            '.modal.show, .modal[style*="block"], [role="dialog"]'
+                        )).find(x => {
+                            const r = x.getBoundingClientRect();
+                            return r.width > 0 && r.height > 0;
+                        });
+                        return (m || document.body).outerHTML;
+                    }"""
+                )
+                debug_path = screenshot_dir / f"step2_2_debug_modal_{rec.get('seq','?')}.html"
+                debug_path.write_text(form_html, encoding="utf-8")
+                log(f"      [Step2.2-DEBUG] dump modal HTML → {debug_path}")
+            except Exception as e:
+                log(f"      [Step2.2-DEBUG] dump failed: {e!r}")
+
+        addr_filled = {
+            **{k: v for k, v in (text_filled or {}).items()},
+            "addr_prov": bool(prov_res.get("ok")),
+            "addr_dist": bool(dist_res.get("ok")),
+            "addr_subdist": bool(subdist_res.get("ok")),
+        }
+
+        page.wait_for_timeout(300)
+
+        # Screenshot หลังกรอก (modal เปิดอยู่ → allow_modal=True ไม่ต้องรอนาน)
+        _screenshot_when_ready(page, screenshot_dir / "step2_address_filled.png", timeout_ms=4000, log=log, allow_modal=True)
+
+        # กดปุ่ม 'บันทึก' — เลือกเฉพาะปุ่มที่ "มองเห็นได้" + timeout สั้น
+        # (บั๊กเดิม: locator ทั่วหน้า .last ไปโดนปุ่มบันทึกที่ซ่อนอยู่ และ
+        #  scroll_into_view_if_needed() ไม่ใส่ timeout → ใช้ค่า default 30s → ค้าง ~30 วิ)
+        save_clicked = False
+        try:
+            save_btn = page.locator("button:visible:has-text('บันทึก'), a:visible:has-text('บันทึก')").last
+            if save_btn.count() > 0:
+                save_btn.scroll_into_view_if_needed(timeout=2000)
+                save_btn.click(timeout=4000, force=True)
+                save_clicked = True
+        except Exception:
+            save_clicked = False
+
+        if not save_clicked:
+            try:
+                save_clicked = bool(page.evaluate(r"""() => {
+                    const candidates = Array.from(document.querySelectorAll('button, a'));
+                    const btn = candidates.find(el => {
+                        const txt = (el.textContent || '').trim();
+                        const st = window.getComputedStyle(el);
+                        return /บันทึก/.test(txt) && el.offsetParent !== null && st.display !== 'none' && st.visibility !== 'hidden';
+                    });
+                    if (!btn) return false;
+                    btn.scrollIntoView({ block: 'center' });
+                    btn.click();
+                    return true;
+                }"""))
+            except Exception:
+                save_clicked = False
+
+        if not save_clicked:
+            log("      ⚠ ไม่พบปุ่ม 'บันทึก'")
+            res["status"] = "ALERT"
+            res["note"] = "ไม่พบปุ่มบันทึกที่อยู่"
+            return res
+
+        log("      ✓ Clicked 'บันทึก'")
+
+        page.wait_for_timeout(800)
+        _wait_loading_disappeared(page, timeout_ms=5000, log=log, allow_modal=True)
+
+        # Screenshot หลังบันทึก (allow_modal=True → ไม่รอ swal นาน)
+        _screenshot_when_ready(page, screenshot_dir / "step2_address_saved.png", timeout_ms=5000, log=log, allow_modal=True)
+
+        # ต้องเจอโมดัลสำเร็จแล้วกด 'ยืนยัน'
+        confirm_clicked = False
+        try:
+            page.wait_for_function(
+                r"""() => {
+                    const bodyText = document.body.innerText || '';
+                    return /สำเร็จ/.test(bodyText) && /ยืนยัน/.test(bodyText);
+                }""",
+                timeout=8000,
+            )
+
+            confirm_btn = page.locator("button:visible:has-text('ยืนยัน'), a:visible:has-text('ยืนยัน')").last
+            if confirm_btn.count() > 0:
+                confirm_btn.scroll_into_view_if_needed(timeout=2000)
+                confirm_btn.click(timeout=4000, force=True)
+                confirm_clicked = True
+        except Exception:
+            confirm_clicked = False
+
+        if not confirm_clicked:
+            try:
+                confirm_clicked = bool(page.evaluate(r"""() => {
+                    const visible = (el) => {
+                        if (!el) return false;
+                        const st = window.getComputedStyle(el);
+                        return el.offsetParent !== null && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0';
+                    };
+                    const buttons = Array.from(document.querySelectorAll('button, a'));
+                    const btn = buttons.find(el => visible(el) && /ยืนยัน|ตกลง|ปิด/i.test((el.textContent || '').trim()));
+                    if (!btn) return false;
+                    btn.click();
+                    return true;
+                }"""))
+            except Exception:
+                confirm_clicked = False
+
+        if not confirm_clicked:
+            log("      ⚠ ไม่พบโมดัลบันทึกสำเร็จหรือปุ่ม 'ยืนยัน'")
+            res["status"] = "ALERT"
+            res["note"] = "ไม่พบโมดัลบันทึกสำเร็จ/ปุ่มยืนยัน"
+            return res
+
+        log("      ✓ กด 'ยืนยัน' ในโมดัลบันทึกสำเร็จแล้ว")
+        page.wait_for_timeout(800)
+
+        res["status"] = "SUCCESS"
+        res["note"] = "แก้ไขที่อยู่และยืนยันบันทึกเสร็จ"
+        log("      ✓ Address edited successfully")
+        return res
+
+    except Exception as e:
+        log(f"      ✗ Error in Step 2.2: {str(e)[:200]}")
+        res["status"] = "ERROR"
+        res["note"] = str(e)[:200]
+        return res
+
+
+def _bt44_step2_verify_permit(page: Page, rec: dict[str, str], log=print) -> tuple[bool, str]:
+    """ขั้นตอน 2.3: ตรวจสอบว่าเลขที่ใบอนุญาตในฟอร์มตรงกับ Excel หรือไม่
+    Return: (match_ok, current_permit_number)
+    """
+    try:
+        expected_permit = "".join(ch for ch in (rec.get("workpermit_no", "") or "") if ch.isdigit())
+
+        # เก็บ candidate permit จากหลายแหล่ง แล้ว normalize เป็นตัวเลขล้วน
+        candidates = page.evaluate(r"""() => {
+            const outPermitContext = [];
+            const outGlobal = [];
+            const pushNumsFromText = (txt) => {
+                const list = [];
+                if (!txt) return;
+                // รองรับรูปแบบมีช่องว่าง/ขีด เช่น 5692-0005-5150
+                const chunks = txt.match(/(?:\d[\d\s\-]{9,}\d)/g) || [];
+                for (const c of chunks) {
+                    const digits = c.replace(/\D/g, '');
+                    if (digits.length >= 10 && digits.length <= 16) list.push(digits);
+                }
+                const direct = txt.match(/\d{10,16}/g) || [];
+                for (const d of direct) list.push(d);
+                return list;
+            };
+
+            // 1) เน้นใน section ใบอนุญาตทำงาน
+            const permitSections = Array.from(document.querySelectorAll('div,section,fieldset,table'))
+                .filter(sec => /ข้อมูลใบอนุญาตทำงานปัจจุบัน|ใบอนุญาตทำงาน|work\s*permit|permit/i.test((sec.textContent || '').trim()));
+            for (const sec of permitSections) {
+                outPermitContext.push(...(pushNumsFromText(sec.textContent || '') || []));
+                for (const el of sec.querySelectorAll('input,span,p,label,td,th,div')) {
+                    outPermitContext.push(...(pushNumsFromText((el.value || el.textContent || '').trim()) || []));
+                }
+            }
+
+            // 2) label ใกล้เคียงคำว่า ใบอนุญาตทำงาน เท่านั้น
+            const labelish = Array.from(document.querySelectorAll('label,th,td,span,div,p'));
+            for (const el of labelish) {
+                const txt = (el.textContent || '').trim();
+                if (/ใบอนุญาตทำงาน|work\s*permit|permit/i.test(txt)) {
+                    outPermitContext.push(...(pushNumsFromText(txt) || []));
+                    const parent = el.closest('tr,div,section,fieldset');
+                    if (parent) outPermitContext.push(...(pushNumsFromText(parent.textContent || '') || []));
+                }
+            }
+
+            // 3) ทั้งหน้า
+            outGlobal.push(...(pushNumsFromText(document.body.innerText || '') || []));
+
+            // unique preserve order
+            const seen = new Set();
+            const uniqPermit = outPermitContext.filter(v => {
+                if (seen.has(v)) return false;
+                seen.add(v);
+                return true;
+            });
+
+            const seenGlobal = new Set();
+            const uniqGlobal = outGlobal.filter(v => {
+                if (seenGlobal.has(v)) return false;
+                seenGlobal.add(v);
+                return true;
+            });
+
+            return { permitContext: uniqPermit, global: uniqGlobal };
+        }""")
+
+        # เลือก candidate ที่ยาว 12 เฉพาะ permit context
+        cands = [c for c in ((candidates or {}).get("permitContext") or []) if isinstance(c, str)]
+        cands12 = [c for c in cands if len(c) == 12]
+        global_cands = [c for c in ((candidates or {}).get("global") or []) if isinstance(c, str)]
+
+        has_permit_context = len(cands) > 0
+
+        def _same_permit(a: str, b: str) -> bool:
+            if not a or not b:
+                return False
+            return a == b or a.lstrip("0") == b.lstrip("0")
+
+        current_permit = ""
+        if expected_permit:
+            # เจอเลข expected ใน candidate ใด ๆ ให้ถือว่าตรง
+            for c in cands:
+                if _same_permit(c, expected_permit):
+                    current_permit = c
+                    break
+
+        if not current_permit and has_permit_context:
+            if cands12:
+                current_permit = cands12[0]
+            elif cands:
+                current_permit = cands[0]
+
+        # ถ้าไม่เจอใน permit context ให้ถือว่าไม่พบ (ไม่ใช้เลขทั่วหน้าเพื่อลด false positive)
+        if not current_permit and expected_permit and expected_permit in global_cands:
+            current_permit = expected_permit
+
+        if not current_permit:
+            log("      ⚠ ไม่พบเลขที่ใบอนุญาต ในฟอร์ม")
+            return (False, "")
+
+        match_ok = bool(expected_permit) and _same_permit(current_permit, expected_permit)
+        if match_ok:
+            log(f"      ✓ เลขที่ใบอนุญาตตรงกัน: {current_permit} (expected {expected_permit})")
+            return (True, current_permit)
+
+        log(f"      ✗ เลขที่ใบอนุญาตไม่ตรง — คาดหวัง: {expected_permit}, ได้: {current_permit}")
+        return (False, current_permit)
+
+    except Exception as e:
+        log(f"      ✗ Error in Step 2.3 permit verify: {str(e)[:200]}")
+        return (False, str(e)[:100])
+
+
+def _bt44_step3_change_employer(page: Page, rec: dict[str, Any], log=print) -> dict[str, str]:
+    """Step 3.1: เปลี่ยนนายจ้างและค้นหาตามข้อมูลใน Excel
+    - ถ้าค้นหาแล้วพบ modal 'ไม่สามารถดำเนินการต่อได้...' ให้ mark SKIP
+    - ถ้าค้นหาไม่สำเร็จในเชิงเทคนิค ให้ mark ALERT
+    """
+    res = {"status": "", "note": ""}
+    try:
+        search_type = (rec.get("change_emp_search_type") or "").strip()
+        keyword = (rec.get("change_emp_keyword") or "").strip()
+        if not search_type or not keyword:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.1: missing employer search inputs"
+            return res
+
+        log("      [Step 3.1] ค้นหานายจ้าง...")
+        opened = False
+        try:
+            page.locator("#changeEmployer").first.click(timeout=5000, force=True)
+            opened = True
+        except Exception:
+            pass
+        if not opened:
+            try:
+                opened = bool(page.evaluate(r"""() => {
+                    const btn = document.querySelector('#changeEmployer') ||
+                      Array.from(document.querySelectorAll('button,a,[role="button"]'))
+                        .find(b => /เปลี่ยนนายจ้าง/.test((b.textContent || '').trim()) && b.offsetParent !== null);
+                    if (!btn) return false;
+                    btn.click();
+                    return true;
+                }"""))
+            except Exception:
+                opened = False
+
+        if not opened:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.1: open employer modal failed"
+            return res
+
+        page.wait_for_timeout(600)
+        _wait_loading_disappeared(page, timeout_ms=5000, log=log, allow_modal=True)
+
+        if not _select2_pick(page, "search-type", search_type, log=log):
+            res["status"] = "ALERT"
+            res["note"] = f"Step 3.1: employer search type not found ({search_type})"
+            return res
+        page.wait_for_timeout(500)
+
+        # กรอก keyword แบบพิมพ์จริง (fill) — เว็บอ่านค่าจาก event จริง ไม่ใช่ .value ที่ set ด้วย JS
+        try:
+            kw = page.locator("#search-keyword").first
+            kw.scroll_into_view_if_needed(timeout=4000)
+            kw.click(timeout=4000)
+            kw.fill("")
+            kw.fill(keyword)
+        except Exception:
+            page.evaluate(r"""(v) => {
+                const t = document.getElementById('search-keyword');
+                if (!t) return;
+                t.value = v;
+                t.dispatchEvent(new Event('input', { bubbles: true }));
+                t.dispatchEvent(new Event('change', { bubbles: true }));
+            }""", keyword)
+        page.wait_for_timeout(300)
+
+        # กดปุ่ม 'ค้นหา' แบบคลิกจริง (auto-scroll + actionability) — เลี่ยง JS click ที่ไม่กระตุ้น handler
+        clicked = False
+        try:
+            sa = page.locator("#search-action").first
+            sa.scroll_into_view_if_needed(timeout=4000)
+            sa.click(timeout=6000)
+            clicked = True
+        except Exception:
+            # fallback: JS click
+            clicked = bool(page.evaluate(r"""() => {
+                const btn = document.getElementById('search-action');
+                if (!btn) return false;
+                btn.scrollIntoView({ block: 'center' });
+                btn.click();
+                return true;
+            }"""))
+        if not clicked:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.1: employer search click failed"
+            return res
+
+        try:
+            page.wait_for_function(
+                r"""() => {
+                    const txt = document.body.innerText || '';
+                    return /ข้อมูลนายจ้างใหม่/.test(txt)
+                        || /ไม่สามารถดำเนินการต่อได้ เนื่องจากไม่พบข้อมูลนายจ้างในระบบ/.test(txt)
+                        || /ข้อมูลนายจ้างเดิม/.test(txt)
+                        || /คืนค่าเดิม/.test(txt)
+                        || /นายจ้างหลัก/.test(txt);
+                }""",
+                timeout=8000,
+            )
+        except Exception:
+            pass
+        _wait_loading_disappeared(page, timeout_ms=8000, log=log, allow_modal=True)
+
+        alert = _capture_register_alert(page)
+        body_text = page.evaluate(r"""() => (document.body.innerText || '').slice(0, 5000)""") or ""
+        not_found_text = "ไม่สามารถดำเนินการต่อได้ เนื่องจากไม่พบข้อมูลนายจ้างในระบบ"
+        if not_found_text in alert or not_found_text in body_text:
+            _close_register_alert(page)
+            res["status"] = "SKIP"
+            res["note"] = "Step 3.1: employer not found or not eligible"
+            return res
+
+        # ---- เลือกเหตุผลการเปลี่ยนนายจ้าง (reason-type) ในโมดัล ก่อนบันทึก ----
+        # ⚠ สำคัญ: หลังกด 'ค้นหา' เว็บหน่วง 2-3 วิรอข้อมูลนายจ้างกลับมา ระหว่างนั้น
+        #   ส่วนเลือกเหตุผล/ช่อง 'อื่นๆ (โปรดระบุ)' ยังไม่พร้อม ถ้า Select เร็วเกินไป
+        #   change handler จะไม่ผูก → ช่อง #reason-other ไม่โผล่ → กรอกไม่ได้ → บันทึกไม่ผ่าน
+        #   จึงต้อง (1) รอ select reason-type พร้อมก่อน (2) หลังเลือก 'อื่นๆ' รอ #reason-other โผล่จริง
+        reason = (rec.get("change_emp_reason") or "").strip()
+        reason_other = (rec.get("change_emp_reason_other") or "").strip()
+
+        # (1) รอให้ select 'เหตุผลการเปลี่ยนนายจ้าง' พร้อม (มี option จริง) + settle หน่วงเพิ่ม
+        try:
+            page.wait_for_function(
+                r"""() => {
+                    const s = document.getElementById('reason-type');
+                    return s && s.options && s.options.length > 1;
+                }""",
+                timeout=8000,
+            )
+        except Exception:
+            pass
+        page.wait_for_timeout(1500)  # settle: เผื่อ change handler ผูกหลังข้อมูลค้นกลับมา
+
+        if reason:
+            if not _select2_pick(page, "reason-type", reason, log=log):
+                log(f"      ⚠ Step 3.1: เลือกเหตุผล '{reason}' ไม่ได้")
+            page.wait_for_timeout(800)
+
+        # (2) ถ้ามีข้อความ 'อื่นๆ (โปรดระบุ)' → ต้องรอช่อง #reason-other โผล่จริงก่อนกรอก
+        #     ถ้ายังไม่โผล่ ให้เลือกเหตุผลซ้ำเพื่อ re-trigger change (สูงสุด 3 รอบ)
+        if reason_other:
+            ro_filled = False
+            for attempt in range(3):
+                try:
+                    ro = page.locator("#reason-other:visible").first
+                    ro.wait_for(state="visible", timeout=4000)
+                    ro.scroll_into_view_if_needed(timeout=2000)
+                    ro.click(timeout=3000)
+                    ro.fill("")
+                    ro.fill(reason_other)
+                    val = ro.input_value(timeout=2000)
+                    if (val or "").strip() == reason_other:
+                        ro_filled = True
+                        log(f"      [Step 3.1] กรอกเหตุผลอื่นๆ: {reason_other}")
+                        break
+                except Exception:
+                    pass
+                # re-trigger: เลือกเหตุผลซ้ำเพื่อให้ change event ยิงอีกครั้ง
+                if reason:
+                    _select2_pick(page, "reason-type", reason, log=lambda *a: None)
+                page.wait_for_timeout(1200)
+            if not ro_filled:
+                # JS fallback: เซ็ตค่าโดยตรงบน element ที่มองเห็น
+                rr = page.evaluate(r"""(val) => {
+                    const vis = el => { if(!el) return false; const st=getComputedStyle(el); const rc=el.getBoundingClientRect(); return st.display!=='none'&&st.visibility!=='hidden'&&rc.width>0&&rc.height>0; };
+                    const els = Array.from(document.querySelectorAll('#reason-other, [name="reason-other"]')).filter(vis);
+                    const el = els[els.length - 1];
+                    if (!el) return { ok:false };
+                    el.focus(); el.value = val;
+                    el.dispatchEvent(new Event('input', { bubbles:true }));
+                    el.dispatchEvent(new Event('change', { bubbles:true }));
+                    el.dispatchEvent(new Event('blur', { bubbles:true }));
+                    return { ok:true };
+                }""", reason_other)
+                ro_filled = bool(rr and rr.get("ok"))
+            if not ro_filled:
+                res["status"] = "ALERT"
+                res["note"] = "Step 3.1: ช่อง 'อื่นๆ (โปรดระบุ)' ไม่โผล่/กรอกไม่ได้ (เลือกเหตุผลเร็วเกินไป?)"
+                return res
+            page.wait_for_timeout(400)
+
+        # ---- บันทึกการเปลี่ยนนายจ้าง (ปุ่ม 'บันทึก' ในโมดัล) — ใช้ :visible + timeout สั้น ----
+        save_clicked = False
+        try:
+            save_btn = page.locator("button:visible:has-text('บันทึก'), a:visible:has-text('บันทึก')").last
+            if save_btn.count() > 0:
+                save_btn.scroll_into_view_if_needed(timeout=2000)
+                save_btn.click(timeout=4000, force=True)
+                save_clicked = True
+        except Exception:
+            save_clicked = False
+        if not save_clicked:
+            try:
+                save_clicked = bool(page.evaluate(r"""() => {
+                    const btn = Array.from(document.querySelectorAll('button, a')).find(el => {
+                        const st = getComputedStyle(el);
+                        return /บันทึก/.test((el.textContent || '').trim()) && el.offsetParent !== null && st.display !== 'none' && st.visibility !== 'hidden';
+                    });
+                    if (!btn) return false;
+                    btn.scrollIntoView({ block: 'center' });
+                    btn.click();
+                    return true;
+                }"""))
+            except Exception:
+                save_clicked = False
+        if not save_clicked:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.1: save (บันทึก) button not found"
+            return res
+
+        page.wait_for_timeout(800)
+        _wait_loading_disappeared(page, timeout_ms=6000, log=log, allow_modal=True)
+        # ปิด swal สำเร็จ (ถ้ามี) แล้วยืนยันว่าโมดัลปิด + เข้าสู่ขั้น 'เลือกสถานที่ทำงาน'
+        try:
+            page.wait_for_function(
+                r"""() => /สำเร็จ|เลือกสถานที่ทำงาน|ข้อมูลนายจ้างเดิม/.test(document.body.innerText || '')""",
+                timeout=6000,
+            )
+        except Exception:
+            pass
+        _close_register_alert(page)
+        _wait_loading_disappeared(page, timeout_ms=4000, log=log, allow_modal=True)
+
+        log("      [Step 3.1] ✅ เปลี่ยนนายจ้างและบันทึกแล้ว")
+        res["status"] = "SUCCESS"
+        res["note"] = "Step 3.1 complete (employer changed + saved)"
+        return res
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["note"] = f"Step 3.1 error: {str(e)[:180]}"
+        return res
+
+
+def _bt44_step3_workplace(page: Page, rec: dict[str, Any], log=print) -> dict[str, str]:
+    """Step 3.3: เลือกสถานที่ทำงาน/สาขา + ประเภทกิจการ + ตรวจสอบประเภทงาน + กรอกลักษณะงาน
+    Step 3.4: กดถัดไป → Step 4
+
+    - 3.3:   เปิดโมดัล 'เลือกสถานที่ทำงาน' แล้วเลือกสาขา (Excel: สถานที่ทำงาน/สาขา)
+    - 3.3.1: เลือกประเภทกิจการ (Excel: ประเภทกิจการ) แล้วตรวจสอบประเภทงานที่ขออนุญาต
+             ต้องตรงกับ Excel (ประเภทงานที่ขออนุญาต) — ถ้าไม่ตรง → SKIP (mark report)
+    - 3.3.2: กรอกลักษณะงาน (Excel: ลักษณะงาน)
+    - 3.4:   กดถัดไป
+    """
+    res = {"status": "", "note": ""}
+
+    def _close_workplace_modal():
+        try:
+            page.evaluate(r"""() => {
+                const norm = s => (s||'').replace(/\s+/g,' ').trim();
+                const btn = Array.from(document.querySelectorAll('button, a, .close, .btn-close'))
+                  .find(b => /^(ปิด|ยกเลิก|×|✕)$/.test(norm(b.textContent)) && b.offsetParent !== null);
+                if (btn) btn.click();
+            }""")
+        except Exception:
+            pass
+
+    try:
+        work_branch = (rec.get("workplace_branch") or "").strip()
+        work_biz = (rec.get("work_biz") or "").strip()
+        work_job = (rec.get("work_permit_job") or "").strip()
+        work_detail = (rec.get("work_detail") or "").strip()
+
+        log("      [Step 3.3] เลือกสถานที่ทำงาน...")
+
+        # ---- เปิดโมดัล 'เลือกสถานที่ทำงาน' ----
+        # ปุ่มจริง: <button data-action="addEmployerAddr" class="...lang_select_work_address">
+        # ไม่มี onclick (ใช้ delegated handler) — real click เปิดได้ โมดัลโผล่ทันที (มี heading)
+        # แต่รายการสาขา (option) โหลดผ่าน AJAX ช้ากว่า → ต้องแยกการตรวจ "เปิดแล้ว" ออกจาก "option พร้อม"
+        # ⚠ ห้ามคลิกซ้ำหลังโมดัลเปิดแล้ว เพราะปุ่มเดียวกันอาจ toggle/รีเซ็ต AJAX
+        # หมายเหตุ: option สาขาในเว็บมีหลายฟอร์แมต — บางบัญชีขึ้นต้น 'สำนักงาน...' บางบัญชีเป็นที่อยู่ตรงๆ
+        # (เช่น '616/16 หมู่ที่ 1 แขวง/ตำบล แม่น้ำคู้...') → ตรวจด้วย keyword ที่อยู่ทั่วไปแทน
+        def _branch_option_present() -> bool:
+            return bool(page.evaluate(r"""() => {
+                const KW = /(สำนักงาน|ตำบล|อำเภอ|จังหวัด|รหัสไปรษณีย์|หมู่ที่)/;
+                return Array.from(document.querySelectorAll('select'))
+                  .some(s => Array.from(s.options).some(o => o.value && KW.test(o.textContent || '')));
+            }"""))
+
+        def _workplace_modal_open() -> bool:
+            # โมดัลเปิด = มี heading 'สถานที่ทำงาน/สาขา' หรือ 'ประเภทกิจการ' หรือมี option สาขาแล้ว
+            return bool(page.evaluate(r"""() => {
+                const t = document.body.innerText || '';
+                if (/สถานที่ทำงาน\/สาขา|ประเภทกิจการ/.test(t)) return true;
+                const KW = /(สำนักงาน|ตำบล|อำเภอ|จังหวัด|รหัสไปรษณีย์|หมู่ที่)/;
+                return Array.from(document.querySelectorAll('select'))
+                  .some(s => Array.from(s.options).some(o => o.value && KW.test(o.textContent || '')));
+            }"""))
+
+        def _click_workplace_btn() -> bool:
+            for sel in (
+                "button[data-action='addEmployerAddr']:visible",
+                "button.lang_select_work_address:visible, a.lang_select_work_address:visible",
+            ):
+                try:
+                    b = page.locator(sel).last
+                    if b.count() > 0:
+                        b.scroll_into_view_if_needed(timeout=2000)
+                        b.click(timeout=4000)
+                        return True
+                except Exception:
+                    continue
+            try:
+                b = page.locator(
+                    "button:visible:has-text('เลือกสถานที่ทำงาน'), "
+                    "a:visible:has-text('เลือกสถานที่ทำงาน')"
+                ).last
+                if b.count() > 0:
+                    b.scroll_into_view_if_needed(timeout=2000)
+                    b.click(timeout=4000)
+                    return True
+            except Exception:
+                pass
+            try:
+                return bool(page.evaluate(r"""() => {
+                    const b = document.querySelector("button[data-action='addEmployerAddr'], .lang_select_work_address");
+                    if (!b) return false;
+                    b.scrollIntoView({ block: 'center' });
+                    b.click();
+                    return true;
+                }"""))
+            except Exception:
+                return False
+
+        # ปิด swal/overlay ที่อาจค้างหลัง Step 3.1 (กันคลิกโดน overlay)
+        try:
+            page.evaluate(r"""() => {
+                const btn = Array.from(document.querySelectorAll('.swal2-confirm, .swal2-close'))
+                  .find(b => b.offsetParent !== null);
+                if (btn) btn.click();
+            }""")
+        except Exception:
+            pass
+        page.wait_for_timeout(500)
+
+        # คลิกเปิดโมดัล (คลิกซ้ำได้สูงสุด 3 ครั้ง เฉพาะเมื่อโมดัล "ยังไม่เปิด")
+        modal_open = False
+        for _attempt in range(3):
+            if not _workplace_modal_open():
+                _click_workplace_btn()
+            # รอ heading โผล่ (โมดัลเปิด) สูงสุด ~6s
+            for _i in range(6):
+                page.wait_for_timeout(1000)
+                if _workplace_modal_open():
+                    modal_open = True
+                    break
+            if modal_open:
+                break
+            _wait_loading_disappeared(page, timeout_ms=3000, log=log, allow_modal=True)
+        if not modal_open:
+            try:
+                _dbg = Path("reports") / "bt44_screenshots"
+                _dbg.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(_dbg / "step3_3_modal_fail.png"), full_page=True)
+                _btns = page.evaluate(r"""() => Array.from(document.querySelectorAll('button,a'))
+                    .filter(b => /เลือกสถานที่ทำงาน|addEmployerAddr/.test((b.textContent||'')+' '+(b.getAttribute('data-action')||'')))
+                    .map(b => ({tag:b.tagName, vis:b.offsetParent!==null, da:b.getAttribute('data-action')||'', cls:(b.className||'').slice(0,80)}))""")
+                log(f"      [Step 3.3] debug btns: {_btns}")
+            except Exception:
+                pass
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.3: เปิดโมดัลเลือกสถานที่ทำงานไม่สำเร็จ (ไม่พบ heading/โมดัล)"
+            return res
+
+        # โมดัลเปิดแล้ว — รอรายการสาขา (option) โหลดผ่าน AJAX สูงสุด ~18s (ห้ามคลิกปุ่มซ้ำ)
+        opened_wp = False
+        for _i in range(18):
+            if _branch_option_present():
+                opened_wp = True
+                break
+            page.wait_for_timeout(1000)
+        if not opened_wp:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.3: โมดัลเปิดแต่รายการสาขาไม่โหลด (timeout)"
+            return res
+        _wait_loading_disappeared(page, timeout_ms=6000, log=log, allow_modal=True)
+
+        # ---- เลือกสาขา: select ที่ visible และมี option เป็นที่อยู่/สาขา ----
+        # กลยุทธ์: คำนวณคะแนนความเหมือนทุก option แล้วเลือกตัวคะแนนสูงสุด
+        #   - normalize ก่อน: ตัด prefix สัญลักษณ์ (เช่น "- :"), whitespace, dash, slash, comma, dot, วงเล็บ
+        #   - exact (compact) match → ให้คะแนนเต็ม 1.0
+        #   - substring (option ⊃ excel หรือ excel ⊃ option) → 0.95
+        #   - Dice bigram similarity บนตัวอักษร (รองรับไทย+Eng+digit) → 0..1
+        #   - +bonus 0.05 ถ้ารหัสไปรษณีย์ 5 หลักตรงกัน
+        #   - threshold 0.30 → เลือกตัวคะแนนสูงสุด ถ้าต่ำกว่านี้ → fallback option แรก
+        branch_res = page.evaluate(
+            r"""(want) => {
+            const norm = s => (s||'').replace(/\s+/g,' ').trim();
+            // ตัด prefix อย่าง "- :", "-:", "- ", " : ", "•", bullet, dot leaders ออกหัวสตริง
+            const stripPrefix = s => (s||'').replace(/^[\s\-:•·\.\u2013\u2014]+/,'').trim();
+            const compact = s => stripPrefix(s||'').replace(/[\s\-\/.,()\\:]+/g,'').trim();
+            const vis = el => { if(!el) return false; const st=getComputedStyle(el); const r=el.getBoundingClientRect(); return st.display!=='none'&&st.visibility!=='hidden'&&(el.offsetParent!==null||r.width>0); };
+            const KW = /(สำนักงาน|ตำบล|อำเภอ|จังหวัด|รหัสไปรษณีย์|หมู่ที่)/;
+            // เลือก select ที่ option อย่างน้อย 1 ตัวเป็นที่อยู่/สาขา
+            const candidates = Array.from(document.querySelectorAll('select')).filter(s => {
+                const opts = Array.from(s.options).filter(o => o.value);
+                return opts.length > 0 && opts.some(o => KW.test(o.textContent || ''));
+            });
+            const sel = candidates.find(vis) || candidates[0];
+            if (!sel) return { ok:false, reason:'no_select' };
+            const opts = Array.from(sel.options).filter(o => o.value);
+            if (opts.length === 0) return { ok:false, reason:'no_option' };
+
+            // --- Dice bigram similarity (char-level, รองรับ unicode ไทย/Eng/digit) ---
+            const bigrams = (s) => {
+                const t = compact(s);
+                const out = new Map();
+                for (let i = 0; i < t.length - 1; i++) {
+                    const bg = t.slice(i, i + 2);
+                    out.set(bg, (out.get(bg) || 0) + 1);
+                }
+                return out;
+            };
+            const dice = (a, b) => {
+                const A = bigrams(a), B = bigrams(b);
+                if (A.size === 0 || B.size === 0) return 0;
+                let inter = 0, totalA = 0, totalB = 0;
+                for (const [, v] of A) totalA += v;
+                for (const [, v] of B) totalB += v;
+                for (const [bg, va] of A) {
+                    const vb = B.get(bg);
+                    if (vb) inter += Math.min(va, vb);
+                }
+                return (2 * inter) / (totalA + totalB);
+            };
+
+            const w = norm(want);
+            const wc = compact(want);
+            const wantZip = (want.match(/\b(\d{5})\b/) || [])[1] || '';
+            const debug = [];
+            let best = null, bestScore = -1, bestMethod = '';
+
+            if (w && wc) {
+                for (const o of opts) {
+                    const oText = o.textContent || '';
+                    const oc = compact(oText);
+                    if (!oc) continue;
+                    let score = 0, method = '';
+                    if (oc === wc) {
+                        score = 1.0; method = 'exact';
+                    } else if (oc.includes(wc) || (wc.length > 6 && wc.includes(oc))) {
+                        // ratio ปรับตามความยาว: ยิ่งความยาวใกล้กัน ยิ่งสูง
+                        const ratio = Math.min(oc.length, wc.length) / Math.max(oc.length, wc.length);
+                        score = 0.85 + 0.10 * ratio; method = 'substring';
+                    } else {
+                        score = dice(want, oText); method = 'dice';
+                    }
+                    // bonus: รหัสไปรษณีย์ 5 หลักตรง
+                    const oZip = (oText.match(/\b(\d{5})\b/) || [])[1] || '';
+                    if (wantZip && oZip && wantZip === oZip) score = Math.min(1.0, score + 0.05);
+                    debug.push({ text: norm(oText).slice(0,80), score: +score.toFixed(3), method });
+                    if (score > bestScore) { bestScore = score; best = o; bestMethod = method; }
+                }
+            }
+            // threshold ขั้นต่ำ → ถ้าต่ำกว่านี้แสดงว่าไม่มีตัวที่ใกล้เคียงเลย ให้ fallback option แรก
+            const THRESHOLD = 0.30;
+            if (!best || bestScore < THRESHOLD) {
+                best = opts[0];
+                bestMethod = 'fallback_first';
+                bestScore = 0;
+            }
+
+            sel.value = best.value;
+            sel.dispatchEvent(new Event('input', { bubbles: true }));
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            if (window.jQuery) { try { jQuery(sel).val(best.value).trigger('change'); jQuery(sel).trigger({type:'select2:select', params:{data:{id:best.value, text:best.textContent}}}); } catch(e){} }
+
+            // เก็บ top-3 debug รายการที่เปรียบเทียบ
+            debug.sort((a,b) => b.score - a.score);
+            return {
+                ok: true,
+                text: norm(best.textContent).slice(0,120),
+                matched_by: bestMethod,
+                score: +bestScore.toFixed(3),
+                option_count: opts.length,
+                top3: debug.slice(0, 3),
+            };
+        }""",
+            work_branch,
+        )
+        if not branch_res or not branch_res.get("ok"):
+            _close_workplace_modal()
+            res["status"] = "ALERT"
+            res["note"] = f"Step 3.3: ไม่พบสาขาให้เลือก ({branch_res.get('reason') if branch_res else 'no_response'})"
+            return res
+        page.wait_for_timeout(1000)
+        _wait_loading_disappeared(page, timeout_ms=6000, log=log, allow_modal=True)
+        log(
+            f"      [Step 3.3] เลือกสาขา: {branch_res.get('text','')} "
+            f"[{branch_res.get('matched_by','')} score={branch_res.get('score','?')}, "
+            f"options={branch_res.get('option_count','?')}]"
+        )
+        # Log top-3 candidates เมื่อไม่ใช่ exact match (ช่วย debug)
+        if branch_res.get("matched_by") not in ("exact", "fallback_first"):
+            for cand in branch_res.get("top3", []):
+                log(f"        - cand: score={cand.get('score')} [{cand.get('method')}] {cand.get('text','')}")
+
+        # ---- 3.3.1: เลือกประเภทกิจการ (businessType) ตาม Excel ----
+        # ใช้ similarity scoring เดียวกับสาขา → ทนต่อความต่างของ whitespace/อักขระ/prefix
+        # หา select ของประเภทกิจการ:
+        #   1) id/name = businessType หรือมีคำว่า biz/business
+        #   2) select ที่ visible และมี option หลายตัวเริ่มต้นด้วย 'การผลิต|การให้บริการ|การค้า|กิจการ|การเกษตร'
+        if work_biz:
+            # ⚠ option ของ businessType โหลดผ่าน AJAX หลังเลือกสาขา → ต้องรอจนมี option ≥ 2 ตัว
+            # (ก่อนหน้านี้ JS รันเร็วเกินไป → ได้ select เปล่า/ตัวเลือกเดียว → fallback ผิด)
+            log("      [Step 3.3.1] รอ option ประเภทกิจการโหลดจาก AJAX...")
+            biz_ready = False
+            for _i in range(30):  # สูงสุด ~15 วินาที
+                try:
+                    ready = page.evaluate(r"""() => {
+                        const norm = s => (s||'').replace(/\s+/g,' ').trim();
+                        const vis = el => { if(!el) return false; const st=getComputedStyle(el); const r=el.getBoundingClientRect(); return st.display!=='none'&&st.visibility!=='hidden'&&(el.offsetParent!==null||r.width>0); };
+                        const BIZ_KW = /^(การผลิต|การให้บริการ|การค้า|กิจการ|การเกษตร|การก่อสร้าง|การประมง|การขนส่ง|การทำเหมือง|งานบ้าน)/;
+                        let sels = Array.from(document.querySelectorAll('#businessType, select[name="businessType"], select[id*="biz" i], select[name*="biz" i], select[id*="business" i], select[name*="business" i]')).filter(vis);
+                        if (sels.length === 0) {
+                            sels = Array.from(document.querySelectorAll('select')).filter(s => {
+                                if (!vis(s)) return false;
+                                const opts = Array.from(s.options).filter(o => o.value);
+                                if (opts.length < 2) return false;
+                                const matches = opts.filter(o => BIZ_KW.test(norm(o.textContent))).length;
+                                return matches >= 2;
+                            });
+                        }
+                        const sel = sels[0];
+                        if (!sel) return { ok:false, count:0 };
+                        const opts = Array.from(sel.options).filter(o => o.value);
+                        return { ok: opts.length >= 2, count: opts.length };
+                    }""")
+                    if ready and ready.get("ok"):
+                        biz_ready = True
+                        break
+                except Exception as e:
+                    # navigation/context destroyed — รอ DOM พร้อมแล้วค่อยลองใหม่
+                    if "context was destroyed" in str(e).lower() or "navigation" in str(e).lower():
+                        try:
+                            page.wait_for_load_state("domcontentloaded", timeout=3000)
+                        except Exception:
+                            pass
+                page.wait_for_timeout(500)
+            if not biz_ready:
+                log(f"      [Step 3.3.1] ⚠ option ประเภทกิจการอาจยังโหลดไม่ครบ — จะลองเลือกต่อ")
+            _wait_loading_disappeared(page, timeout_ms=4000, log=log, allow_modal=True)
+
+            # ลอง evaluate ตัวเลือกหลัก — retry 3 ครั้งหากเจอ navigation/context destroyed
+            biz_res = None
+            for _retry in range(3):
+                try:
+                    biz_res = page.evaluate(
+                r"""(want) => {
+                const norm = s => (s||'').replace(/\s+/g,' ').trim();
+                const stripPrefix = s => (s||'').replace(/^[\s\-:•·\.\u2013\u2014]+/,'').trim();
+                const compact = s => stripPrefix(s||'').replace(/[\s\-\/.,()\\:]+/g,'').trim();
+                const vis = el => { if(!el) return false; const st=getComputedStyle(el); const r=el.getBoundingClientRect(); return st.display!=='none'&&st.visibility!=='hidden'&&(el.offsetParent!==null||r.width>0); };
+                const BIZ_KW = /^(การผลิต|การให้บริการ|การค้า|กิจการ|การเกษตร|การก่อสร้าง|การประมง|การขนส่ง|การทำเหมือง|งานบ้าน)/;
+                // 1) id/name explicit
+                let sels = Array.from(document.querySelectorAll('#businessType, select[name="businessType"], select[id*="biz" i], select[name*="biz" i], select[id*="business" i], select[name*="business" i]')).filter(vis);
+                // 2) heuristic: visible select with multiple options matching BIZ_KW
+                if (sels.length === 0) {
+                    sels = Array.from(document.querySelectorAll('select')).filter(s => {
+                        if (!vis(s)) return false;
+                        const opts = Array.from(s.options).filter(o => o.value);
+                        if (opts.length < 2) return false;
+                        const matches = opts.filter(o => BIZ_KW.test(norm(o.textContent))).length;
+                        return matches >= 2;
+                    });
+                }
+                const sel = sels[0];
+                if (!sel) return { ok:false, reason:'no_businessType_select' };
+                const opts = Array.from(sel.options).filter(o => o.value);
+                if (opts.length === 0) return { ok:false, reason:'no_option' };
+
+                // Dice bigram similarity (char-level)
+                const bigrams = (s) => {
+                    const t = compact(s);
+                    const out = new Map();
+                    for (let i = 0; i < t.length - 1; i++) {
+                        const bg = t.slice(i, i + 2);
+                        out.set(bg, (out.get(bg) || 0) + 1);
+                    }
+                    return out;
+                };
+                const dice = (a, b) => {
+                    const A = bigrams(a), B = bigrams(b);
+                    if (A.size === 0 || B.size === 0) return 0;
+                    let inter = 0, totalA = 0, totalB = 0;
+                    for (const [, v] of A) totalA += v;
+                    for (const [, v] of B) totalB += v;
+                    for (const [bg, va] of A) {
+                        const vb = B.get(bg);
+                        if (vb) inter += Math.min(va, vb);
+                    }
+                    return (2 * inter) / (totalA + totalB);
+                };
+
+                const w = norm(want), wc = compact(want);
+                const debug = [];
+                let best = null, bestScore = -1, bestMethod = '';
+                for (const o of opts) {
+                    const oText = o.textContent || '';
+                    const oc = compact(oText);
+                    if (!oc) continue;
+                    let score = 0, method = '';
+                    if (oc === wc) {
+                        score = 1.0; method = 'exact';
+                    } else if (oc.includes(wc) || (wc.length > 6 && wc.includes(oc))) {
+                        const ratio = Math.min(oc.length, wc.length) / Math.max(oc.length, wc.length);
+                        score = 0.85 + 0.10 * ratio; method = 'substring';
+                    } else {
+                        score = dice(want, oText); method = 'dice';
+                    }
+                    debug.push({ text: norm(oText).slice(0,80), score: +score.toFixed(3), method });
+                    if (score > bestScore) { bestScore = score; best = o; bestMethod = method; }
+                }
+                const THRESHOLD = 0.30;
+                if (!best || bestScore < THRESHOLD) {
+                    return { ok:false, reason:'low_score', best_score: +bestScore.toFixed(3),
+                             top3: debug.sort((a,b)=>b.score-a.score).slice(0,3) };
+                }
+                sel.value = best.value;
+                sel.dispatchEvent(new Event('input', { bubbles: true }));
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                if (window.jQuery) { try { jQuery(sel).val(best.value).trigger('change'); jQuery(sel).trigger({type:'select2:select', params:{data:{id:best.value, text:best.textContent}}}); } catch(e){} }
+                debug.sort((a,b)=>b.score-a.score);
+                return {
+                    ok: true,
+                    text: norm(best.textContent).slice(0,80),
+                    matched_by: bestMethod,
+                    score: +bestScore.toFixed(3),
+                    option_count: opts.length,
+                    top3: debug.slice(0,3),
+                };
+            }""",
+                        work_biz,
+                    )
+                    break  # สำเร็จ — ออกจาก retry loop
+                except Exception as e:
+                    msg = str(e)
+                    if "context was destroyed" in msg.lower() or "navigation" in msg.lower():
+                        log(f"      [Step 3.3.1] ⚠ context destroyed during evaluate — retry {_retry+1}/3")
+                        try:
+                            page.wait_for_load_state("domcontentloaded", timeout=5000)
+                        except Exception:
+                            pass
+                        page.wait_for_timeout(800)
+                        continue
+                    raise  # error อื่น → re-raise
+            if not biz_res or not biz_res.get("ok"):
+                # Log top-3 ก่อน fail เพื่อช่วย debug
+                if biz_res and biz_res.get("top3"):
+                    log(f"      [Step 3.3.1] ✗ ไม่พบประเภทกิจการที่ใกล้ '{work_biz}' (best={biz_res.get('best_score')}):")
+                    for cand in biz_res.get("top3", []):
+                        log(f"        - cand: score={cand.get('score')} [{cand.get('method')}] {cand.get('text','')}")
+                _close_workplace_modal()
+                res["status"] = "ALERT"
+                res["note"] = f"Step 3.3.1: เลือกประเภทกิจการ '{work_biz}' ไม่ได้ ({biz_res.get('reason') if biz_res else 'no_response'})"
+                return res
+            log(
+                f"      [Step 3.3.1] ประเภทกิจการ: {biz_res.get('text','')} "
+                f"[{biz_res.get('matched_by','')} score={biz_res.get('score','?')}, "
+                f"options={biz_res.get('option_count','?')}]"
+            )
+            if biz_res.get("matched_by") not in ("exact",):
+                for cand in biz_res.get("top3", []):
+                    log(f"        - cand: score={cand.get('score')} [{cand.get('method')}] {cand.get('text','')}")
+            page.wait_for_timeout(900)
+            _wait_loading_disappeared(page, timeout_ms=6000, log=log, allow_modal=True)
+
+        # ---- 3.3.1: ตรวจสอบประเภทงานที่ขออนุญาต (permitCateWork) ต้องตรงกับ Excel ----
+        if work_job:
+            verify = page.evaluate(r"""(want) => {
+                const norm = s => (s||'').replace(/\s+/g,' ').trim();
+                const vis = el => { if(!el) return false; const st=getComputedStyle(el); const r=el.getBoundingClientRect(); return st.display!=='none'&&st.visibility!=='hidden'&&(el.offsetParent!==null||r.width>0); };
+                let sels = Array.from(document.querySelectorAll('#permitCateWork, select[name="permitCateWork"]')).filter(vis);
+                let sel = sels[sels.length - 1];
+                if (!sel) sel = Array.from(document.querySelectorAll('select')).filter(vis)
+                    .find(s => Array.from(s.options).some(o => /กรรมกร|งาน/.test(o.textContent || '')));
+                if (!sel) return { ok:false, reason:'no permitCateWork select' };
+                const w = norm(want);
+                const opt = Array.from(sel.options).find(o => norm(o.textContent) === w)
+                         || Array.from(sel.options).find(o => w && norm(o.textContent).includes(w));
+                const available = Array.from(sel.options).map(o => norm(o.textContent)).filter(t => t && t!=='-- กรุณาเลือก --' && t!=='กรุณาเลือก');
+                if (!opt) return { ok:false, reason:'mismatch', options: available.slice(0,10) };
+                sel.value = opt.value;
+                sel.dispatchEvent(new Event('input', { bubbles: true }));
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                if (window.jQuery) { try { jQuery(sel).val(opt.value).trigger('change'); jQuery(sel).trigger({type:'select2:select', params:{data:{id:opt.value, text:opt.textContent}}}); } catch(e){} }
+                return { ok:true, text: norm(opt.textContent).slice(0,60) };
+            }""", work_job)
+            if not verify or not verify.get("ok"):
+                opts = (verify or {}).get("options", [])
+                _close_workplace_modal()
+                res["status"] = "SKIP"
+                res["note"] = (f"Step 3.3.1: ประเภทงานที่ขออนุญาตไม่ตรง Excel "
+                               f"(ต้องการ '{work_job}', มีให้เลือก: {opts})")
+                return res
+            log(f"      [Step 3.3.1] ✓ ประเภทงานที่ขออนุญาตตรง: {verify.get('text','')}")
+            page.wait_for_timeout(700)
+            _wait_loading_disappeared(page, timeout_ms=5000, log=log, allow_modal=True)
+
+        # ---- 3.3.2: กรอกลักษณะงาน (jobDescription) ----
+        # NOTE: id="jobDescription" มีซ้ำหลายตัวใน DOM (template ที่ซ่อน + ตัวจริง)
+        # ต้องเล็งเฉพาะตัวที่ ':visible' มิฉะนั้น .first จะไปโดน template แล้ว wait_for(visible) timeout
+        if work_detail:
+            jd_filled = False
+            for _ in range(3):
+                try:
+                    jd = page.locator('#jobDescription:visible, input[name="jobDescription"]:visible').last
+                    jd.wait_for(state="visible", timeout=4000)
+                    jd.scroll_into_view_if_needed(timeout=2000)
+                    jd.click(timeout=3000)
+                    jd.fill("")
+                    jd.fill(work_detail)
+                    jd.dispatch_event("input")
+                    jd.dispatch_event("change")
+                    val = jd.input_value(timeout=2000)
+                    if (val or "").strip() == work_detail:
+                        jd_filled = True
+                        break
+                except Exception:
+                    pass
+                page.wait_for_timeout(600)
+            if not jd_filled:
+                r = page.evaluate(r"""(val) => {
+                    const vis = el => { if(!el) return false; const st=getComputedStyle(el); const rc=el.getBoundingClientRect(); return st.display!=='none'&&st.visibility!=='hidden'&&rc.width>0&&rc.height>0; };
+                    const els = Array.from(document.querySelectorAll('#jobDescription, input[name="jobDescription"]')).filter(vis);
+                    const el = els[els.length - 1];
+                    if (!el) return { ok:false };
+                    el.focus(); el.value = val;
+                    el.dispatchEvent(new Event('input', { bubbles:true }));
+                    el.dispatchEvent(new Event('change', { bubbles:true }));
+                    el.dispatchEvent(new Event('blur', { bubbles:true }));
+                    return { ok:true };
+                }""", work_detail)
+                jd_filled = bool(r and r.get("ok"))
+            if not jd_filled:
+                _close_workplace_modal()
+                res["status"] = "ALERT"
+                res["note"] = "Step 3.3.2: กรอกลักษณะงานไม่สำเร็จ"
+                return res
+            log(f"      [Step 3.3.2] ลักษณะงาน: {work_detail}")
+
+        # ---- บันทึกในโมดัล workplace ----
+        msave = False
+        try:
+            sb = page.locator("button:visible:has-text('บันทึก'), a:visible:has-text('บันทึก')").last
+            if sb.count() > 0:
+                sb.scroll_into_view_if_needed(timeout=2000)
+                sb.click(timeout=4000, force=True)
+                msave = True
+        except Exception:
+            msave = False
+        if not msave:
+            try:
+                msave = bool(page.evaluate(r"""() => {
+                    const btn = Array.from(document.querySelectorAll('button, a')).reverse().find(el => {
+                        const st = getComputedStyle(el);
+                        return /บันทึก/.test((el.textContent || '').trim()) && el.offsetParent !== null && st.visibility !== 'hidden';
+                    });
+                    if (!btn) return false;
+                    btn.scrollIntoView({ block: 'center' }); btn.click(); return true;
+                }"""))
+            except Exception:
+                msave = False
+        if not msave:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.3: ไม่พบปุ่มบันทึกในโมดัลสถานที่ทำงาน"
+            return res
+        page.wait_for_timeout(1200)
+        _wait_loading_disappeared(page, timeout_ms=8000, log=log, allow_modal=True)
+        # ปิด swal ยืนยัน/สำเร็จ ถ้ามี
+        try:
+            page.evaluate(r"""() => {
+                const btn = Array.from(document.querySelectorAll('.swal2-confirm, button, a'))
+                  .find(b => /ตกลง|ยืนยัน|ปิด|ok/i.test((b.textContent||'').trim()) && b.offsetParent !== null);
+                if (btn) btn.click();
+            }""")
+        except Exception:
+            pass
+        page.wait_for_timeout(800)
+        _wait_loading_disappeared(page, timeout_ms=5000, log=log, allow_modal=True)
+        log("      [Step 3.3] ✅ บันทึกข้อมูลการขออนุญาตแล้ว")
+
+        # ---- Step 3.4: กดถัดไป → Step 4 (แนบเอกสาร) ----
+        next_ok = False
+        try:
+            nb = page.locator(
+                "button:visible.btn-next:has-text('ถัดไป'), "
+                "button:visible:has-text('ถัดไป'), a:visible:has-text('ถัดไป')"
+            ).last
+            if nb.count() > 0:
+                nb.scroll_into_view_if_needed(timeout=2000)
+                nb.click(timeout=4000)
+                next_ok = True
+        except Exception:
+            next_ok = False
+        if not next_ok:
+            try:
+                next_ok = bool(page.evaluate(r"""() => {
+                    const btn = Array.from(document.querySelectorAll('button, a')).find(el =>
+                        /ถัดไป/.test((el.textContent || '').trim()) && el.offsetParent !== null);
+                    if (!btn) return false;
+                    btn.scrollIntoView({ block: 'center' }); btn.click(); return true;
+                }"""))
+            except Exception:
+                next_ok = False
+        if not next_ok:
+            res["status"] = "ALERT"
+            res["note"] = "Step 3.4: ไม่พบปุ่มถัดไป"
+            return res
+        page.wait_for_timeout(1200)
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log)
+        log("      [Step 3.4] ✅ กดถัดไป → Step 4")
+
+        res["status"] = "SUCCESS"
+        res["note"] = "Step 3.3-3.4 complete (สาขา+ประเภทกิจการ+ตรวจประเภทงาน+ลักษณะงาน+ถัดไป)"
+        return res
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["note"] = f"Step 3.3 error: {str(e)[:180]}"
+        return res
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Step 4 — แนบเอกสาร (4.1 เอกสารลูกจ้าง + 4.2 เอกสารนายจ้าง)
+# ════════════════════════════════════════════════════════════════════════════
+_BT44_MAX_DOC_MB: float = 4.0
+
+
+def _bt44_validate_row_docs(rec: dict[str, Any], limit_mb: float = _BT44_MAX_DOC_MB) -> list[str]:
+    """ตรวจไฟล์แนบของ 1 แถว 'ก่อนรัน' ตามกติกา:
+    - ไฟล์ห้ามเกิน 4 MB (เกิน → บล็อก ไม่รัน)
+    - ช่องที่มี * (required) ต้องมีไฟล์ใน Excel
+    - กลุ่มหนังสือเดินทาง (สำเนาหนังสือเดินทาง/ใช้แทน/หลักฐานเข้าราชอาณาจักร) ต้องมีอย่างน้อย 1 ไฟล์
+    - ไฟล์ที่ระบุ path ต้องมีอยู่จริงบนดิสก์
+    คืน list ข้อความปัญหา (ว่าง = ผ่าน)
+    """
+    limit = int(limit_mb * 1024 * 1024)
+    problems: list[str] = []
+    group_seen: dict[str, bool] = {}
+    group_has: dict[str, bool] = {}
+    for d in rec.get("docs", []):
+        th = (d.get("th_name") or "")[:30]
+        raw = (d.get("raw_path") or "").strip()
+        path = (d.get("path") or "").strip()
+        grp = d.get("group") or ""
+        if grp:
+            group_seen[grp] = True
+            if raw:
+                group_has[grp] = True
+        if not raw:
+            if d.get("required"):
+                problems.append(f"ขาดไฟล์บังคับ: {th}")
+            continue
+        p = Path(path)
+        if not p.is_file():
+            problems.append(f"ไม่พบไฟล์: {p.name}")
+            continue
+        try:
+            if p.stat().st_size > limit:
+                problems.append(f"ไฟล์เกิน {limit_mb:.0f}MB ({p.stat().st_size/1024/1024:.2f}MB): {p.name}")
+        except OSError:
+            pass
+    for grp, seen in group_seen.items():
+        if seen and not group_has.get(grp):
+            problems.append("ต้องแนบอย่างน้อย 1 ไฟล์ (กลุ่มหนังสือเดินทาง)")
+    for o in rec.get("other_docs", []):
+        path = (o.get("path") or "").strip()
+        if not path:
+            continue
+        p = Path(path)
+        if not p.is_file():
+            problems.append(f"ไม่พบไฟล์(อื่นๆ): {p.name}")
+            continue
+        try:
+            if p.stat().st_size > limit:
+                problems.append(f"ไฟล์เกิน {limit_mb:.0f}MB (อื่นๆ): {p.name}")
+        except OSError:
+            pass
+    return problems
+
+
+def _bt44_preflight_docs(records: list[dict[str, Any]], log=print) -> dict[int, list[str]]:
+    """สแกนไฟล์แนบทุกแถว 'ก่อน' เริ่มทำงาน — รายงานแถวที่ไม่ผ่าน (จะถูกข้าม ไม่รัน)
+    คืน dict row_index → list ปัญหา
+    """
+    blocked: dict[int, list[str]] = {}
+    for rec in records:
+        probs = _bt44_validate_row_docs(rec)
+        if probs:
+            blocked[rec.get("row_index", -1)] = probs
+    if blocked:
+        log(f"  ⚠ ตรวจไฟล์แนบ Step 4: พบ {len(blocked)} แถวมีปัญหา (จะถูกข้าม ไม่รัน):")
+        for rec in records:
+            ri = rec.get("row_index", -1)
+            if ri in blocked:
+                log(f"      • แถว {ri} {rec.get('name','')}: " + " | ".join(blocked[ri][:6]))
+    else:
+        log("  ✓ ตรวจไฟล์แนบ Step 4: ทุกแถวผ่าน (ไฟล์ ≤ 4 MB, ช่องบังคับมีไฟล์ครบ)")
+    return blocked
+
+
+def _bt44_find_doc_input_id(page: Page, th_name: str) -> str:
+    """หา id ของช่อง input[type=file] โดยจับคู่จาก data-document-th (ค่า TH) = ชื่อเอกสาร
+    (id สุ่มทุก session จึง match จากชื่อเอกสารแทน) — ถ้าไม่มี id จะตั้งให้
+    """
+    try:
+        return page.evaluate(r"""(want) => {
+            const norm = s => (s||'').replace(/\s+/g,' ').trim();
+            const w = norm(want);
+            const inps = Array.from(document.querySelectorAll('input[type=file]'));
+            const getTH = inp => {
+                const raw = inp.getAttribute('data-document-th') || '';
+                try { const j = JSON.parse(raw); return norm(j.TH || ''); } catch (e) { return norm(raw); }
+            };
+            const ensureId = inp => { if (!inp.id) inp.id = 'bt44doc-' + Math.random().toString(36).slice(2, 8); return inp.id; };
+            for (const inp of inps) { if (getTH(inp) === w) return ensureId(inp); }
+            for (const inp of inps) { const th = getTH(inp); if (th && (th.includes(w) || w.includes(th))) return ensureId(inp); }
+            return '';
+        }""", th_name)
+    except Exception:
+        return ""
+
+
+def _bt44_handle_crop_modal(page: Page, log=print) -> bool:
+    """รูปถ่าย 3x4 เมื่อแนบไฟล์ภาพจะเด้งโมดอลครอป (cropper.js) — ปุ่มบันทึก = #crop-save-button
+    ตั้งกรอบครอป 3:4 ใหญ่สุด (best-effort ถ้าเข้าถึง window.cropper ได้) แล้วกดบันทึก
+    คืน True ถ้าพบและจัดการโมดอลครอปแล้ว
+    """
+    appeared = False
+    for _ in range(16):  # รอสูงสุด ~8 วินาที
+        try:
+            shown = bool(page.evaluate(r"""() => {
+                const b = document.getElementById('crop-save-button');
+                if (!b) return false;
+                const r = b.getBoundingClientRect(); const st = getComputedStyle(b);
+                return st.display !== 'none' && st.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+            }"""))
+        except Exception:
+            shown = False
+        if shown:
+            appeared = True
+            break
+        page.wait_for_timeout(500)
+    if not appeared:
+        return False
+    page.wait_for_timeout(700)
+    try:
+        page.evaluate(r"""() => {
+            try {
+                const cr = window.cropper;
+                if (cr && typeof cr.getCanvasData === 'function' && typeof cr.setCropBoxData === 'function') {
+                    const c = cr.getCanvasData(); const ar = 3 / 4;
+                    let w = c.width, h = w / ar;
+                    if (h > c.height) { h = c.height; w = h * ar; }
+                    cr.setCropBoxData({ left: c.left + (c.width - w) / 2, top: c.top + (c.height - h) / 2, width: w, height: h });
+                }
+            } catch (e) {}
+        }""")
+    except Exception:
+        pass
+    page.wait_for_timeout(300)
+    try:
+        page.evaluate(r"""() => { const b = document.getElementById('crop-save-button'); if (b) b.click(); }""")
+    except Exception:
+        pass
+    for _ in range(20):  # รอโมดอลปิดสูงสุด ~10 วินาที
+        page.wait_for_timeout(500)
+        try:
+            gone = bool(page.evaluate(r"""() => {
+                const b = document.getElementById('crop-save-button');
+                if (!b) return true;
+                const r = b.getBoundingClientRect(); const st = getComputedStyle(b);
+                return !(st.display !== 'none' && r.width > 0 && r.height > 0);
+            }"""))
+        except Exception:
+            gone = False
+        if gone:
+            break
+    page.wait_for_timeout(500)
+    log("        ✓ ครอปรูปถ่าย (3:4) แล้วบันทึก")
+    return True
+
+
+def _bt44_upload_one_doc(page: Page, input_id: str, abs_path: str, is_photo: bool, log=print) -> dict[str, Any]:
+    """แนบไฟล์ลงช่องเอกสาร 1 ช่อง (set_input_files บน input ที่ซ่อนได้)
+    ช่องรูปถ่ายจะเด้งโมดอลครอป → จัดการผ่าน _bt44_handle_crop_modal
+    ยืนยันสำเร็จเมื่อ input มีไฟล์ หรือมี chip ชื่อไฟล์ปรากฏ
+    """
+    res = {"ok": False, "note": ""}
+    p = Path(abs_path)
+    if not abs_path or not p.exists():
+        res["note"] = f"ไม่พบไฟล์ ({p.name if abs_path else 'ว่าง'})"
+        return res
+    try:
+        if p.stat().st_size > _BT44_MAX_DOC_MB * 1024 * 1024:
+            res["note"] = f"ไฟล์เกิน {_BT44_MAX_DOC_MB:.0f}MB ({p.stat().st_size/1024/1024:.2f}MB)"
+            return res
+    except OSError:
+        pass
+    try:
+        page.set_input_files(f"#{input_id}", str(p))
+    except Exception as e:
+        res["note"] = f"แนบไฟล์ล้มเหลว: {str(e)[:90]}"
+        return res
+    if is_photo:
+        _bt44_handle_crop_modal(page, log=log)
+    fn = p.name
+    confirmed = False
+    for _ in range(16):  # รอยืนยันสูงสุด ~8 วินาที
+        try:
+            confirmed = bool(page.evaluate(r"""(args) => {
+                const norm = s => (s||'').replace(/\s+/g,' ').trim();
+                const id = args.id; const fn = norm(args.fn); const photo = args.photo;
+                const inp = document.getElementById(id);
+                if (!photo && inp && inp.files && inp.files.length > 0) return true;
+                const fnShort = fn.length > 12 ? fn.slice(0, 12) : fn;
+                return Array.from(document.querySelectorAll('a,span,div,p,li,td')).some(e => {
+                    if (!e.offsetParent) return false;
+                    const t = norm(e.textContent);
+                    return t && (t.includes(fn) || (fnShort.length >= 6 && t.includes(fnShort)));
+                });
+            }""", {"id": input_id, "fn": fn, "photo": is_photo}))
+        except Exception:
+            confirmed = False
+        if confirmed:
+            break
+        page.wait_for_timeout(500)
+    res["ok"] = confirmed
+    res["note"] = fn if confirmed else f"อัปโหลดไม่ยืนยัน ({fn})"
+    return res
+
+
+def _bt44_attach_one_other(page: Page, abs_path: str, idx: int, log=print) -> bool:
+    """เอกสารอื่นๆที่เกี่ยวข้อง — แนบทีละไฟล์ผ่านโมดอล 'อัปโหลดเอกสาร' (เปิดด้วยปุ่ม
+    [data-action='popup-upload'] / 'เพิ่มเอกสาร'): เลือกไฟล์ → กรอกชื่อเอกสาร (#document) → ยืนยัน
+    """
+    p = Path(abs_path)
+    if not abs_path or not p.exists():
+        log(f"        ✗ เอกสารอื่นๆ #{idx}: ไม่พบไฟล์ ({p.name if abs_path else 'ว่าง'})")
+        return False
+    try:
+        if p.stat().st_size > _BT44_MAX_DOC_MB * 1024 * 1024:
+            log(f"        ✗ เอกสารอื่นๆ #{idx}: เกิน {_BT44_MAX_DOC_MB:.0f}MB ({p.stat().st_size/1024/1024:.2f}MB)")
+            return False
+    except OSError:
+        pass
+    try:
+        # เปิดโมดอล
+        opened = False
+        try:
+            ab = page.locator("[data-action='popup-upload']:visible, button:visible:has-text('เพิ่มเอกสาร')").last
+            if ab.count() > 0:
+                ab.scroll_into_view_if_needed(timeout=2000)
+                ab.click(timeout=4000)
+                opened = True
+        except Exception:
+            opened = False
+        if not opened:
+            opened = bool(page.evaluate(r"""() => {
+                const b = document.querySelector("[data-action='popup-upload']")
+                  || Array.from(document.querySelectorAll('button,a')).find(e => /เพิ่มเอกสาร/.test((e.textContent||'').trim()));
+                if (b) { b.click(); return true; }
+                return false;
+            }"""))
+        if not opened:
+            log(f"        ✗ เอกสารอื่นๆ #{idx}: ไม่พบปุ่ม 'เพิ่มเอกสาร'")
+            return False
+        try:
+            page.wait_for_selector("#document", state="visible", timeout=8000)
+        except PWTimeoutError:
+            log(f"        ✗ เอกสารอื่นๆ #{idx}: โมดอลไม่เปิด (#document ไม่พบ)")
+            return False
+        page.wait_for_timeout(500)
+        # ทำเครื่องหมายโมดอลที่มี #document + ปุ่มยืนยัน
+        page.evaluate(r"""() => {
+            const norm = s => (s||'').replace(/\s+/g,' ').trim();
+            const doc = document.getElementById('document');
+            if (!doc) return false;
+            let root = doc;
+            for (let up = 0; up < 10 && root.parentElement; up++) {
+                root = root.parentElement;
+                const hasConfirm = Array.from(root.querySelectorAll('button,a')).some(e => norm(e.textContent) === 'ยืนยัน');
+                if (hasConfirm) {
+                    document.querySelectorAll('[data-bt44-modal]').forEach(e => e.removeAttribute('data-bt44-modal'));
+                    root.setAttribute('data-bt44-modal', '1');
+                    return true;
+                }
+            }
+            return false;
+        }""")
+        # เลือกไฟล์: ถ้ามี input ซ่อนในโมดอล set ตรง ไม่งั้นใช้ file chooser
+        modal_has_input = bool(page.evaluate(r"""() => {
+            const root = document.querySelector("[data-bt44-modal='1']") || document;
+            const inp = root.querySelector("input[type=file]");
+            if (inp) { inp.setAttribute('data-bt44-file', '1'); return true; }
+            return false;
+        }"""))
+        if modal_has_input:
+            page.set_input_files("[data-bt44-file='1']", str(p))
+        else:
+            choose = page.locator("[data-bt44-modal='1']").locator("button, a, label").filter(has_text="เลือกไฟล์").first
+            if choose.count() == 0:
+                choose = page.locator("button:visible, a:visible, label:visible").filter(has_text="เลือกไฟล์").last
+            with page.expect_file_chooser(timeout=8000) as fc:
+                choose.click(timeout=4000)
+            fc.value.set_files(str(p))
+        page.wait_for_timeout(900)
+        # กรอกชื่อเอกสาร = ชื่อไฟล์ (ไม่รวมนามสกุล)
+        try:
+            page.locator("#document").fill(p.stem, timeout=3000)
+        except Exception:
+            page.evaluate(r"""(v) => {
+                const t = document.getElementById('document');
+                if (t) { t.value = v; t.dispatchEvent(new Event('input', { bubbles: true })); t.dispatchEvent(new Event('change', { bubbles: true })); }
+            }""", p.stem)
+        page.wait_for_timeout(300)
+        # ยืนยัน
+        try:
+            cb = page.locator("[data-bt44-modal='1']").locator("button:has-text('ยืนยัน'), a:has-text('ยืนยัน')").first
+            if cb.count() == 0:
+                cb = page.locator("button:visible:has-text('ยืนยัน'), a:visible:has-text('ยืนยัน')").last
+            cb.click(timeout=4000)
+        except Exception:
+            page.evaluate(r"""() => {
+                const root = document.querySelector("[data-bt44-modal='1']") || document;
+                const b = Array.from(root.querySelectorAll('button,a')).find(e => /ยืนยัน/.test((e.textContent||'').trim()));
+                if (b) b.click();
+            }""")
+        # รอโมดอลปิด
+        closed = False
+        for _ in range(16):
+            page.wait_for_timeout(500)
+            try:
+                closed = bool(page.evaluate(r"""() => { const d = document.getElementById('document'); return !d || !d.offsetParent; }"""))
+            except Exception:
+                closed = False
+            if closed:
+                break
+        page.wait_for_timeout(400)
+        if closed:
+            log(f"        ✓ เอกสารอื่นๆ #{idx}: {p.name}")
+            return True
+        log(f"        ⚠ เอกสารอื่นๆ #{idx}: ไม่ยืนยันการปิดโมดอล ({p.name})")
+        try:
+            page.evaluate(r"""() => {
+                const b = Array.from(document.querySelectorAll('button,a')).find(e => /ยกเลิก/.test((e.textContent||'').trim()) && e.offsetParent);
+                if (b) b.click();
+            }""")
+        except Exception:
+            pass
+        return False
+    except Exception as e:
+        log(f"        ✗ เอกสารอื่นๆ #{idx} ผิดพลาด: {str(e)[:90]}")
+        try:
+            page.evaluate(r"""() => {
+                const b = Array.from(document.querySelectorAll('button,a')).find(e => /ยกเลิก/.test((e.textContent||'').trim()) && e.offsetParent);
+                if (b) b.click();
+            }""")
+        except Exception:
+            pass
+        return False
+
+
+def _bt44_click_next(page: Page, log=print) -> bool:
+    """กดปุ่ม 'ถัดไป' (#button_next) ในขั้นแนบเอกสาร"""
+    try:
+        nb = page.locator("#button_next:visible").first
+        if nb.count() > 0:
+            nb.scroll_into_view_if_needed(timeout=2000)
+            nb.click(timeout=4000)
+            return True
+    except Exception:
+        pass
+    try:
+        nb = page.locator(
+            "button:visible.btn-next:has-text('ถัดไป'), button:visible:has-text('ถัดไป'), a:visible:has-text('ถัดไป')"
+        ).last
+        if nb.count() > 0:
+            nb.scroll_into_view_if_needed(timeout=2000)
+            nb.click(timeout=4000)
+            return True
+    except Exception:
+        pass
+    try:
+        return bool(page.evaluate(r"""() => {
+            const b = document.querySelector('#button_next')
+              || Array.from(document.querySelectorAll('button,a')).find(e => /ถัดไป/.test((e.textContent||'').trim()) && e.offsetParent !== null);
+            if (b) { b.scrollIntoView({ block: 'center' }); b.click(); return true; }
+            return false;
+        }"""))
+    except Exception:
+        return False
+
+
+def _bt44_step4_attach_docs(page: Page, rec: dict[str, Any], screenshot_dir: Path, log=print) -> dict[str, Any]:
+    """Step 4 — แนบเอกสาร: 4.1 เอกสารลูกจ้าง (จับคู่ด้วย data-document-th) + รูปถ่ายครอป +
+    เอกสารอื่นๆ (โมดอล) → ถัดไป → 4.2 เอกสารนายจ้าง → ถัดไป
+    คืน {status, note, screenshot}
+    """
+    res: dict[str, Any] = {"status": "", "note": "", "screenshot": ""}
+    seq = rec.get("seq", "?")
+    name = rec.get("name", "")
+    base = _safe_filename(f"{seq}_{name}")
+    try:
+        # รอหน้าแนบเอกสารพร้อม (มี input[type=file] ที่มี data-document-th)
+        try:
+            page.wait_for_function(
+                r"""() => Array.from(document.querySelectorAll('input[type=file]')).some(i => i.getAttribute('data-document-th'))""",
+                timeout=15000,
+            )
+        except PWTimeoutError:
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_step4_fail.png"), full_page=True)
+                res["screenshot"] = str(screenshot_dir / f"{base}_step4_fail.png")
+            except Exception:
+                pass
+            res["status"] = "ALERT"
+            res["note"] = "Step 4: ไม่พบช่องอัปโหลดเอกสาร"
+            return res
+        _wait_loading_disappeared(page, timeout_ms=8000, log=log, allow_modal=True)
+        page.wait_for_timeout(800)
+
+        # ---- 4.1 เอกสารหลัก ----
+        n_ok = 0
+        n_try = 0
+        problems: list[str] = []
+        for d in rec.get("docs", []):
+            path = (d.get("path") or "").strip()
+            if not path:
+                continue
+            n_try += 1
+            input_id = _bt44_find_doc_input_id(page, d["th_name"])
+            if not input_id:
+                problems.append(f"ไม่พบช่อง:{d['th_name'][:20]}")
+                log(f"        ✗ ไม่พบช่องอัปโหลด: {d['th_name'][:40]}")
+                continue
+            r = _bt44_upload_one_doc(page, input_id, path, bool(d.get("is_photo")), log=log)
+            if r["ok"]:
+                n_ok += 1
+                log(f"        ✓ {d['th_name'][:36]}: {r['note']}")
+            else:
+                problems.append(f"{d['th_name'][:16]}:{r['note'][:24]}")
+                log(f"        ✗ {d['th_name'][:36]}: {r['note']}")
+
+        # ---- เอกสารอื่นๆที่เกี่ยวข้อง (โมดอล ทีละไฟล์) ----
+        others = rec.get("other_docs", [])
+        n_oth_ok = 0
+        for i, o in enumerate(others, 1):
+            if _bt44_attach_one_other(page, (o.get("path") or "").strip(), i, log=log):
+                n_oth_ok += 1
+
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_step4_1_uploaded.png"), full_page=True)
+        except Exception:
+            pass
+
+        # ---- 4.1 → ถัดไป ----
+        if not _bt44_click_next(page, log=log):
+            res["status"] = "ALERT"
+            res["note"] = f"Step 4.1: ไม่พบปุ่มถัดไป" + (f" | {';'.join(problems)[:100]}" if problems else "")
+            return res
+        page.wait_for_timeout(1500)
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log, allow_modal=True)
+
+        # ตรวจ swal แจ้งเตือน (validation บล็อก) หลังถัดไป
+        alert_txt = ""
+        try:
+            alert_txt = page.evaluate(r"""() => {
+                const norm = s => (s||'').replace(/\s+/g,' ').trim();
+                const sw = document.querySelector('.swal2-popup');
+                if (sw && sw.offsetParent !== null) {
+                    const t = sw.querySelector('.swal2-title'); const h = sw.querySelector('.swal2-html-container');
+                    const txt = norm((t ? t.textContent : '') + ' ' + (h ? h.textContent : ''));
+                    if (txt && !/สำเร็จ|เรียบร้อย|complete/i.test(txt)) return txt;
+                }
+                return '';
+            }""") or ""
+        except Exception:
+            alert_txt = ""
+        if alert_txt:
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_step4_1_alert.png"), full_page=True)
+                res["screenshot"] = str(screenshot_dir / f"{base}_step4_1_alert.png")
+            except Exception:
+                pass
+            res["status"] = "ALERT"
+            res["note"] = f"Step 4.1 ถัดไปถูกบล็อก: {alert_txt[:140]}"
+            return res
+        log(f"      [Step 4.1] ✅ แนบเอกสารลูกจ้าง {n_ok}/{n_try} + อื่นๆ {n_oth_ok}/{len(others)} → ถัดไป")
+
+        # ---- 4.2 เอกสารนายจ้าง → ถัดไป (ถ้ายังอยู่ขั้นแนบเอกสาร) ----
+        page.wait_for_timeout(800)
+        on_42 = False
+        try:
+            on_42 = bool(page.evaluate(r"""() => {
+                const t = (document.body.innerText || '');
+                const hasNext = !!document.querySelector('#button_next');
+                const hasUpload = Array.from(document.querySelectorAll('input[type=file]')).some(i => i.getAttribute('data-document-th'))
+                  || !!document.querySelector("[data-action='popup-upload']");
+                return hasNext && (/เอกสารนายจ้าง|เอกสารของนายจ้าง/.test(t) || hasUpload);
+            }"""))
+        except Exception:
+            on_42 = False
+        if on_42:
+            if _bt44_click_next(page, log=log):
+                page.wait_for_timeout(1500)
+                _wait_loading_disappeared(page, timeout_ms=10000, log=log, allow_modal=True)
+                log("      [Step 4.2] ✅ เอกสารนายจ้าง → ถัดไป")
+            else:
+                log("      [Step 4.2] ⚠ ไม่พบปุ่มถัดไป (อาจข้ามขั้นแล้ว)")
+        else:
+            log("      [Step 4.2] (ไม่พบขั้นเอกสารนายจ้าง — อาจรวมกับ 4.1 หรือข้ามไปสรุปแล้ว)")
+
+        try:
+            page.screenshot(path=str(screenshot_dir / f"{base}_step4_done.png"), full_page=True)
+            res["screenshot"] = str(screenshot_dir / f"{base}_step4_done.png")
+        except Exception:
+            pass
+
+        warn = (" | ปัญหา: " + ";".join(problems)) if problems else ""
+        res["status"] = "SUCCESS"
+        res["note"] = f"แนบเอกสาร {n_ok}/{n_try} + อื่นๆ {n_oth_ok}/{len(others)}{warn}"
+        return res
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["note"] = f"Step 4 error: {str(e)[:160]}"
+        return res
+
+
+def _bt44_step5_summary(page: Page, rec: dict[str, Any], screenshot_dir: Path, log=print) -> dict[str, Any]:
+    """Step 5 สรุปคำขอ (3 หน้า ใช้ปุ่ม 'ถัดไป' เหมือนกัน):
+      5.1 ข้อมูลผู้ยื่นคำขอ → กดถัดไป
+      5.2 ข้อมูลนายจ้างและประเภทงาน → กดถัดไป
+      5.3 เอกสารผู้ยื่นคำขอ → ติ๊ก consent (name='consent') → กด #consentButton
+    """
+    res: dict[str, Any] = {"status": "", "note": "", "screenshot": ""}
+    base = re.sub(r'[^A-Za-z0-9_-]+', '_', (rec.get("name") or "row"))[:40]
+
+    def _click_next_5(stage: str) -> bool:
+        try:
+            nb = page.locator("#button_next:visible").first
+            if nb.count() > 0:
+                nb.scroll_into_view_if_needed(timeout=2000)
+                nb.click(timeout=4000)
+                return True
+        except Exception:
+            pass
+        try:
+            nb2 = page.locator("button:visible:has-text('ถัดไป'), a:visible:has-text('ถัดไป')").last
+            if nb2.count() > 0:
+                nb2.scroll_into_view_if_needed(timeout=2000)
+                nb2.click(timeout=4000)
+                return True
+        except Exception:
+            pass
+        try:
+            ok = page.evaluate(r"""() => {
+                const b = Array.from(document.querySelectorAll('button,a')).find(
+                  x => x.offsetParent !== null && /ถัดไป/.test((x.textContent||'').trim())
+                );
+                if (b) { b.click(); return true; }
+                return false;
+            }""")
+            return bool(ok)
+        except Exception:
+            return False
+
+    try:
+        page.wait_for_timeout(1200)
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log, allow_modal=True)
+
+        # 5.1 → ถัดไป
+        if not _click_next_5("5.1"):
+            res["status"] = "ALERT"
+            res["note"] = "Step 5.1 กด 'ถัดไป' ไม่สำเร็จ"
+            return res
+        page.wait_for_timeout(1500)
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log, allow_modal=True)
+        log("      [Step 5.1] ✅ กด 'ถัดไป' → หน้า 2/3")
+
+        # 5.2 → ถัดไป
+        if not _click_next_5("5.2"):
+            res["status"] = "ALERT"
+            res["note"] = "Step 5.2 กด 'ถัดไป' ไม่สำเร็จ"
+            return res
+        page.wait_for_timeout(1500)
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log, allow_modal=True)
+        log("      [Step 5.2] ✅ กด 'ถัดไป' → หน้า 3/3")
+
+        # 5.3 — ติ๊ก consent
+        consent_result = page.evaluate(r"""() => {
+            const cb = document.querySelector('input[name="consent"]');
+            if (!cb) return 'NO_CB';
+            if (cb.checked) return 'ALREADY';
+            try { cb.click(); } catch(e) {}
+            if (cb.checked) return 'OK_CLICK';
+            cb.checked = true;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+            cb.dispatchEvent(new Event('input', { bubbles: true }));
+            return cb.checked ? 'OK_FORCE' : 'FAIL';
+        }""")
+        if consent_result in ('NO_CB', 'FAIL'):
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{base}_step5_3_no_consent.png"), full_page=True)
+            except Exception:
+                pass
+            res["status"] = "ALERT"
+            res["note"] = f"Step 5.3 ติ๊ก consent ไม่สำเร็จ ({consent_result})"
+            return res
+        page.wait_for_timeout(600)
+        log(f"      [Step 5.3] ✓ ติ๊ก consent ({consent_result})")
+
+        # คลิก #consentButton
+        cb_clicked = False
+        try:
+            btn = page.locator("#consentButton").first
+            if btn.count() > 0:
+                btn.scroll_into_view_if_needed(timeout=2000)
+                btn.click(timeout=5000, force=True)
+                cb_clicked = True
+        except Exception as e:
+            log(f"      [Step 5.3] ⚠ consentButton click err: {str(e)[:80]}")
+        if not cb_clicked:
+            try:
+                page.evaluate(r"""() => { const b = document.getElementById('consentButton'); if (b) b.click(); }""")
+                cb_clicked = True
+            except Exception:
+                pass
+        if not cb_clicked:
+            res["status"] = "ALERT"
+            res["note"] = "Step 5.3 กด 'ถัดไป' (consentButton) ไม่สำเร็จ"
+            return res
+
+        page.wait_for_timeout(2500)
+        _wait_loading_disappeared(page, timeout_ms=15000, log=log, allow_modal=True)
+        page.wait_for_timeout(1500)
+        log("      [Step 5.3] ✅ กด 'ถัดไป' → Step 6 (ยืนยันตัวตน)")
+
+        try:
+            shot = screenshot_dir / f"{base}_step5_done.png"
+            page.screenshot(path=str(shot), full_page=True)
+            res["screenshot"] = str(shot)
+        except Exception:
+            pass
+
+        res["status"] = "SUCCESS"
+        res["note"] = "สรุปคำขอผ่าน 3 หน้า + ติ๊กรับทราบ"
+        return res
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["note"] = f"Step 5 error: {str(e)[:160]}"
+        return res
+
+
+def _bt44_step6_verify_identity(page: Page, rec: dict[str, Any], screenshot_dir: Path, log=print) -> dict[str, Any]:
+    """Step 6 ยืนยันตัวตน:
+      6.1 กด 'อัปโหลด' (data-action=picture-uploader) → set image #upload-popup → กด 'ยืนยัน'
+          → อ่านสถานะ (ยืนยันตัวตนสำเร็จ / ไม่สำเร็จ) → กด 'ถัดไป' (ไม่ว่าผลใด)
+    """
+    res: dict[str, Any] = {"status": "", "note": "", "screenshot": ""}
+    base = re.sub(r'[^A-Za-z0-9_-]+', '_', (rec.get("name") or "row"))[:40]
+
+    # หาไฟล์ภาพ 3x4 จาก rec['docs']
+    photo_path: Path | None = None
+    for d in rec.get("docs", []) or []:
+        th = (d.get("th_name") or "")
+        if "รูปถ่าย" in th:
+            p = d.get("path")
+            if p:
+                photo_path = Path(p)
+            break
+    if not photo_path or not photo_path.exists():
+        res["status"] = "ALERT"
+        res["note"] = f"Step 6 ไม่พบไฟล์ภาพ 3x4: {photo_path}"
+        return res
+
+    try:
+        # คลิก 'อัปโหลด' (picture-uploader) เพื่อเปิดโมดัล
+        opened = False
+        try:
+            up_btn = page.locator(
+                "[data-action='picture-uploader']:visible, "
+                "button.lang_btn_upload_photo:visible, "
+                "a.lang_btn_upload_photo:visible"
+            ).first
+            if up_btn.count() > 0:
+                up_btn.scroll_into_view_if_needed(timeout=2000)
+                up_btn.click(timeout=4000)
+                opened = True
+        except Exception:
+            pass
+        if not opened:
+            try:
+                page.evaluate(r"""() => {
+                    const b = Array.from(document.querySelectorAll('button,a')).find(x =>
+                      x.offsetParent !== null && (
+                        x.getAttribute('data-action') === 'picture-uploader' ||
+                        /อัปโหลด|อัพโหลด/.test((x.textContent||'').trim())
+                      )
+                    );
+                    if (b) b.click();
+                }""")
+                opened = True
+            except Exception:
+                pass
+        page.wait_for_timeout(1200)
+
+        # set ไฟล์ภาพเข้า #upload-popup (ซ่อนอยู่ก็ใช้ได้)
+        try:
+            page.set_input_files('#upload-popup', str(photo_path))
+            log(f"      [Step 6] ✓ set ภาพ: {photo_path.name}")
+        except Exception as e:
+            # fallback ผ่าน file chooser
+            try:
+                with page.expect_file_chooser() as fc:
+                    page.locator(
+                        "button:visible:has-text('เลือกไฟล์'), "
+                        "label:visible:has-text('เลือกไฟล์')"
+                    ).first.click()
+                fc.value.set_files(str(photo_path))
+                log(f"      [Step 6] ✓ set ภาพ (file chooser): {photo_path.name}")
+            except Exception as e2:
+                res["status"] = "ALERT"
+                res["note"] = f"Step 6 set ภาพไม่สำเร็จ: {str(e)[:60]} / {str(e2)[:60]}"
+                return res
+        page.wait_for_timeout(1500)
+
+        # กด 'ยืนยัน' ในโมดัล (btn-primary float-right)
+        confirmed = False
+        try:
+            ok_btn = page.locator(
+                "button.btn-primary.float-right:visible:has-text('ยืนยัน'), "
+                ".modal:visible button:has-text('ยืนยัน'), "
+                ".swal2-popup:visible button:has-text('ยืนยัน'), "
+                "[role='dialog']:visible button:has-text('ยืนยัน')"
+            ).first
+            if ok_btn.count() > 0:
+                ok_btn.click(timeout=5000)
+                confirmed = True
+        except Exception:
+            pass
+        if not confirmed:
+            try:
+                page.evaluate(r"""() => {
+                    const cands = Array.from(document.querySelectorAll('button')).filter(x =>
+                      x.offsetParent !== null && /ยืนยัน/.test((x.textContent||'').trim())
+                      && (x.className||'').includes('btn-primary')
+                    );
+                    if (cands.length > 0) cands[0].click();
+                }""")
+                confirmed = True
+            except Exception:
+                pass
+        if not confirmed:
+            res["status"] = "ALERT"
+            res["note"] = "Step 6 กด 'ยืนยัน' ในโมดัลไม่สำเร็จ"
+            return res
+
+        page.wait_for_timeout(3000)
+        _wait_loading_disappeared(page, timeout_ms=25000, log=log, allow_modal=True)
+        page.wait_for_timeout(3000)  # รอให้ระบบประมวลผลผลลัพธ์
+
+        # อ่านสถานะ
+        body_txt = ""
+        try:
+            body_txt = page.evaluate("() => (document.body.innerText || '').replace(/\\s+/g, ' ')") or ""
+        except Exception:
+            pass
+        identity_status = "ไม่ทราบ"
+        if "ยืนยันตัวตนสำเร็จ" in body_txt:
+            identity_status = "สำเร็จ"
+        elif "ยืนยันตัวตนไม่สำเร็จ" in body_txt:
+            identity_status = "ไม่สำเร็จ"
+        elif "ไม่สำเร็จ" in body_txt and "ตัวตน" in body_txt:
+            identity_status = "ไม่สำเร็จ"
+        elif "สำเร็จ" in body_txt and "ตัวตน" in body_txt:
+            identity_status = "สำเร็จ"
+        log(f"      [Step 6] 🔎 ยืนยันตัวตน: {identity_status}")
+
+        try:
+            shot = screenshot_dir / f"{base}_step6_status_{identity_status}.png"
+            page.screenshot(path=str(shot), full_page=True)
+            res["screenshot"] = str(shot)
+        except Exception:
+            pass
+
+        # กด 'ถัดไป' (ไม่ว่าจะสำเร็จหรือไม่)
+        nxt = False
+        try:
+            nb = page.locator("button:visible:has-text('ถัดไป'), a:visible:has-text('ถัดไป')").last
+            if nb.count() > 0:
+                nb.scroll_into_view_if_needed(timeout=2000)
+                nb.click(timeout=4000)
+                nxt = True
+        except Exception:
+            pass
+        if not nxt:
+            try:
+                page.evaluate(r"""() => {
+                    const b = Array.from(document.querySelectorAll('button,a')).find(x =>
+                      x.offsetParent !== null && /ถัดไป/.test((x.textContent||'').trim())
+                    );
+                    if (b) b.click();
+                }""")
+                nxt = True
+            except Exception:
+                pass
+        page.wait_for_timeout(2000)
+        _wait_loading_disappeared(page, timeout_ms=15000, log=log, allow_modal=True)
+        if nxt:
+            log("      [Step 6] ✅ กด 'ถัดไป' หลังยืนยันตัวตน")
+        else:
+            log("      [Step 6] ⚠ ไม่พบปุ่ม 'ถัดไป' หลังยืนยัน")
+
+        res["status"] = "SUCCESS"
+        res["note"] = f"ยืนยันตัวตน: {identity_status}"
+        return res
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["note"] = f"Step 6 error: {str(e)[:160]}"
+        return res
+
+
+def _bt44_parse_payment_pdf(pdf_bytes: bytes) -> dict[str, str]:
+    """แยกข้อมูลใบแจ้งชำระเงินของ บต.44 (โครงสร้างเดียวกับ บต.30)
+    คืน dict: bill_no, request_no, amount, due, txn_date, ref1, ref2,
+              alien_ref, biller_name, email, total_amount
+    """
+    out = _bt30_parse_payment_pdf(pdf_bytes)
+    # เพิ่ม field ที่ user ขอ
+    out.setdefault("biller_name", "")
+    out.setdefault("email", "")
+    out.setdefault("total_amount", "")
+    if not pdf_bytes:
+        return out
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        txt = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+    except Exception:
+        return out
+    import re as _re
+
+    def g(pat: str) -> str:
+        m = _re.search(pat, txt)
+        return m.group(1).strip() if m else ""
+
+    # Biller Name (ผู้นำส่ง = รายชื่อคนต่างด้าว) — บรรทัดถัดจาก '(Biller Name)'
+    out["biller_name"] = g(r"\(Biller Name\)\s*([^\n]+?)\s*(?:\n|เลข)")
+    # Email
+    out["email"] = g(r"\(Email\)\s*([^\s\n]+@[^\s\n]+)")
+    # Total Amount = "รวมเงินที่ต้องชำระทั้งสิ้น"
+    out["total_amount"] = (
+        g(r"Total Amount\s*([0-9,]+\.[0-9]{2})")
+        or g(r"รวม.{0,30}ทั้งสิ้น[^0-9]*([0-9,]+\.[0-9]{2})")
+        or out.get("amount", "")
+    )
+    return out
+
+
+def _bt44_step7_payment(
+    page: Page, rec: dict[str, Any], screenshot_dir: Path, log=print,
+) -> dict[str, Any]:
+    """Step 7 (การชำระเงิน) — *** ส่งคำขอจริง! ดาวน์โหลดได้ครั้งเดียว ***
+    7.1 กด 'ถัดไป' (เลือกช่องทางถ้าจำเป็น) → ส่งคำขอจริง
+    7.2 บนหน้าผลสำเร็จ: กด 'พิมพ์แบบฟอร์มการชำระเงิน' → ดาวน์โหลด PDF
+        + parse: เลขที่ใบแจ้งชำระเงิน, เลขที่คำขอ, ภายในวัน, ยอดรวม,
+                 วันที่ทำรายการ, ชื่อคนต่างด้าว, อีเมล
+    """
+    res: dict[str, Any] = {
+        "status": "", "note": "", "screenshot": "",
+        "bill_no": "", "request_no": "", "due": "", "total_amount": "",
+        "txn_date": "", "biller_name": "", "email": "", "amount": "",
+        "pdf_file": "", "data_file": "",
+    }
+    seq = rec.get("seq", "?")
+    name = rec.get("name", "")
+    submitted_dir = screenshot_dir.parent / "bt44_submitted"
+    submitted_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # ── 7.1 SAFETY GUARD: ตรวจว่าอยู่หน้าชำระเงินจริง (ก่อนกดส่ง) ──
+        page.wait_for_timeout(1500)
+        _wait_loading_disappeared(page, timeout_ms=10000, log=log, allow_modal=True)
+        page.wait_for_timeout(1500)
+
+        on_payment = page.evaluate(
+            r"""() => /วิธีการชำระเงิน|e-?Payment|รายการชำระเงิน|ค่ายื่นคำขอ|ค่าธรรมเนียม/i.test(document.body.innerText || '')"""
+        )
+        # ถ้าอยู่หน้าผลสำเร็จแล้ว (ไม่ต้องกด 7.1 ซ้ำ)
+        on_success = page.evaluate(
+            r"""() => /ส่งใบคำขอ.*เรียบร้อย|พิมพ์แบบฟอร์มการชำระเงิน|พิมพ์.{0,8}ชำระเงิน/i.test(document.body.innerText || '')"""
+        )
+        if on_success:
+            log("      [Step 7.1] (อยู่หน้าผลสำเร็จแล้ว — ข้ามการกด 'ถัดไป')")
+        elif not on_payment:
+            try:
+                page.screenshot(path=str(screenshot_dir / f"{_safe_filename(seq + '_' + name)}_step7_unknown.png"), full_page=True)
+            except Exception:
+                pass
+            res["status"] = "ALERT"
+            res["note"] = "Step 7: ไม่พบหน้าชำระเงิน — ยกเลิกการกดส่งเพื่อความปลอดภัย"
+            log("      ⛔ Step 7: ไม่พบหน้าชำระเงิน — ไม่กดส่งคำขอ (กันส่งผิดหน้า)")
+            return res
+        else:
+            # เลือกช่องทาง e-Payment ถ้ายังไม่ได้เลือก (เผื่อมี checkbox/radio)
+            page.evaluate(
+                r"""() => {
+                const cks = Array.from(document.querySelectorAll('input[type=checkbox],input[type=radio]'));
+                for (const c of cks) {
+                    const lbl = ((c.closest('label') && c.closest('label').innerText) ||
+                                 (c.parentElement && c.parentElement.innerText) || '');
+                    if (/e-?Payment|ชำระเงินผ่าน|KTB|กรุงไทย/i.test(lbl) && !c.checked) {
+                        try { c.click(); } catch (e) {}
+                        if (!c.checked) { c.checked = true; c.dispatchEvent(new Event('change', {bubbles:true})); }
+                    }
+                }
+            }"""
+            )
+            page.wait_for_timeout(500)
+
+            # 7.1 กดถัดไป (ส่งคำขอ)
+            clicked = page.evaluate(
+                r"""() => {
+                const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                    return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+                const cand = Array.from(document.querySelectorAll('button,a'))
+                    .filter(e => vis(e) && !e.disabled && /ถัดไป/.test((e.textContent || '').trim())
+                        && (e.textContent || '').trim().length < 20
+                        && !/ย้อนกลับ|ยกเลิก/.test((e.textContent || '').trim()));
+                if (cand.length) { cand[cand.length - 1].click(); return true; }
+                return false;
+            }"""
+            )
+            if not clicked:
+                res["status"] = "ALERT"
+                res["note"] = "Step 7.1 กด 'ถัดไป' ไม่สำเร็จ"
+                return res
+            log("      [Step 7.1] · กด 'ถัดไป' → ส่งคำขอจริง")
+
+            # รอหน้าผลสำเร็จ (เผื่อมี modal ยืนยัน → กดยืนยันให้)
+            ok_success = False
+            for _ in range(30):
+                if page.evaluate(
+                    r"""() => /เลขที่คำขอ|ส่งใบคำขอ.*เรียบร้อย|เรียบร้อยแล้ว|E-?Tracking|พิมพ์แบบฟอร์มการชำระเงิน|พิมพ์.{0,8}ชำระเงิน/i.test(document.body.innerText || '')"""
+                ):
+                    ok_success = True
+                    break
+                page.evaluate(
+                    r"""() => {
+                    const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                        return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+                    const b = Array.from(document.querySelectorAll('.swal2-confirm,button,a'))
+                        .find(e => vis(e) && /^(ยืนยัน|ตกลง|confirm|ใช่|ส่งคำขอ)/i.test((e.textContent || '').trim())
+                            && (e.textContent || '').trim().length < 20);
+                    if (b) b.click();
+                }"""
+                )
+                page.wait_for_timeout(1000)
+            if not ok_success:
+                res["status"] = "ALERT"
+                res["note"] = "Step 7.1: กดถัดไปแล้ว แต่ไม่พบหน้าผลสำเร็จ"
+                try:
+                    shot = screenshot_dir / f"{_safe_filename(seq + '_' + name)}_step7_no_success.png"
+                    page.screenshot(path=str(shot), full_page=True)
+                    res["screenshot"] = str(shot)
+                except Exception:
+                    pass
+                return res
+            log("      [Step 7.1] ✅ พบหน้าผลสำเร็จ")
+
+        # ── 7.2 รอหน้าผลสำเร็จโหลดค่าจริง ──
+        for _ in range(20):
+            loaded = page.evaluate(
+                r"""() => {
+                const t = document.body.innerText || '';
+                return /\d{10,}/.test(t) || /พิมพ์.{0,8}ชำระเงิน/.test(t);
+            }"""
+            )
+            if loaded:
+                break
+            page.wait_for_timeout(1000)
+        page.wait_for_timeout(1200)
+
+        # 7.2 เก็บข้อมูลหน้าผลสำเร็จ (best-effort — แหล่งหลักคือ PDF)
+        dom_data = page.evaluate(
+            r"""() => {
+            const lines = (document.body.innerText || '').split('\n').map(s => s.trim()).filter(s => s.length);
+            const after = (re) => {
+                for (let i = 0; i < lines.length; i++) {
+                    if (re.test(lines[i])) {
+                        const same = lines[i].replace(re, '').trim();
+                        if (same) return same;
+                        if (i + 1 < lines.length) return lines[i + 1];
+                    }
+                }
+                return '';
+            };
+            const out = {};
+            out.request_no = (after(/^เลขที่คำขอ/) || '').replace(/[^0-9]/g, '');
+            out.subject = after(/^ระบบได้รับคำขอเรื่อง/);
+            out.submit_date = after(/^วันที่ยื่นคำขอ/);
+            out.alien = after(/^คนต่างด้าว/);
+            out.pay_method = after(/^วิธีการชำระเงิน/);
+            out.ref1 = (after(/^หมายเลขอ้างอิง\s*1/) || '').replace(/[^0-9]/g, '');
+            out.ref2 = (after(/^หมายเลขอ้างอิง\s*2/) || '').replace(/[^0-9]/g, '');
+            out.amount = after(/^ยอดชำระ/);
+            const m = (document.body.innerText || '').match(/ภายในวันที่\s*([^\n]+)/);
+            out.due = m ? m[1].trim() : '';
+            out.full_text = (document.body.innerText || '');
+            return out;
+        }"""
+        )
+        dom_request_no = (dom_data.get("request_no") or "").strip()
+
+        try:
+            shot = screenshot_dir / f"{_safe_filename(seq + '_' + name)}_step7_success.png"
+            page.screenshot(path=str(shot), full_page=True)
+            res["screenshot"] = str(shot)
+        except Exception:
+            pass
+
+        # ── 7.2 ตรวจปุ่ม 'พิมพ์แบบฟอร์มการชำระเงิน' (เก็บรายละเอียด เพื่อ diagnose + fallback URL) ──
+        btn_info = page.evaluate(
+            r"""() => {
+            const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+            const b = Array.from(document.querySelectorAll('button,a,input[type=button],input[type=submit]'))
+                .find(e => vis(e) && /พิมพ์.{0,8}(ฟอร์ม).{0,8}ชำระเงิน|พิมพ์.{0,8}ชำระเงิน/.test((e.textContent || e.value || '').trim()));
+            if (!b) return null;
+            // หาลิงก์ <a> ที่อยู่ใกล้ๆ ปุ่ม (บางครั้ง print เป็น <a target="_blank" href="...pdf">)
+            const a = (b.tagName === 'A') ? b : b.closest('a') || b.querySelector('a');
+            return {
+                tag: b.tagName, id: b.id || '', cls: b.className || '',
+                text: ((b.textContent || b.value) || '').trim().slice(0, 80),
+                onclick: b.getAttribute('onclick') || '',
+                href: (a && a.getAttribute('href')) || b.getAttribute('href') || '',
+                target: (a && a.getAttribute('target')) || b.getAttribute('target') || '',
+                formaction: b.getAttribute('formaction') || '',
+                disabled: !!b.disabled,
+            };
+        }"""
+        )
+        log(f"      · 7.2 ปุ่มพิมพ์: {btn_info}")
+
+        # extract URL จาก onclick/href ถ้ามี (เผื่อ popup ถูกบล็อก)
+        direct_url = ""
+        if btn_info:
+            href = (btn_info.get("href") or "").strip()
+            onclick = (btn_info.get("onclick") or "").strip()
+            if href and href not in ("#", "javascript:void(0)", "javascript:;"):
+                direct_url = href
+            else:
+                import re as _re
+                # patterns: window.open('URL'), location.href='URL', GetDocumentConfirm('URL'), 'URL.pdf'
+                for pat in (r"""window\.open\(\s*['"]([^'"]+)['"]""",
+                            r"""location\.href\s*=\s*['"]([^'"]+)['"]""",
+                            r"""['"]([^'"]+\.pdf[^'"]*)['"]""",
+                            r"""['"]([^'"]+(?:GetBill|Print|Download|Payment)[^'"]*)['"]"""):
+                    m = _re.search(pat, onclick, _re.IGNORECASE)
+                    if m:
+                        direct_url = m.group(1)
+                        break
+            if direct_url and direct_url.startswith("/"):
+                # absolute path → prepend origin
+                origin = page.evaluate("() => location.origin") or ""
+                direct_url = origin + direct_url
+
+        if direct_url:
+            log(f"      · 7.2 พบ URL ตรง → จะลอง fetch โดยตรง: {direct_url[:120]}")
+
+        # ── 7.2 ดาวน์โหลด 'พิมพ์แบบฟอร์มการชำระเงิน' (retry สูงสุด 3 ครั้ง) ──
+        # ใช้ Playwright locator click (real user gesture — ไม่ถูก popup blocker)
+        def _do_click():
+            try:
+                loc = page.locator(
+                    r"button:has-text('พิมพ์แบบฟอร์มการชำระเงิน'), "
+                    r"a:has-text('พิมพ์แบบฟอร์มการชำระเงิน'), "
+                    r"button:has-text('พิมพ์ชำระเงิน'), "
+                    r"a:has-text('พิมพ์ชำระเงิน')"
+                ).first
+                try:
+                    loc.scroll_into_view_if_needed(timeout=3000)
+                except Exception:
+                    pass
+                loc.click(timeout=8000, no_wait_after=True)
+                return
+            except Exception:
+                pass
+            # fallback: JS click
+            page.evaluate(
+                r"""() => {
+                const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                    return r.width > 0 && r.height > 0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+                const b = Array.from(document.querySelectorAll('button,a,input[type=button],input[type=submit]'))
+                    .find(e => vis(e) && /พิมพ์.{0,8}(ฟอร์ม).{0,8}ชำระเงิน|พิมพ์.{0,8}ชำระเงิน/.test((e.textContent || e.value || '').trim()));
+                if (b) b.click();
+            }"""
+            )
+
+        body: bytes = b""
+        err_last = ""
+        for attempt in range(1, 4):
+            b, err = _grab_pdf_after_click(page, _do_click, log=lambda *a: None,
+                                           prefetch_url=direct_url if attempt == 1 else "")
+            if b and len(b) >= 500 and b[:5] == b"%PDF-":
+                body = b
+                break
+            err_last = err or "ไม่ได้ไฟล์"
+            log(f"      · ⚠ 7.2 ดาวน์โหลดใบชำระเงินครั้งที่ {attempt} ไม่สำเร็จ ({err_last}) — ลองใหม่")
+            page.wait_for_timeout(2500)
+
+        # ── Fallback สุดท้าย: ถ้ายังไม่ได้ + รู้ direct_url → fetch ผ่าน page context ──
+        if not body and direct_url:
+            log(f"      · 7.2 fallback fetch URL ตรงผ่าน page context...")
+            b, err = _popup_fetch_bytes(page, direct_url)
+            if b and len(b) >= 500 and b[:5] == b"%PDF-":
+                body = b
+                log(f"      · ✓ 7.2 fetch URL ตรงสำเร็จ")
+            else:
+                log(f"      · ⚠ fallback fetch ก็ล้มเหลว: {err}")
+
+        # 7.3 parse PDF (แหล่งข้อมูลหลัก)
+        pdf_info = _bt44_parse_payment_pdf(body) if body else {}
+        request_no = dom_request_no or pdf_info.get("request_no", "")
+        bill_no = pdf_info.get("bill_no", "")
+        due = pdf_info.get("due", "") or dom_data.get("due", "")
+        txn_date = pdf_info.get("txn_date", "")
+        amount = pdf_info.get("amount", "") or dom_data.get("amount", "")
+        total_amount = pdf_info.get("total_amount", "") or amount
+        biller_name = pdf_info.get("biller_name", "") or dom_data.get("alien", "") or rec.get("name", "")
+        email = pdf_info.get("email", "")
+
+        res["bill_no"] = bill_no
+        res["request_no"] = request_no
+        res["due"] = due
+        res["txn_date"] = txn_date
+        res["amount"] = amount
+        res["total_amount"] = total_amount
+        res["biller_name"] = biller_name
+        res["email"] = email
+
+        log(f"      · 7.2 เลขใบแจ้งชำระเงิน={bill_no or '-'} | เลขคำขอ={request_no or '-'}")
+        log(f"      · ยอด={amount or '-'} (รวม {total_amount or '-'}) | ภายใน={due or '-'} | ทำรายการ={txn_date or '-'}")
+        log(f"      · ผู้ชำระ={biller_name or '-'} | อีเมล={email or '-'}")
+
+        # บันทึก JSON
+        stem = _safe_filename(f"{request_no or seq}_{name}_payment")
+        try:
+            data_payload = {**dom_data, **pdf_info, "row": {
+                "seq": seq, "name": name, "alien_ref": rec.get("alien_ref", ""),
+                "workpermit_no": rec.get("workpermit_no", ""),
+            }}
+            (submitted_dir / f"{stem}.json").write_text(
+                json.dumps(data_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            res["data_file"] = f"{stem}.json"
+        except Exception as e:
+            log(f"      · ⚠ เขียน JSON ไม่สำเร็จ: {e}")
+
+        # บันทึก PDF
+        if body:
+            permit = _safe_filename(rec.get("workpermit_no", "") or "")
+            name_parts = [p for p in (request_no or seq, permit, name) if p]
+            pdf_name = "_".join(_safe_filename(p) for p in name_parts) + "_payment.pdf"
+            try:
+                (submitted_dir / pdf_name).write_bytes(body)
+                res["pdf_file"] = pdf_name
+                log(f"      · ✓ 7.2 ดาวน์โหลดใบชำระเงินแล้ว → bt44_submitted/{pdf_name} ({len(body)//1024} KB)")
+            except Exception as e:
+                log(f"      · ⚠ เขียนไฟล์ PDF ไม่สำเร็จ: {e}")
+        else:
+            log(f"      · ⛔ 7.2 ดาวน์โหลดใบชำระเงินไม่สำเร็จหลังลอง 3 ครั้ง ({err_last}) — "
+                f"กรุณาดาวน์โหลดเองทันที (เลขคำขอ {request_no or '-'}) เพราะดาวน์โหลดได้ครั้งเดียว")
+
+        if request_no and res["pdf_file"]:
+            res["status"] = "SUCCESS"
+            res["note"] = (
+                f"ส่งคำขอแล้ว | เลขใบแจ้ง={bill_no or '-'} | เลขคำขอ={request_no} | "
+                f"ยอดรวม={total_amount or '-'} | ภายใน={due or '-'} | PDF={res['pdf_file']}"
+            )
+        elif request_no:
+            res["status"] = "PARTIAL"
+            res["note"] = f"ส่งคำขอแล้ว เลขคำขอ={request_no} แต่ดาวน์โหลด PDF ไม่สำเร็จ ({err_last})"
+        else:
+            res["status"] = "ALERT"
+            res["note"] = f"ส่งคำขอแล้วแต่ไม่พบเลขที่คำขอ + PDF ล้มเหลว ({err_last})"
+        return res
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["note"] = f"Step 7 error: {str(e)[:160]}"
+        return res
+
+
+def _bt44_step2_collect_details(page: Page, log=print) -> dict[str, str]:
+    """เก็บรายละเอียดทั้งหมดของหน้า Step 2 (ก่อนแก้ไขที่อยู่) เพื่อทำรายงาน:
+       - ข้อมูลผู้ยื่นคำขอ: ชื่อ Eng/ไทย, สัญชาติ, เกิดวันที่, อายุ
+       - ข้อมูลสำหรับติดต่อ: โทรศัพท์, อีเมล
+       - ที่อยู่ในประเทศไทย
+       - ข้อมูลใบอนุญาตทำงานปัจจุบัน: เลขที่, ออกให้ที่, วันที่ออก, วันที่หมดอายุ
+    คืน dict ของ key→value ตามที่อ่านได้ (ค่าว่างถ้าไม่พบ)
+    """
+    try:
+        data = page.evaluate(
+            r"""() => {
+            const lines = (document.body.innerText || '')
+                .split('\n').map(s => s.trim()).filter(s => s.length);
+
+            // จับ "ค่าหลัง label" ในบรรทัดเดียวกัน หรือบรรทัดถัดไป (ถ้ายังว่าง)
+            // labelRe: regex ของ label, stopRe: regex หยุด (ถ้าค่าหายไปแล้วเจอ label อื่น)
+            const after = (labelRe, stopRe) => {
+                for (let i = 0; i < lines.length; i++) {
+                    const m = lines[i].match(labelRe);
+                    if (!m) continue;
+                    // ลองตัด label ออกในบรรทัดเดียวกัน
+                    const same = lines[i].replace(labelRe, '').trim();
+                    if (same && !/^[:：\-]?$/.test(same)) return same;
+                    // มิเช่นนั้นใช้บรรทัดถัดไป (skip บรรทัดว่าง/มี label อื่น)
+                    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+                        const v = lines[j].trim();
+                        if (!v) continue;
+                        if (stopRe && stopRe.test(v)) break;
+                        return v;
+                    }
+                    return '';
+                }
+                return '';
+            };
+
+            // ที่อยู่: รับหลายบรรทัดต่อกันจนเจอ section ใหม่
+            const addressGet = () => {
+                const startRe = /^ที่อยู่ในประเทศไทย/;
+                const stopRe = /^(ข้อมูลใบอนุญาตทำงานปัจจุบัน|ข้อมูลสำหรับติดต่อ|ข้อมูลผู้ยื่นคำขอ|ที่อยู่ตามทะเบียน|สถานที่ทำงาน)/;
+                const addrRe = /(เลขที่|ซอย|ถนน|แขวง|ตำบล|เขต|อำเภอ|จังหวัด|รหัสไปรษณีย์|\d{5})/;
+                let i0 = -1;
+                for (let i = 0; i < lines.length; i++) {
+                    if (startRe.test(lines[i])) { i0 = i; break; }
+                }
+                if (i0 < 0) return '';
+                const parts = [];
+                for (let i = i0 + 1; i < Math.min(i0 + 10, lines.length); i++) {
+                    const v = lines[i].trim();
+                    if (!v) continue;
+                    if (stopRe.test(v)) break;
+                    if (/^(ที่อยู่|Address)[\s:：]*$/.test(v)) continue;  // ข้าม label เปล่า
+                    if (/^แก้ไขข้อมูล/.test(v)) continue;
+                    // ค่าอาจอยู่ในบรรทัดเดียวกับ label
+                    const m = v.match(/^ที่อยู่[\s:：]+(.+)$/);
+                    if (m) { parts.push(m[1].trim()); break; }
+                    if (addrRe.test(v)) { parts.push(v); break; }
+                }
+                return parts.join(' ').trim();
+            };
+
+            const stopGen = /^(ข้อมูล|ที่อยู่|แก้ไขข้อมูล|ข้อมูลใบอนุญาต)/;
+            return {
+                name_en: after(/^ชื่อคนต่างด้าว\s*\(\s*Eng\s*\)/i, stopGen),
+                name_th: after(/^ชื่อคนต่างด้าว\s*\(\s*ไทย\s*\)/i, stopGen),
+                nationality: after(/^สัญชาติ$/, stopGen),
+                birthdate: after(/^เกิดวันที่$/, stopGen),
+                age: after(/^อายุ$/, stopGen),
+                phone: after(/^โทรศัพท์$/, stopGen),
+                email: after(/^อีเมล$/, stopGen),
+                address: addressGet(),
+                permit_no: after(/^เลขที่$/, stopGen),
+                permit_province: after(/^ออกให้ที่\s*\(?\s*จังหวัด\s*\)?\s*$/, stopGen),
+                permit_issue: after(/^วันที่ออกเอกสาร$/, stopGen),
+                permit_expire: after(/^วันที่เอกสารหมดอายุ$/, stopGen),
+            };
+        }"""
+        )
+        return {k: (str(v) if v is not None else "") for k, v in (data or {}).items()}
+    except Exception as e:
+        log(f"      ⚠ collect details error: {str(e)[:160]}")
+        return {}
+
+
+def _bt44_process_record(
+    page: Page, rec: dict[str, Any], screenshot_dir: Path,
+    log=print, dry_run: bool = False, dry_stop_at: str = "step2",
+    check_docs: bool = True,
+) -> dict[str, str]:
+
+    """ประมวลผลประวัติหนึ่งแถวผ่านทั้ง 3 ขั้นตอน
+    Step 1: ค้นหาคนต่างด้าว (บันทึก)
+    Step 2.1: เช็ก checkbox ข้อมูลใจสำสัญญา + กด ถัดไป
+    Step 2.2: แก้ไขที่อยู่ + บันทึก + ยืนยัน
+    Step 2.3: ตรวจสอบเลขที่ใบอนุญาตตรงกันไหม
+
+    dry_run=True : โหมด **ทดลองยื่น** — ทำตาม `dry_stop_at`:
+        * "step2" : หยุดที่ Step 2.3 (หลังตรวจเลขใบอนุญาต — ไม่แก้ไขที่อยู่)
+        * "step3" : ทำ Step 2.2 (แก้ที่อยู่+บันทึก) + Step 3.1 (เปลี่ยนนายจ้าง)
+                    + Step 3.3-3.4 (สถานที่ทำงาน/ประเภทกิจการ/งาน) จากนั้นหยุดก่อน Step 4
+                    (ไม่แนบเอกสาร/ไม่ไปสรุป/ไม่ส่งคำขอ)
+    check_docs=False : ข้ามการตรวจไฟล์แนบ (Step 4) ก่อนเริ่ม — สำหรับทดสอบ flow
+    """
+    dry_stop_at = (dry_stop_at or "step2").lower()
+    if dry_stop_at not in ("step2", "step3"):
+        dry_stop_at = "step2"
+    result = {"status": "", "note": ""}
+
+    # ===== ตรวจไฟล์แนบ (Step 4) ก่อนเริ่ม — ถ้าไม่ผ่านให้ข้าม (ไม่รัน) =====
+    # check_docs=False หรือ ENV BT44_SKIP_DOC_CHECK=1 → ข้ามการตรวจไฟล์
+    import os as _os
+    _skip_env = _os.environ.get("BT44_SKIP_DOC_CHECK") == "1"
+    if (not check_docs) or _skip_env:
+        _reason = "ผู้ใช้ปิด 'ตรวจไฟล์แนบ'" if not check_docs else "BT44_SKIP_DOC_CHECK=1"
+        log(f"      [Step 4-ตรวจไฟล์] ⚠ ข้าม ({_reason}) — สำหรับทดสอบ flow เท่านั้น")
+    else:
+        doc_problems = _bt44_validate_row_docs(rec)
+        if doc_problems:
+            result["status"] = "SKIP"
+            result["note"] = "เอกสารแนบไม่ผ่าน (ไม่รัน): " + " | ".join(doc_problems[:6])
+            log(f"      [Step 4-ตรวจไฟล์] ⛔ ข้าม (ไม่รัน): {result['note']}")
+            return result
+
+    # ===== Step 1: ค้นหาคนต่างด้าว =====
+    step1_res = _bt44_fill_search_one(page, rec, screenshot_dir, log=log)
+    if step1_res.get("status") != "SUCCESS":
+        log(f"      [Step 1] ❌ ไม่สำเร็จ: {step1_res.get('status')}")
+        return step1_res
+
+    log(f"      [Step 1] ✅ เสร็จ — ดำเนินการ Step 2")
+    
+    # Close any modal that Step 1 might have left open
+    page.wait_for_timeout(500)
+    try:
+        page.evaluate(r"""() => {
+            const modals = document.querySelectorAll('.modal, .swal2-popup, [role="dialog"]');
+            for (const m of modals) {
+                if (m.offsetParent !== null) {
+                    // Prefer explicit action buttons first
+                    const actionBtn = Array.from(m.querySelectorAll('button, a'))
+                      .find(b => /ปิด|ยืนยัน|ตกลง|ok/i.test((b.textContent || '').trim()) && b.offsetParent !== null);
+                    if (actionBtn) {
+                        actionBtn.click();
+                        continue;
+                    }
+                    const closeBtn = m.querySelector('.close, .btn-close, .swal2-close, .btn[onclick*="close"]');
+                    if (closeBtn) closeBtn.click();
+                }
+            }
+        }""")
+        page.wait_for_timeout(500)
+    except Exception:
+        pass
+
+    page.wait_for_timeout(800)
+
+    # ===== Step 2.1: เช็ก Consent Checkbox =====
+    consent_ok = _bt44_step2_consent(page, log=log)
+    if not consent_ok:
+        log(f"      [Step 2.1] ❌ ไม่สำเร็จ")
+        result["status"] = "ALERT"
+        result["note"] = "Step 2.1: consent/next transition failed"
+        return result
+    
+    log(f"      [Step 2.1] ✅ เสร็จ")
+
+    # ===== Step 2.3: ตรวจสอบเลขที่ใบอนุญาต (ก่อน Step 2.2) =====
+    log(f"      [Step 2.3-pre] ตรวจสอบเลขที่ใบอนุญาตก่อนแก้ไขที่อยู่...")
+    permit_match, current_permit = _bt44_step2_verify_permit(page, rec, log=log)
+    if not current_permit:
+        result["status"] = "ALERT"
+        result["note"] = "Step 2.3-pre: permit number not found"
+        return result
+    if not permit_match:
+        result["status"] = "SKIP"
+        result["note"] = f"Permit mismatch: expected {rec.get('workpermit_no','')}, got {current_permit}"
+        return result
+
+    log(f"      [Step 2.3-pre] ✅ ผ่าน — Permit: {current_permit}")
+
+    # เก็บรายละเอียดหน้า Step 2 (ใช้ใน report ทุกโหมด dry-run)
+    _dry_details = None
+    if dry_run:
+        _dry_details = _bt44_step2_collect_details(page, log=log)
+        for k, v in (_dry_details or {}).items():
+            result[f"dry_{k}"] = v
+        result["dry_permit_match"] = "ตรง ✓" if permit_match else "ไม่ตรง ✗"
+        result["dry_expected_permit"] = rec.get("workpermit_no", "")
+        result["dry_current_permit"] = current_permit
+
+    # ===== โหมด 'ทดลองยื่น' หยุดที่ Step 2.3 — เก็บข้อมูล + ข้ามไป record ถัดไป =====
+    if dry_run and dry_stop_at == "step2":
+        details = _dry_details or {}
+
+        log(f"      [Dry-run] 📋 รายละเอียดที่อ่านได้:")
+        log(f"        · ชื่อ (Eng): {details.get('name_en','-')}")
+        log(f"        · ชื่อ (ไทย): {details.get('name_th','-')}")
+        log(f"        · สัญชาติ: {details.get('nationality','-')} | เกิด: {details.get('birthdate','-')} | อายุ: {details.get('age','-')}")
+        log(f"        · โทรศัพท์: {details.get('phone','-')} | อีเมล: {details.get('email','-')}")
+        log(f"        · ที่อยู่: {details.get('address','-')}")
+        log(f"        · ใบอนุญาตเลขที่: {details.get('permit_no','-')} | จังหวัด: {details.get('permit_province','-')}")
+        log(f"        · ออกเอกสาร: {details.get('permit_issue','-')} | หมดอายุ: {details.get('permit_expire','-')}")
+
+        try:
+            shot = screenshot_dir / f"{_safe_filename(str(rec.get('seq','?')) + '_' + rec.get('name',''))}_dryrun_step2_3.png"
+            page.screenshot(path=str(shot), full_page=True)
+            result["screenshot"] = str(shot)
+        except Exception:
+            pass
+        result["status"] = "DRY_OK"
+        result["note"] = (
+            f"🧪 ทดลองยื่น ผ่านถึง Step 2.3 | Permit: {current_permit} ({result['dry_permit_match']}) | "
+            f"ใบอนุญาตหมดอายุ: {details.get('permit_expire','-')} | "
+            f"อีเมล: {details.get('email','-')}"
+        )
+        # รีเซ็ตกลับไปหน้าเริ่มต้น บต.44 เพื่อให้ record ถัดไปเริ่มได้
+        try:
+            log("      [Dry-run] ↺ รีเซ็ตกลับหน้าเริ่มต้น บต.44 สำหรับ record ถัดไป...")
+            _open_bt44_form(page, log=lambda *a: None)
+        except Exception as e:
+            log(f"      [Dry-run] ⚠ รีเซ็ตฟอร์มไม่สำเร็จ: {str(e)[:120]}")
+        return result
+
+    # ===== Step 2.2: แก้ไขที่อยู่ =====
+    addr_res = _bt44_step2_edit_address(page, rec, screenshot_dir, log=log)
+    if addr_res.get("status") != "SUCCESS":
+        log(f"      [Step 2.2] ❌ มีปัญหา: {addr_res.get('note')}")
+        result["status"] = "ALERT"
+        result["note"] = f"Step 2.2: {addr_res.get('note')}"
+        return result
+
+    log(f"      [Step 2.2] ✅ เสร็จ")
+
+    # ===== หลัง Step 2.2 ต้องกด 'ถัดไป' =====
+    next_ok = False
+    try:
+        next_btn = page.locator("#gonextSubmit").first
+        next_btn.click(timeout=5000, force=True)
+        next_ok = True
+    except Exception:
+        try:
+            next_btn2 = page.locator("button, a").filter(has_text="ถัดไป").first
+            if next_btn2.count() > 0:
+                next_btn2.click(timeout=5000, force=True)
+                next_ok = True
+        except Exception:
+            next_ok = False
+
+    if not next_ok:
+        result["status"] = "ALERT"
+        result["note"] = "Step 2.2: next button click failed after save confirm"
+        return result
+
+    log("      [Step 2.2→ถัดไป] ✅ กด 'ถัดไป' หลังบันทึกสำเร็จแล้ว")
+    page.wait_for_timeout(1200)
+    _wait_loading_disappeared(page, timeout_ms=10000, log=log)
+
+    # ===== Step 3.1: เปลี่ยนนายจ้าง =====
+    step3_1_res = _bt44_step3_change_employer(page, rec, log=log)
+    if step3_1_res.get("status") == "SKIP":
+        result["status"] = "SKIP"
+        result["note"] = step3_1_res.get("note", "Step 3.1 skipped")
+        return result
+    if step3_1_res.get("status") != "SUCCESS":
+        result["status"] = "ALERT"
+        result["note"] = step3_1_res.get("note", "Step 3.1 failed")
+        return result
+    log("      [Step 3.1] ✅ เสร็จ")
+
+    # ===== Step 3.3-3.4: เลือกสถานที่ทำงาน + ประเภทกิจการ + ตรวจประเภทงาน + ลักษณะงาน + ถัดไป =====
+    step3_3_res = _bt44_step3_workplace(page, rec, log=log)
+    if step3_3_res.get("status") == "SKIP":
+        result["status"] = "SKIP"
+        result["note"] = step3_3_res.get("note", "Step 3.3 skipped")
+        return result
+    if step3_3_res.get("status") != "SUCCESS":
+        result["status"] = "ALERT"
+        result["note"] = step3_3_res.get("note", "Step 3.3 failed")
+        return result
+    log("      [Step 3.3-3.4] ✅ เสร็จ")
+
+    # ===== โหมด 'ทดลองยื่น' หยุดที่ Step 3 — ไม่แนบเอกสาร/ไม่สรุป/ไม่ส่งคำขอ =====
+    if dry_run and dry_stop_at == "step3":
+        details = _dry_details or {}
+        log(f"      [Dry-run/Step3] ✅ ผ่าน Step 1-3 ครบ — หยุดก่อน Step 4")
+        log(f"        · นายจ้างใหม่: {rec.get('change_emp_keyword','-')}")
+        log(f"        · สถานที่ทำงาน: {rec.get('workplace_branch','-')}")
+        log(f"        · ประเภทกิจการ: {rec.get('work_biz','-')}")
+        log(f"        · ประเภทงาน: {rec.get('work_permit_job','-')} | ลักษณะงาน: {rec.get('work_detail','-')}")
+        try:
+            shot = screenshot_dir / f"{_safe_filename(str(rec.get('seq','?')) + '_' + rec.get('name',''))}_dryrun_step3.png"
+            page.screenshot(path=str(shot), full_page=True)
+            result["screenshot"] = str(shot)
+        except Exception:
+            pass
+        result["status"] = "DRY_OK"
+        result["note"] = (
+            f"🧪 ทดลองยื่น ผ่านถึง Step 3.3-3.4 | Permit: {current_permit} "
+            f"({result.get('dry_permit_match','-')}) | "
+            f"นายจ้าง: {rec.get('change_emp_keyword','-')} | "
+            f"สถานที่ทำงาน: {rec.get('workplace_branch','-')} | "
+            f"ประเภทกิจการ: {rec.get('work_biz','-')}"
+        )
+        try:
+            log("      [Dry-run/Step3] ↺ รีเซ็ตกลับหน้าเริ่มต้น บต.44 สำหรับ record ถัดไป...")
+            _open_bt44_form(page, log=lambda *a: None)
+        except Exception as e:
+            log(f"      [Dry-run/Step3] ⚠ รีเซ็ตฟอร์มไม่สำเร็จ: {str(e)[:120]}")
+        return result
+
+    # ===== Step 4: แนบเอกสาร (4.1 ลูกจ้าง + 4.2 นายจ้าง) =====
+    step4_res = _bt44_step4_attach_docs(page, rec, screenshot_dir, log=log)
+    if step4_res.get("screenshot"):
+        result["screenshot"] = step4_res["screenshot"]
+    if step4_res.get("status") != "SUCCESS":
+        result["status"] = step4_res.get("status") or "ALERT"
+        result["note"] = f"Step 4: {step4_res.get('note','')}"
+        return result
+    log("      [Step 4] ✅ เสร็จ")
+
+    # ===== Step 5: สรุปคำขอ (3 หน้า + ติ๊กรับทราบ) =====
+    step5_res = _bt44_step5_summary(page, rec, screenshot_dir, log=log)
+    if step5_res.get("screenshot"):
+        result["screenshot"] = step5_res["screenshot"]
+    if step5_res.get("status") != "SUCCESS":
+        result["status"] = step5_res.get("status") or "ALERT"
+        result["note"] = f"Step 5: {step5_res.get('note','')}"
+        return result
+    log("      [Step 5] ✅ เสร็จ")
+
+    # ===== Step 6: ยืนยันตัวตน (อัปโหลดภาพ + อ่านสถานะ + ถัดไป) =====
+    step6_res = _bt44_step6_verify_identity(page, rec, screenshot_dir, log=log)
+    if step6_res.get("screenshot"):
+        result["screenshot"] = step6_res["screenshot"]
+    if step6_res.get("status") not in ("SUCCESS",):
+        # ยังไม่ fail ทั้งหมด — แค่บันทึกเป็นหมายเหตุ (per spec: ทั้งสำเร็จ/ไม่สำเร็จ ก็ผ่านไปได้)
+        log(f"      [Step 6] ⚠ {step6_res.get('note','')}")
+
+    identity_note = step6_res.get("note", "") or "Step 6 ไม่ทราบผล"
+
+    # ===== Step 7: การชำระเงิน (กดถัดไป → ส่งคำขอจริง → ดาวน์โหลด PDF + parse) =====
+    step7_res = _bt44_step7_payment(page, rec, screenshot_dir, log=log)
+    if step7_res.get("screenshot"):
+        result["screenshot"] = step7_res["screenshot"]
+    # ถ่ายโอนค่าทั้งหมดของ Step 7 เข้า result (ใช้ใน Excel report)
+    for k in ("bill_no", "request_no", "due", "txn_date", "amount",
+              "total_amount", "biller_name", "email", "pdf_file", "data_file"):
+        result[k] = step7_res.get(k, "")
+
+    if step7_res.get("status") == "SUCCESS":
+        log("      [Step 7] ✅ เสร็จ")
+        result["status"] = "SUCCESS"
+        result["note"] = (
+            f"✅ บต.44 Step 1-7 เสร็จ | Permit: {current_permit} | "
+            f"เลขใบแจ้ง: {step7_res.get('bill_no','-')} | "
+            f"เลขคำขอ: {step7_res.get('request_no','-')} | "
+            f"ยอดรวม: {step7_res.get('total_amount') or step7_res.get('amount','-')} | "
+            f"ภายใน: {step7_res.get('due','-')} | "
+            f"PDF: {step7_res.get('pdf_file','-')}"
+        )
+    else:
+        log(f"      [Step 7] ⚠ {step7_res.get('note','')}")
+        result["status"] = step7_res.get("status") or "ALERT"
+        result["note"] = (
+            f"Step 1-6 เสร็จ + Step 7: {step7_res.get('note','')} | "
+            f"Permit: {current_permit} | {identity_note}"
+        )
+    return result
+
+
+def _save_bt44_report(rows: list[dict[str, Any]], out_path: Path, log=print) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "บต.44"
+    headers = ["ลำดับ", "คำนำหน้า", "หมายเลขอ้างอิง", "ชื่อ", "สัญชาติ", "เพศ", "วันเกิด",
+               "สถานะ",
+               # ── ข้อมูลที่อ่านได้จาก Step 2.3 (โหมดทดลองยื่น) ──
+               "ชื่อ (Eng)", "ชื่อ (ไทย)", "สัญชาติ (จากระบบ)",
+               "เกิดวันที่ (ระบบ)", "อายุ", "โทรศัพท์", "อีเมล (ผู้ยื่น)",
+               "ที่อยู่ในประเทศไทย",
+               "เลขที่ใบอนุญาตปัจจุบัน", "จังหวัดที่ออก",
+               "วันที่ออกเอกสาร", "วันที่เอกสารหมดอายุ",
+               "ผลตรวจเลขใบอนุญาต",
+               # ── ข้อมูลการชำระเงิน (โหมดยื่นจริง Step 7) ──
+               "เลขที่ใบแจ้งชำระเงิน", "เลขที่คำขอ", "ชำระภายในวันที่",
+               "จำนวนเงินรวม", "วันที่ทำรายการ",
+               "รายชื่อคนต่างด้าว (ผู้ชำระ)", "อีเมล (ใบชำระเงิน)",
+               "ไฟล์ PDF (ใบชำระเงิน)",
+               "หมายเหตุ (ข้อความแจ้งเตือน)", "Screenshot"]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # คอลัมน์ที่ต้องทำเป็น hyperlink (1-based index)
+    PDF_COL = 29       # ไฟล์ PDF (ใบชำระเงิน)
+    SHOT_COL = 31      # Screenshot
+    link_font = Font(color="0563C1", underline="single")
+
+    def _to_hyperlink(cell, raw_path: str) -> None:
+        """แปลง cell ให้คลิกแล้วเปิดไฟล์/โฟลเดอร์ได้ (Excel hyperlink)"""
+        if not raw_path:
+            return
+        p = str(raw_path).strip()
+        if not p:
+            return
+        try:
+            abs_path = str(Path(p).resolve())
+        except Exception:
+            abs_path = p
+        # Excel รองรับ file:/// บน Windows ดี + แสดงชื่อไฟล์เป็น display text
+        try:
+            display = Path(abs_path).name or abs_path
+        except Exception:
+            display = abs_path
+        cell.value = display
+        cell.hyperlink = abs_path
+        cell.font = link_font
+
+    for r in rows:
+        ws.append([
+            r.get("seq", ""), r.get("prefix", ""), r.get("alien_ref", ""), r.get("name", ""),
+            r.get("nationality", ""), r.get("sex", ""), r.get("birthdate", ""),
+            r.get("status", ""),
+            r.get("dry_name_en", ""), r.get("dry_name_th", ""), r.get("dry_nationality", ""),
+            r.get("dry_birthdate", ""), r.get("dry_age", ""),
+            r.get("dry_phone", ""), r.get("dry_email", ""),
+            r.get("dry_address", ""),
+            r.get("dry_permit_no", ""), r.get("dry_permit_province", ""),
+            r.get("dry_permit_issue", ""), r.get("dry_permit_expire", ""),
+            r.get("dry_permit_match", ""),
+            r.get("bill_no", ""), r.get("request_no", ""), r.get("due", ""),
+            (r.get("total_amount") or r.get("amount", "")),
+            r.get("txn_date", ""),
+            r.get("biller_name", ""), r.get("email", ""),
+            r.get("pdf_file", ""),
+            r.get("note", ""), r.get("screenshot", ""),
+        ])
+        # แปลง path → hyperlink สำหรับแถวที่เพิ่งใส่
+        row_idx = ws.max_row
+        _to_hyperlink(ws.cell(row=row_idx, column=PDF_COL), r.get("pdf_file", ""))
+        _to_hyperlink(ws.cell(row=row_idx, column=SHOT_COL), r.get("screenshot", ""))
+    widths = [8, 12, 20, 28, 16, 8, 14, 12,
+              28, 26, 16, 16, 8, 16, 28, 60,
+              22, 18, 16, 16, 16,
+              22, 18, 22, 14, 22, 28, 28, 36, 60, 28]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out_path)
+    log(f"บันทึกรายงาน: {out_path}")
+
+
+def run_bt44(
+    cfg: dict,
+    excel_input: Path,
+    login_excel: Path,
+    out_path: Path,
+    row_range: str | None = None,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+    dry_run: bool = False,
+    dry_stop_at: str = "step2",
+    check_docs: bool = True,
+) -> tuple[int, Path]:
+    """โหมด บต.44 — การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน
+    ซึ่งไม่กระทบในใบอนุญาต (Step 1-3)
+    
+    Step 1: ค้นหาข้อมูลคนต่างด้าว แล้วบันทึก
+    Step 2.1: เช็ก checkbox ข้อมูลใจสำสัญญา แล้วกด "ถัดไป"
+    Step 2.2: แก้ไขที่อยู่ + บันทึก + ยืนยัน
+    Step 2.3: ตรวจสอบเลขที่ใบอนุญาตตรงกับ Excel ถ้าไม่ตรงให้ข้าม
+    """
+    out_path = _timestamped_path(out_path)
+    records = _read_bt44_excel(excel_input)
+    accounts = (_read_login_accounts(login_excel)
+                if login_excel and Path(login_excel).exists() else {})
+    total = len(records)
+    indices = _parse_row_range(row_range, total)
+    selected = [records[i - 1] for i in indices]
+    log(f"[1/3] อ่าน {Path(excel_input).name}: {total} แถว → จะทำ {len(selected)} แถว "
+        f"({row_range or 'ทั้งหมด'})")
+    if dry_run:
+        _stop_label = "Step 3.3-3.4 (เลือกนายจ้าง+ประเภทกิจการ+งาน)" if dry_stop_at == "step3" else "Step 2.3 (ตรวจเลขใบอนุญาต)"
+        log(f"      🧪 โหมด 'ทดลองยื่น' (DRY-RUN) — จะหยุดที่ {_stop_label} ทุก record และไม่ส่งคำขอจริง")
+    if not check_docs:
+        log("      ⚠ ปิด 'ตรวจไฟล์แนบ' — จะข้ามการตรวจสอบไฟล์ทุก record (สำหรับทดสอบ flow เท่านั้น)")
+    log(f"      ไฟล์รายงาน: {out_path.name}")
+
+    # ตรวจไฟล์แนบ Step 4 ล่วงหน้า (สรุปแถวที่จะถูกข้าม) — ข้ามถ้าผู้ใช้ปิดไว้
+    if check_docs:
+        _bt44_preflight_docs(selected, log=log)
+    else:
+        log("      [Preflight] ⏭ ข้ามการตรวจไฟล์แนบล่วงหน้า")
+
+    if accounts:
+        acct = next(iter(accounts.values()))
+        login_cfg = {
+            "username": acct["username"], "password": acct["password"],
+            "user_type": acct["type"],
+            "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+        }
+    else:
+        login_cfg = {k: cfg.get(k, "") for k in ("username", "password", "user_type", "method")}
+    if not login_cfg.get("username") or not login_cfg.get("password"):
+        raise ValueError("ไม่พบบัญชี login — กรุณาระบุ UsernameLogin.xlsx หรือกรอก Username/Password")
+    log(f"      บัญชี login: {login_cfg['username']} ({login_cfg.get('user_type','')})")
+
+    screenshot_dir = out_path.parent / "bt44_screenshots"
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    results: list[dict[str, Any]] = []
+    success = 0
+    if progress:
+        try: progress(0, len(selected))
+        except Exception: pass
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        ctx = browser.new_context(
+            locale="th-TH", ignore_https_errors=True,
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        try:
+            log("[2/3] เข้าสู่ระบบ...")
+            login(page, login_cfg)
+            page.wait_for_timeout(1500)
+            if not _open_bt44_form(page, log=log):
+                log("[!] เปิดฟอร์ม บต.44 ไม่สำเร็จ — ยุติ")
+                for rec in selected:
+                    results.append({**rec, "status": "FORM_FAIL",
+                                    "note": "เปิดฟอร์ม บต.44 ไม่สำเร็จ", "screenshot": ""})
+                _save_bt44_report(results, out_path, log=log)
+                return 0, out_path
+            log("      ✓ เปิดฟอร์ม บต.44 สำเร็จ — เริ่มกรอกข้อมูลคนต่างด้าว")
+            for k, rec in enumerate(selected, start=1):
+                if is_cancelled and is_cancelled():
+                    log("[!] ผู้ใช้ยกเลิก — หยุด")
+                    break
+                # ระหว่าง record ที่ 2 เป็นต้นไป — ต้อง reset กลับหน้า บต.44
+                # (record แรก browser อยู่หน้า form แล้วจาก _open_bt44_form ข้างบน,
+                # record ถัดมา page ค้างที่ Step 7 / payment / dry-run reset → ต้องเปิดฟอร์มใหม่)
+                # หมายเหตุ: ไม่ต้อง logout/login ใหม่ — session ยังอยู่ใน browser context
+                if k > 1:
+                    log(f"      ↺ รีเซ็ตกลับหน้า บต.44 สำหรับ record ถัดไป...")
+                    # เผื่อกรณี popup ใบชำระเงินจาก Step 7 ทำให้ main page ปิดไปด้วย
+                    # → สร้าง page ใหม่จาก context (session/cookies ยังอยู่) แล้วเข้าใหม่
+                    page_dead = False
+                    try:
+                        page_dead = page.is_closed()
+                    except Exception:
+                        page_dead = True
+                    if page_dead:
+                        log(f"      ⚠ Main page ถูกปิด (อาจจาก popup Step 7) — สร้าง page ใหม่")
+                        try:
+                            page = ctx.new_page()
+                        except Exception as e:
+                            log(f"      ✗ สร้าง page ใหม่ไม่สำเร็จ: {e}")
+                            results.append({**rec, "status": "FORM_FAIL",
+                                            "note": f"Browser context ปิด: {str(e)[:120]}",
+                                            "screenshot": ""})
+                            break
+                    # ปิด popup/dialog ที่อาจค้าง (กันสถานะรกของหน้า)
+                    try:
+                        page.evaluate(r"""() => {
+                            for (const m of document.querySelectorAll('.modal.show, .swal2-popup, [role="dialog"]')) {
+                                try { m.style.display = 'none'; } catch(e){}
+                            }
+                            try { document.body.classList.remove('modal-open'); } catch(e){}
+                            for (const bd of document.querySelectorAll('.modal-backdrop, .swal2-container')) {
+                                try { bd.remove(); } catch(e){}
+                            }
+                        }""")
+                    except Exception:
+                        pass
+                    if not _open_bt44_form(page, log=lambda *a: None):
+                        log(f"      ⚠ เปิดฟอร์ม บต.44 ใหม่ไม่สำเร็จ — ลองทาง login ใหม่")
+                        # ทางสำรอง: login ใหม่ในหน้า page เดิม (เผื่อ session timeout)
+                        try:
+                            login(page, login_cfg)
+                            page.wait_for_timeout(1500)
+                        except Exception as e:
+                            log(f"      ✗ Login ซ้ำไม่สำเร็จ: {str(e)[:120]}")
+                        if not _open_bt44_form(page, log=lambda *a: None):
+                            log(f"      ⛔ เปิดฟอร์ม บต.44 ไม่ได้แม้ login ใหม่ — ข้าม record นี้")
+                            results.append({**rec, "status": "FORM_FAIL",
+                                            "note": "เปิดฟอร์ม บต.44 ใหม่ไม่สำเร็จ (ระหว่าง record)",
+                                            "screenshot": ""})
+                            if progress:
+                                try: progress(k, len(selected))
+                                except Exception: pass
+                            continue
+                    page.wait_for_timeout(800)
+                log(f"  ({k}/{len(selected)}) แถว {rec['row_index']}: "
+                    f"{rec.get('prefix','')} {rec.get('name','')} | "
+                    f"{rec.get('nationality','')} | {rec.get('sex','')} | {rec.get('birthdate','')}"
+                    + (f" | อ้างอิง {rec['alien_ref']}" if rec.get("alien_ref") else ""))
+                res = _bt44_process_record(page, rec, screenshot_dir, log=log, dry_run=dry_run, dry_stop_at=dry_stop_at, check_docs=check_docs)
+                row1 = {**rec, **res}
+                results.append(row1)
+                if res.get("status") in ("SUCCESS", "DRY_OK"):
+                    success += 1
+                log(f"      → {res.get('status')}" + (f" | {res['note']}" if res.get("note") else ""))
+                if progress:
+                    try: progress(k, len(selected))
+                    except Exception: pass
+                _save_bt44_report(results, out_path, log=lambda *a: None)
+        finally:
+            # หน่วงก่อนปิด browser เพื่อให้ตรวจสอบหน้าจอได้
+            import os
+            pause_sec = int(os.environ.get("BT44_PAUSE_BEFORE_CLOSE", "0"))
+            if pause_sec > 0:
+                log(f"      ⏸ หยุด {pause_sec} วินาทีก่อนปิด browser (กด Ctrl+C เพื่อยกเลิก)")
+                try:
+                    import time as _time
+                    _time.sleep(pause_sec)
+                except KeyboardInterrupt:
+                    pass
+            ctx.close(); browser.close()
+
+    _save_bt44_report(results, out_path, log=log)
+    log(f"[3/3] สรุป: สำเร็จ {success} / {len(selected)} รายการ "
+        f"(ดู screenshots ใน {screenshot_dir.name}/)")
+    return success, out_path
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  โหมด Bill Payment — ดาวน์โหลด 'ใบแจ้งชำระเงิน' ของคำขอที่สถานะ
+#  'รอชำระเงิน → รอจ่ายเงินค่าธรรมเนียม' (ดาวน์โหลดอย่างเดียว ไม่ได้จ่ายเงินจริง:
+#  ระบบสร้างใบแจ้งหนี้ + QR/เลขอ้างอิงให้ไปชำระผ่านแอปธนาคารภายหลัง)
+# ════════════════════════════════════════════════════════════════════════════
+_BILLPAY_TARGET_STATUS = "รอจ่ายเงินค่าธรรมเนียม"
+
+
+def _billpay_parse_aliens(pdf_bytes: bytes) -> list[dict[str, str]]:
+    """ดึงรายชื่อคนต่างด้าว + เลขอ้างอิง จากหน้า 'เอกสารแนบท้าย' ของใบแจ้งชำระเงิน
+    แต่ละแถวอยู่ในรูป  '<ลำดับ>. <ชื่อคนต่างด้าว> <เลขอ้างอิง/เลขประจำตัว> <จำนวนเงิน>'
+    คืน list ของ {name, ref} (กรองเฉพาะส่วนหลังหัวข้อ 'รายชื่อคนต่างด้าว / Name List')
+    """
+    out: list[dict[str, str]] = []
+    if not pdf_bytes:
+        return out
+    try:
+        import io
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        txt = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+    except Exception:
+        return out
+    idx = txt.find("Name List")
+    if idx < 0:
+        idx = txt.find("รายชื่อคนต่างด้าว")
+    section = txt[idx:] if idx >= 0 else txt
+    seen: set[tuple[str, str]] = set()
+    for raw in section.splitlines():
+        line = raw.strip()
+        # ref = passport / RA-เลข / เลข 13 หลัก (มีตัวเลขอย่างน้อย 1 ตัว, ไม่มีช่องว่าง)
+        m = re.match(r"^\d+\.\s+(.+?)\s+([A-Za-z]{0,3}\d[A-Za-z0-9]{5,})\s+[\d,]+\.\d{2}$", line)
+        if not m:
+            continue
+        name = m.group(1).strip()
+        ref = m.group(2).strip()
+        if not re.search(r"[A-Za-zก-๙]", name):
+            continue
+        key = (name, ref)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"name": name, "ref": ref})
+    return out
+
+
+def _billpay_filename_stem(req_no: str, name: str, fallback: str = "") -> str:
+    """ตั้งชื่อไฟล์ตามรูปแบบ {เลขที่คำขอ}_{รายชื่อคนต่างด้าว}"""
+    parts = [p for p in (req_no, name) if str(p or "").strip()]
+    stem = "_".join(_safe_filename(p) for p in parts)
+    return stem or (_safe_filename(fallback) if str(fallback or "").strip() else "bill_payment")
+
+
+def _process_one_bill_payment(
+    page: Page, login_cfg: dict, row: dict[str, Any], bills_dir: Path, log=print,
+) -> dict[str, Any]:
+    """เปิดหน้า detail → แท็บ 'การชำระเงิน' → ปุ่ม 'ชำระเงิน' (ค่าธรรมเนียมขออนุญาตทำงาน)
+    → modal → 'ชำระเงิน' → modal → 'พิมพ์แบบฟอร์มการชำระเงิน' → ดาวน์โหลด PDF + อ่านข้อมูล
+
+    ขั้นตอนนี้ "สร้างใบแจ้งหนี้ + ดาวน์โหลด" เท่านั้น — ไม่ได้ตัดเงินจริง
+    (เงินจะถูกชำระเมื่อผู้ใช้สแกน QR / ใช้เลขอ้างอิงผ่านแอปธนาคารภายหลัง)
+    """
+    req_no = str(row.get("group_id", "") or "")
+    res: dict[str, Any] = {
+        "req_no": req_no, "bill_no": "", "alien_name": "", "alien_ref": "",
+        "amount": "", "due": "", "status": "", "pdf_file": "", "error": "",
+        "statusText": row.get("statusText", ""), "requester": row.get("requester", ""),
+    }
+
+    # resume: ข้ามถ้ามีไฟล์ของเลขคำขอนี้อยู่แล้ว (ชื่อไฟล์ขึ้นต้นด้วย {req_no}_ หรือ {req_no}.pdf)
+    try:
+        existing = (sorted(bills_dir.glob(f"{req_no}_*.pdf")) + sorted(bills_dir.glob(f"{req_no}.pdf"))) if req_no else []
+    except Exception:
+        existing = []
+    if existing:
+        res["status"] = "SKIP_EXISTS"
+        res["pdf_file"] = existing[0].name
+        log(f"      ↷ {req_no} มีไฟล์แล้ว — ข้าม ({existing[0].name})")
+        return res
+
+    try:
+        url = build_detail_url(row)
+        page.goto(url, wait_until="domcontentloaded", timeout=40_000)
+        page.wait_for_timeout(3500)
+        # ฟื้น session ถ้าหลุด
+        if _is_logged_out(page):
+            log("      ⚠ session หมดอายุ — login ใหม่แล้วลองอีกครั้ง")
+            login(page, login_cfg)
+            page.goto(url, wait_until="domcontentloaded", timeout=40_000)
+            page.wait_for_timeout(3500)
+        # ตั้งภาษาไทย + ปิด popup ข่าว/โมดัลที่ค้าง
+        try:
+            page.locator("#sltLang").first.select_option(value="th")
+            page.wait_for_timeout(800)
+        except Exception:
+            pass
+        page.evaluate(
+            r"""() => { if (window.jQuery){ try{ jQuery('.modal').modal('hide'); }catch(e){} }
+              document.querySelectorAll('.modal.show .btn-close,.modal.show [data-bs-dismiss],.modal.show [data-dismiss]')
+                .forEach(b => { try { b.click(); } catch(e){} }); }"""
+        )
+        page.wait_for_timeout(500)
+
+        # เปิดแท็บ 'การชำระเงิน'
+        page.evaluate(
+            r"""() => { const a = Array.from(document.querySelectorAll('a[href^="#"]'))
+                .find(e => /การชำระเงิน/.test((e.textContent||'').trim())); if (a) a.click(); }"""
+        )
+        page.wait_for_timeout(1500)
+
+        # คลิกปุ่ม 'ชำระเงิน' (OpenModalPay1) ของแถว 'ค่าธรรมเนียมขออนุญาตทำงาน'
+        clicked = page.evaluate(
+            r"""() => {
+              const vis = e => { const r = e.getBoundingClientRect(); return r.width>0 && r.height>0; };
+              const btns = Array.from(document.querySelectorAll('button,a'))
+                .filter(e => /OpenModalPay1/.test(e.getAttribute('onclick')||''));
+              let pick = btns.find(b => {
+                let txt = '', el = b;
+                for (let i=0; i<5 && el; i++){ el = el.parentElement; if (el) txt += ' ' + (el.innerText||''); }
+                return /ค่าธรรมเนียม/.test(txt) && vis(b);
+              });
+              if (!pick) pick = btns.find(vis) || btns[0];
+              if (pick) { pick.click(); return true; }
+              return false;
+            }"""
+        )
+        if not clicked:
+            res["status"] = "FAIL"
+            res["error"] = "ไม่พบปุ่ม 'ชำระเงิน' (ค่าธรรมเนียมขออนุญาตทำงาน)"
+            log(f"      ✗ {req_no}: {res['error']}")
+            return res
+
+        # modal 1 (#exampleModal) → ปุ่ม 'ชำระเงิน' (#openpaymentdetail = OpentWP)
+        try:
+            page.wait_for_selector("#exampleModal.show", timeout=8000)
+        except Exception:
+            pass
+        page.wait_for_timeout(1000)
+        page.evaluate(r"""() => { const b = document.getElementById('openpaymentdetail'); if (b) b.click(); }""")
+
+        # modal 2 (#WP_Payment) แสดง QR + เลขอ้างอิง
+        try:
+            page.wait_for_selector("#WP_Payment.show", timeout=12_000)
+        except Exception:
+            pass
+        page.wait_for_timeout(1500)
+        refs = page.evaluate(
+            r"""() => ({
+              ref1:((document.getElementById('ref1')||{}).innerText||'').trim(),
+              ref2:((document.getElementById('ref2')||{}).innerText||'').trim(),
+              amount:((document.getElementById('lbl_price_payment_amount')||{}).innerText||'').trim(),
+              due:((document.getElementById('payment_expired_time')||{}).innerText||'').trim(),
+            })"""
+        )
+
+        # ปุ่ม 'พิมพ์แบบฟอร์มการชำระเงิน' (#button_payment = UpdatePayment) → เปิด PDF ใน tab ใหม่
+        def _do_click():
+            page.evaluate(r"""() => { const b = document.getElementById('button_payment'); if (b) b.click(); }""")
+
+        body: bytes = b""
+        err_last = ""
+        for attempt in range(1, 4):
+            b, err = _grab_pdf_after_click(page, _do_click, log=lambda *a: None)
+            if b and len(b) >= 500 and b[:5] == b"%PDF-":
+                body = b
+                break
+            err_last = err or "ไม่ได้ไฟล์"
+            log(f"      · ⚠ {req_no} ดาวน์โหลดใบแจ้งชำระเงินครั้งที่ {attempt} ไม่สำเร็จ ({err_last}) — ลองใหม่")
+            page.wait_for_timeout(2000)
+
+        if not (body and body[:5] == b"%PDF-"):
+            res["status"] = "FAIL"
+            res["error"] = f"ดาวน์โหลด PDF ไม่สำเร็จ: {err_last}"
+            res["bill_no"] = refs.get("ref2", "")
+            res["amount"] = refs.get("amount", "")
+            res["due"] = refs.get("due", "")
+            log(f"      ✗ {req_no}: {res['error']}")
+            return res
+
+        # อ่านข้อมูลจาก PDF (แหล่งข้อมูลหลัก) + รายชื่อคนต่างด้าวจากหน้าแนบท้าย
+        parsed = _bt30_parse_payment_pdf(body)
+        aliens = _billpay_parse_aliens(body)
+        bill_no = parsed.get("bill_no") or refs.get("ref2", "")
+        req_no_final = parsed.get("request_no") or req_no
+        if aliens:
+            name = aliens[0]["name"]
+            ref = aliens[0]["ref"]
+            res["alien_name"] = "; ".join(a["name"] for a in aliens)
+            res["alien_ref"] = "; ".join(a["ref"] for a in aliens)
+        else:
+            name = ""
+            ref = parsed.get("alien_ref", "")
+            res["alien_name"] = ""
+            res["alien_ref"] = ref
+
+        stem = _billpay_filename_stem(req_no_final, name, fallback=req_no)
+        fname = f"{stem}.pdf"
+        (bills_dir / fname).write_bytes(body)
+
+        res["status"] = "SUCCESS"
+        res["bill_no"] = bill_no
+        res["amount"] = parsed.get("amount") or refs.get("amount", "")
+        res["due"] = parsed.get("due") or refs.get("due", "")
+        res["pdf_file"] = fname
+        extra = f" (+{len(aliens) - 1} คน)" if len(aliens) > 1 else ""
+        log(f"      ✓ {req_no}: ใบแจ้งชำระเงิน {bill_no} | {name}{extra} | ยอด {res['amount']} → {fname}")
+        return res
+
+    except Exception as e:
+        res["status"] = "ERROR"
+        res["error"] = str(e).splitlines()[0][:200]
+        log(f"      ✗ {req_no}: ผิดพลาด — {res['error']}")
+        return res
+
+
+def _save_billpay_report(rows: list[dict[str, Any]], out_path: Path, log=print) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ใบแจ้งชำระเงิน"
+    headers = ["ลำดับ", "Username", "เลขที่คำขอ", "เลขที่ใบแจ้งชำระเงิน",
+               "รายชื่อคนต่างด้าว", "เลขอ้างอิง/เลขประจำตัว", "ยอดชำระ", "ชำระภายใน",
+               "สถานะคำขอ", "Status", "ไฟล์", "Error"]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    link_font = Font(color="0563C1", underline="single")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    text_cols = {"เลขที่คำขอ", "เลขที่ใบแจ้งชำระเงิน", "เลขอ้างอิง/เลขประจำตัว"}
+    for i, r in enumerate(rows, start=1):
+        ws.append([
+            i, r.get("username", ""), r.get("req_no", ""), r.get("bill_no", ""),
+            r.get("alien_name", ""), r.get("alien_ref", ""), r.get("amount", ""),
+            r.get("due", ""), r.get("statusText", ""), r.get("status", ""),
+            r.get("pdf_file", ""), r.get("error", ""),
+        ])
+        row_idx = ws.max_row
+        for c_idx, h in enumerate(headers, start=1):
+            cell = ws.cell(row=row_idx, column=c_idx)
+            if h in text_cols and cell.value not in (None, ""):
+                cell.value = str(cell.value)
+                cell.number_format = "@"
+            if h == "ไฟล์" and cell.value:
+                fname = str(cell.value)
+                cell.value = f'=HYPERLINK("bill_payment/{fname}","{fname}")'
+                cell.font = link_font
+
+    widths = [8, 30, 20, 22, 30, 24, 12, 20, 28, 12, 40, 45]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out_path)
+    log(f"บันทึกรายงาน: {out_path}")
+
+
+def run_bill_payment(
+    cfg: dict,
+    login_excel: Path,
+    out_path: Path,
+    row_range: str | None = None,
+    request_types: list[str] | None = None,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """ดาวน์โหลด 'ใบแจ้งชำระเงิน' ของคำขอที่สถานะ 'รอจ่ายเงินค่าธรรมเนียม' (ทุกบัญชีใน login_excel)
+
+    - วนทุก Username ใน UsernameLogin.xlsx → login → เปิด e-Tracking → filter 'รอชำระเงิน' (WP)
+      → เลือกเฉพาะแถว 'รอจ่ายเงินค่าธรรมเนียม'
+    - request_types: รหัส 'รายการคำขอ' ที่จะกรอง (เลือกได้หลายรายการ) — None/ว่าง = ทุกรายการคำขอ
+    - แต่ละคำขอ: เข้าหน้า detail → แท็บการชำระเงิน → กดชำระเงิน → modal → ชำระเงิน → modal
+      → 'พิมพ์แบบฟอร์มการชำระเงิน' → ดาวน์โหลด PDF (สร้างใบแจ้งหนี้ ไม่ได้ตัดเงินจริง)
+    - ตั้งชื่อไฟล์ {เลขที่คำขอ}_{รายชื่อคนต่างด้าว}
+    - resume ได้: ข้ามคำขอที่มีไฟล์อยู่แล้ว
+    """
+    out_path = _timestamped_path(out_path)
+    accounts = _read_login_accounts(login_excel)
+    # เอาเฉพาะรหัสที่ไม่ว่าง (ตัด '' = ทั้งหมด ออก) — ถ้าว่างทั้งหมดถือว่าไม่กรอง
+    req_types = [rt for rt in (request_types or []) if rt]
+    log(f"[1/3] บัญชี login: {login_excel} ({len(accounts)} บัญชี)")
+    log(f"      เป้าหมาย: คำขอสถานะ 'รอชำระเงิน → {_BILLPAY_TARGET_STATUS}'")
+    if req_types:
+        log(f"      กรองเฉพาะรายการคำขอ: {', '.join(req_types)} ({len(req_types)} รายการ)")
+    else:
+        log("      รายการคำขอ: ทั้งหมด (ไม่กรอง)")
+
+    bills_dir = out_path.parent / "bill_payment"
+    bills_dir.mkdir(parents=True, exist_ok=True)
+
+    results: list[dict[str, Any]] = []
+    success = 0
+    total_seen = 0
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        try:
+            for ai, (ukey, acct) in enumerate(accounts.items(), start=1):
+                if is_cancelled and is_cancelled():
+                    log("[!] ผู้ใช้ยกเลิก — หยุด")
+                    break
+                login_cfg = {
+                    "username": acct["username"],
+                    "password": acct["password"],
+                    "user_type": acct["type"],
+                    "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+                }
+                ctx = browser.new_context(
+                    locale="th-TH",
+                    ignore_https_errors=True,
+                    viewport={"width": 1920, "height": 1080},
+                    accept_downloads=True,
+                )
+                page = ctx.new_page()
+                try:
+                    log(f"[บัญชี {ai}/{len(accounts)}] เข้าสู่ระบบ: {acct['username']} ({acct['type']})")
+                    try:
+                        login(page, login_cfg)
+                    except Exception as e:
+                        log(f"      ✗ login ไม่สำเร็จ: {e} — ข้ามบัญชีนี้")
+                        results.append({"username": acct["username"], "req_no": "", "bill_no": "",
+                                        "alien_name": "", "alien_ref": "", "amount": "", "due": "",
+                                        "statusText": "", "status": "LOGIN_FAIL", "pdf_file": "",
+                                        "error": str(e).splitlines()[0][:200]})
+                        continue
+
+                    goto_tracking(page)
+                    if req_types:
+                        # กรองทีละรายการคำขอ (ใช้ filter ของเว็บเอง) แล้วรวมผล + ตัดซ้ำตาม group_id
+                        targets = []
+                        seen_ids: set[str] = set()
+                        for rt in req_types:
+                            apply_wa_filter(page, rt, status_ids=["WP"])
+                            page.wait_for_timeout(1200)
+                            rows = collect_all_wa_rows(page, log=log)
+                            for r in rows:
+                                gid = r.get("group_id")
+                                if (_BILLPAY_TARGET_STATUS in (r.get("statusText", "") or "")
+                                        and gid not in seen_ids):
+                                    seen_ids.add(gid)
+                                    targets.append(r)
+                    else:
+                        apply_wa_filter(page, "", status_ids=["WP"])
+                        page.wait_for_timeout(1500)
+                        rows = collect_all_wa_rows(page, log=log)
+                        targets = [r for r in rows if _BILLPAY_TARGET_STATUS in (r.get("statusText", "") or "")]
+                    n_idx = _parse_row_range(row_range, len(targets))
+                    selected = [targets[i - 1] for i in n_idx]
+                    total_seen += len(selected)
+                    log(f"      พบ {len(targets)} คำขอรอจ่ายค่าธรรมเนียม → จะทำ {len(selected)} "
+                        f"({row_range or 'ทั้งหมด'})")
+
+                    for ri, row in enumerate(selected, start=1):
+                        if is_cancelled and is_cancelled():
+                            log("[!] ผู้ใช้ยกเลิก — หยุด")
+                            break
+                        log(f"  ({ri}/{len(selected)}) คำขอ {row.get('group_id','')} | {row.get('requester','')}")
+                        res = _process_one_bill_payment(page, login_cfg, row, bills_dir, log=log)
+                        res["username"] = acct["username"]
+                        results.append(res)
+                        if res.get("status") == "SUCCESS":
+                            success += 1
+                        if progress:
+                            try: progress(len(results), total_seen)
+                            except Exception: pass
+                except Exception as e:
+                    log(f"      ✗ บัญชี {acct['username']} ผิดพลาด: {str(e).splitlines()[0][:200]}")
+                finally:
+                    ctx.close()
+                _save_billpay_report(results, out_path, log=lambda *_: None)
+        finally:
+            browser.close()
+
+    _save_billpay_report(results, out_path, log=log)
+    fail = sum(1 for r in results if r.get("status") not in ("SUCCESS", "SKIP_EXISTS"))
+    log(f"[3/3] สรุป: ดาวน์โหลดสำเร็จ {success} / {len(results)} (ล้มเหลว {fail})")
+    return success, out_path
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  โหมด Payment Receipts — ดาวน์โหลด 'ใบเสร็จรับเงิน' ทั้งชุดของคำขอ
+#  (ใบเสร็จ 900 / 100 และอื่นๆ) จากหน้า /Center/MultiplePayments
+#  - แต่ละไฟล์ดาวน์โหลดจากระบบมีหลายคน → แยกหน้าเป็น 1 ใบเสร็จ/1 คน/1 ไฟล์
+#  - ชื่อไฟล์: {เลขที่คำขอ}_{ชื่อคนต่างด้าว}_{ชื่อนายจ้าง}_{Amount}_{เลขอ้างอิงคนต่างด้าว}.pdf
+# ════════════════════════════════════════════════════════════════════════════
+
+def _read_request_receipt_excel(path: Path) -> list[dict[str, Any]]:
+    """อ่าน Request_Receipt.xlsx → [{seq, req_no, username, row_index}]
+    คอลัมน์ (ยืดหยุ่น): ลำดับ | เลขที่คำขอ | Username
+    """
+    wb = load_workbook(path, data_only=True)
+    ws = wb.active
+    hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
+
+    def col(*names: str) -> int:
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if h == nm:
+                    return i
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if nm.lower() in h.lower():
+                    return i
+        return -1
+
+    i_seq = col("ลำดับ", "No.", "Seq")
+    i_req = col("เลขที่คำขอ", "Request No.", "RequestNo", "request_no", "group_id")
+    i_user = col("Username", "username", "อีเมล")
+
+    out: list[dict[str, Any]] = []
+    for r_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not any(v not in (None, "") for v in row):
+            continue
+
+        def g(i: int) -> str:
+            return str(row[i]).strip() if 0 <= i < len(row) and row[i] is not None else ""
+
+        req = "".join(ch for ch in g(i_req) if ch.isdigit())
+        user = g(i_user)
+        if not req or not user:
+            continue
+        out.append({
+            "seq": g(i_seq) or str(r_idx - 1),
+            "req_no": req,
+            "username": user,
+            "row_index": r_idx,
+        })
+    return out
+
+
+def _payreceipt_parse_page(text: str) -> dict[str, str]:
+    """แยกข้อมูล 1 หน้าใบเสร็จ (1 ใบ / 1 คน) จาก text ของ PDF page
+    Labels ภาษาอังกฤษเป็น anchor หลัก (เสถียร) คืน dict ของ field ที่อ่านได้
+    """
+    out = {
+        "request_no": "", "receipt_no": "", "bill_payment_no": "",
+        "foreigner_name": "", "foreigner_ref": "", "nationality": "",
+        "employer_name": "", "employer_id": "",
+        "amount": "", "payment_date": "", "biller_name": "",
+    }
+    if not text:
+        return out
+    import re as _re
+
+    def g(pat: str, flags: int = 0) -> str:
+        m = _re.search(pat, text, flags)
+        return m.group(1).strip() if m else ""
+
+    # label → next non-blank line (ค่าจริงอยู่ถัดจาก label English ที่อยู่ในวงเล็บ)
+    def after_label(label: str) -> str:
+        # หา label ที่อยู่บนบรรทัด — แล้วคืนบรรทัดถัดไปที่ไม่ว่าง
+        lines = text.split("\n")
+        for i, ln in enumerate(lines):
+            if label in ln:
+                for j in range(i + 1, min(i + 6, len(lines))):
+                    v = lines[j].strip()
+                    if v and "(" not in v[:3]:  # ข้ามบรรทัด label ถัดไป
+                        return v
+                break
+        return ""
+
+    out["foreigner_name"] = after_label("(Foreigner Name)").rstrip()
+    out["nationality"] = after_label("(Nationality)")
+    out["foreigner_ref"] = after_label("(Foreigner Reference no./ Foreigner ID)")
+    out["payment_date"] = after_label("(Payment Date)")
+    out["receipt_no"] = after_label("(Receipt No.)")
+    out["request_no"] = after_label("(Request No.)")
+    out["bill_payment_no"] = after_label("(Bill Payment No.)")
+    out["employer_id"] = after_label("(Employer ID)")
+    out["biller_name"] = after_label("(Biller Name)")
+
+    # Employer Name อาจมีหลายบรรทัด (ตัวอย่างมี linebreak กลางชื่อ) — รวม 1-3 บรรทัดถัดจาก label
+    lines = text.split("\n")
+    for i, ln in enumerate(lines):
+        if "(Employer Name/Company Name)" in ln:
+            parts: list[str] = []
+            for j in range(i + 1, min(i + 5, len(lines))):
+                v = lines[j].strip()
+                if not v:
+                    continue
+                if v.startswith("(") and ")" in v[:25]:
+                    break
+                if v.startswith("เลขประจำตัว") or "(Employer ID)" in v:
+                    break
+                parts.append(v)
+            out["employer_name"] = " ".join(parts).strip()
+            break
+
+    # Amount — รูปแบบในใบเสร็จ: "...(Amount)\n900.00\n..." (อยู่หลัง label Amount ที่เป็นยอดรวม)
+    # หา occurrence สุดท้ายของ "(Amount)" (ตำแหน่งของยอดรวม) แล้วคืนค่าตัวเลข
+    m = list(_re.finditer(r"\(Amount\)\s*\n([0-9,]+\.\d{2})", text))
+    if m:
+        out["amount"] = m[-1].group(1)
+    else:
+        # fallback: บรรทัด "900.00 1 900.00" → เอาตัวสุดท้าย
+        m2 = _re.search(r"([0-9,]+\.\d{2})\s+\d+\s+([0-9,]+\.\d{2})", text)
+        if m2:
+            out["amount"] = m2.group(2)
+    return out
+
+
+def _payreceipt_split_pages(body: bytes) -> list[tuple[bytes, str]]:
+    """แยก PDF หลายหน้า → [(single_page_pdf_bytes, page_text), ...]"""
+    out: list[tuple[bytes, str]] = []
+    if not body or body[:5] != b"%PDF-":
+        return out
+    try:
+        import io
+        from pypdf import PdfReader, PdfWriter
+        reader = PdfReader(io.BytesIO(body))
+        for pg in reader.pages:
+            writer = PdfWriter()
+            writer.add_page(pg)
+            buf = io.BytesIO()
+            writer.write(buf)
+            out.append((buf.getvalue(), pg.extract_text() or ""))
+    except Exception:
+        return out
+    return out
+
+
+def _payreceipt_filename(req_no: str, info: dict[str, str], page_idx: int) -> str:
+    """สร้างชื่อไฟล์ {request_no}_{foreigner_name}_{employer_name}_{foreigner_ref}_RECEIPT{amount_int}.pdf
+    Amount เป็นจำนวนเต็ม (ตัดทศนิยม) เช่น 900.00 → 900
+    """
+    req = info.get("request_no") or req_no
+    name = info.get("foreigner_name") or ""
+    emp = info.get("employer_name") or ""
+    ref = info.get("foreigner_ref") or ""
+    amt_raw = (info.get("amount") or "").replace(",", "").strip()
+    amt_int = ""
+    if amt_raw:
+        try:
+            amt_int = str(int(float(amt_raw)))
+        except Exception:
+            amt_int = amt_raw.split(".")[0]
+    parts = [p for p in (req, name, emp, ref) if str(p).strip()]
+    stem = "_".join(_safe_filename(p) for p in parts)
+    if not stem:
+        stem = f"{_safe_filename(req_no)}_page{page_idx}"
+    suffix = f"_RECEIPT{amt_int}" if amt_int else "_RECEIPT"
+    return f"{stem}{suffix}.pdf"
+
+
+def _payreceipt_open_list_page(page: Page, req_no: str, log=print) -> tuple[bool, str]:
+    """เปิดหน้า /Center/MultiplePayments ของคำขอ — return (ok, error)
+    flow: Tracking → ค้นหา req_no → คลิกแถวแรก → tab การชำระเงิน → ปุ่ม ดูใบเสร็จรับเงิน
+    """
+    try:
+        page.goto(TRACKING_URL, wait_until="domcontentloaded", timeout=40_000)
+        page.wait_for_timeout(2500)
+        if _is_logged_out(page):
+            return False, "session หมดอายุ"
+        _search_request(page, req_no)
+        page.wait_for_timeout(1500)
+
+        # ตรวจว่ามีผลค้นหา
+        has = page.evaluate(
+            r"""() => !!document.querySelector('a[onclick*="openDetail"]')"""
+        )
+        if not has:
+            return False, "ไม่พบเลขคำขอในระบบ"
+
+        # คลิกเข้า detail
+        try:
+            with page.expect_navigation(timeout=20_000, wait_until="domcontentloaded"):
+                page.evaluate(
+                    r"""() => { const a = document.querySelector('a[onclick*="openDetail"]'); if (a) a.click(); }"""
+                )
+        except Exception:
+            pass
+        page.wait_for_timeout(2500)
+
+        # เปลี่ยนภาษา ปิด popup
+        try:
+            page.locator("#sltLang").first.select_option(value="th")
+            page.wait_for_timeout(600)
+        except Exception:
+            pass
+        page.evaluate(
+            r"""() => {
+            if (window.jQuery) { try { jQuery('.modal').modal('hide'); } catch(e){} }
+            document.querySelectorAll('.modal.show .btn-close,.modal.show [data-bs-dismiss]')
+                .forEach(b => { try { b.click(); } catch(e){} });
+        }"""
+        )
+        page.wait_for_timeout(500)
+
+        # เปิดแท็บ การชำระเงิน
+        page.evaluate(
+            r"""() => {
+            const a = Array.from(document.querySelectorAll('a[href^="#"], .nav-link, .nav a'))
+                .find(e => /^การชำระเงิน$/.test((e.textContent||'').trim()));
+            if (a) a.click();
+        }"""
+        )
+        page.wait_for_timeout(1800)
+
+        # คลิก 'ดูใบเสร็จรับเงิน' — มันเป็น window.location.href navigation (ไม่ใช่ popup)
+        try:
+            with page.expect_navigation(timeout=20_000, wait_until="domcontentloaded"):
+                page.evaluate(
+                    r"""() => {
+                    const vis = el => { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; };
+                    const b = Array.from(document.querySelectorAll('button,a'))
+                        .find(e => vis(e) && /ดูใบเสร็จรับเงิน/.test((e.textContent||'').trim()));
+                    if (b) b.click();
+                }"""
+                )
+        except Exception:
+            pass
+        page.wait_for_timeout(3500)
+
+        if "/Center/MultiplePayments" not in (page.url or ""):
+            return False, f"ไม่ได้เข้าหน้า MultiplePayments (อยู่ที่ {page.url[:80]})"
+        return True, ""
+    except Exception as e:
+        return False, str(e).splitlines()[0][:200]
+
+
+def _payreceipt_total_rows(page: Page) -> int:
+    """อ่านจำนวนรายการทั้งหมดจาก 'รายการคำขอ N รายการ'"""
+    try:
+        return page.evaluate(
+            r"""() => {
+            const m = (document.body.innerText || '').match(/รายการคำขอ\s+(\d+)\s+รายการ/);
+            return m ? parseInt(m[1], 10) : 0;
+        }"""
+        )
+    except Exception:
+        return 0
+
+
+def _payreceipt_set_page_size(page: Page, size: int = 100) -> bool:
+    """พยายามเปลี่ยน page size dropdown เป็นค่าสูงสุด (ลด pagination)"""
+    try:
+        return bool(page.evaluate(
+            r"""(sz) => {
+            const selects = Array.from(document.querySelectorAll('select'));
+            for (const s of selects) {
+                const opts = Array.from(s.options).map(o => parseInt(o.value || o.textContent, 10) || 0);
+                if (opts.some(v => v === 10) && opts.some(v => v >= 20)) {
+                    // เป็น dropdown 'รายการต่อหน้า'
+                    const target = opts.filter(v => v >= sz).sort((a,b)=>a-b)[0]
+                                || Math.max(...opts);
+                    s.value = String(target);
+                    s.dispatchEvent(new Event('change', {bubbles: true}));
+                    return true;
+                }
+            }
+            return false;
+        }""", size))
+    except Exception:
+        return False
+
+
+def _payreceipt_go_next_page(page: Page) -> bool:
+    """กดปุ่ม 'ถัดไป' / Next ใน pagination — คืน True ถ้ากดสำเร็จและเปลี่ยนหน้าได้"""
+    try:
+        return bool(page.evaluate(
+            r"""() => {
+            const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                return r.width>0 && r.height>0 && s.display !== 'none' && s.visibility !== 'hidden'; };
+            const btns = Array.from(document.querySelectorAll('a, button, li'));
+            // ปุ่มถัดไป (ไม่ถูก disable)
+            const next = btns.find(b => vis(b)
+                && /^(ถัดไป|next|»|›)/i.test((b.textContent||'').trim())
+                && !b.disabled
+                && !/disabled/i.test(b.className || '')
+                && !(b.parentElement && /disabled/i.test(b.parentElement.className || '')));
+            if (next) {
+                const a = next.tagName === 'LI' ? next.querySelector('a, button') : next;
+                if (a) { a.click(); return true; }
+            }
+            return false;
+        }"""
+        ))
+    except Exception:
+        return False
+
+
+def _payreceipt_iter_and_download(
+    page: Page, req_no: str, save_dir: Path, log=print,
+) -> list[dict[str, Any]]:
+    """หน้า /Center/MultiplePayments: วนทุกแถว ทุก page → คลิก 'ใบเสร็จรับเงิน' → grab PDF → split per page → save
+    คืน list ของ result records
+    """
+    save_dir.mkdir(parents=True, exist_ok=True)
+    out_records: list[dict[str, Any]] = []
+
+    page.wait_for_timeout(1500)
+    total = _payreceipt_total_rows(page)
+    log(f"      · พบ {total or '?'} รายการใบแจ้งชำระเงิน")
+    _payreceipt_set_page_size(page, 100)
+    page.wait_for_timeout(2000)
+
+    processed_rows = 0
+    page_idx = 0
+    while True:
+        page_idx += 1
+        # หาแถวทั้งหมดในหน้านี้ — ใช้ตำแหน่ง bill_no เป็นกุญแจกัน duplicate
+        row_count = page.evaluate(
+            r"""() => {
+            const trs = Array.from(document.querySelectorAll('table tbody tr'));
+            return trs.filter(tr => tr.querySelector('button, a')
+                && /ใบเสร็จรับเงิน/.test(tr.innerText || '')).length;
+        }"""
+        )
+        log(f"      · หน้า {page_idx}: {row_count} แถวที่มีปุ่มใบเสร็จรับเงิน")
+        if not row_count:
+            break
+
+        for i in range(row_count):
+            # ดึงข้อมูลแถวก่อนคลิก (เลขใบแจ้ง, สถานะ)
+            row_info = page.evaluate(
+                r"""(idx) => {
+                const trs = Array.from(document.querySelectorAll('table tbody tr'))
+                    .filter(tr => /ใบเสร็จรับเงิน/.test(tr.innerText || ''));
+                const tr = trs[idx];
+                if (!tr) return null;
+                const tds = tr.querySelectorAll('td');
+                const txt = (n) => tds[n] ? (tds[n].innerText||'').trim() : '';
+                return {
+                    seq: txt(0),
+                    bill_no: (txt(1).match(/\d{10,}/) || [''])[0],
+                    due: txt(2),
+                    paid_date: txt(3),
+                    status: txt(4),
+                };
+            }""", i,
+            )
+            if not row_info:
+                continue
+            bill_no = row_info.get("bill_no", "")
+            log(f"        ({i + 1}/{row_count}) ใบแจ้ง {bill_no} | {row_info.get('status','-')} | จ่าย {row_info.get('paid_date','-')}")
+
+            # คลิกปุ่มใบเสร็จรับเงินของแถวนี้
+            def _do_click(idx: int = i):
+                page.evaluate(
+                    r"""(idx) => {
+                    const trs = Array.from(document.querySelectorAll('table tbody tr'))
+                        .filter(tr => /ใบเสร็จรับเงิน/.test(tr.innerText || ''));
+                    const tr = trs[idx];
+                    if (!tr) return;
+                    const btn = Array.from(tr.querySelectorAll('button, a'))
+                        .find(b => /ใบเสร็จรับเงิน/.test((b.textContent||'').trim()));
+                    if (btn) btn.click();
+                }""", idx,
+                )
+
+            body: bytes = b""
+            err_last = ""
+            for attempt in range(1, 4):
+                b, err = _grab_pdf_after_click(page, _do_click, log=lambda *a: None)
+                if b and len(b) >= 500 and b[:5] == b"%PDF-":
+                    body = b
+                    break
+                err_last = err or "ไม่ได้ไฟล์"
+                log(f"          · ⚠ ดาวน์โหลดครั้งที่ {attempt} ไม่สำเร็จ ({err_last})")
+                page.wait_for_timeout(1500)
+
+            if not body:
+                out_records.append({
+                    "req_no": req_no, "bill_no": bill_no, "status": "FAIL",
+                    "error": f"ดาวน์โหลดล้มเหลว: {err_last}",
+                    **{k: row_info.get(k, "") for k in ("paid_date", "due")},
+                })
+                processed_rows += 1
+                continue
+
+            # split per page → save
+            pages = _payreceipt_split_pages(body)
+            log(f"          · ดาวน์โหลด PDF {len(body)//1024} KB ({len(pages)} หน้า) — แยกเป็น 1 ใบ/1 คน")
+            for p_idx, (single_body, txt) in enumerate(pages, start=1):
+                info = _payreceipt_parse_page(txt)
+                fname = _payreceipt_filename(req_no, info, p_idx)
+                # resume: ข้ามถ้ามีไฟล์อยู่แล้ว
+                if (save_dir / fname).exists():
+                    log(f"            ↷ {fname} (มีอยู่แล้ว — ข้าม)")
+                else:
+                    try:
+                        (save_dir / fname).write_bytes(single_body)
+                        log(f"            ✓ {fname} ({len(single_body)//1024} KB)")
+                    except Exception as e:
+                        log(f"            ✗ เขียนไฟล์ไม่สำเร็จ: {str(e)[:120]}")
+                out_records.append({
+                    "req_no": req_no, "bill_no": bill_no,
+                    "status": "SUCCESS",
+                    "page": p_idx, "pages_total": len(pages),
+                    "foreigner_name": info.get("foreigner_name", ""),
+                    "foreigner_ref": info.get("foreigner_ref", ""),
+                    "nationality": info.get("nationality", ""),
+                    "employer_name": info.get("employer_name", ""),
+                    "amount": info.get("amount", ""),
+                    "payment_date": info.get("payment_date", "") or row_info.get("paid_date", ""),
+                    "receipt_no": info.get("receipt_no", ""),
+                    "bill_payment_no": info.get("bill_payment_no", "") or bill_no,
+                    "pdf_file": fname,
+                    "paid_date": row_info.get("paid_date", ""),
+                    "due": row_info.get("due", ""),
+                    "row_status": row_info.get("status", ""),
+                })
+            processed_rows += 1
+            page.wait_for_timeout(400)
+
+        # ไปหน้าถัดไป
+        if not _payreceipt_go_next_page(page):
+            break
+        page.wait_for_timeout(2000)
+
+    log(f"      · รวมประมวลผล {processed_rows} แถว → {len(out_records)} ใบเสร็จ")
+    return out_records
+
+
+def _save_payreceipt_report(rows: list[dict[str, Any]], out_path: Path, log=print) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ใบเสร็จรับเงิน"
+    headers = ["ลำดับ", "Username", "เลขที่คำขอ",
+               "เลขที่ใบแจ้งชำระเงิน", "เลขที่ใบเสร็จ",
+               "ชื่อคนต่างด้าว", "สัญชาติ", "เลขอ้างอิงคนต่างด้าว",
+               "ชื่อนายจ้าง/สถานประกอบการ", "ยอด (Amount)",
+               "วันที่ชำระเงิน", "กำหนดชำระ", "สถานะ", "หน้าที่",
+               "ไฟล์ PDF", "Error"]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    link_font = Font(color="0563C1", underline="single")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    text_cols = {"เลขที่คำขอ", "เลขที่ใบแจ้งชำระเงิน", "เลขที่ใบเสร็จ", "เลขอ้างอิงคนต่างด้าว"}
+    for i, r in enumerate(rows, start=1):
+        ws.append([
+            i, r.get("username", ""), r.get("req_no", ""),
+            r.get("bill_payment_no", "") or r.get("bill_no", ""),
+            r.get("receipt_no", ""),
+            r.get("foreigner_name", ""), r.get("nationality", ""), r.get("foreigner_ref", ""),
+            r.get("employer_name", ""), r.get("amount", ""),
+            r.get("payment_date", "") or r.get("paid_date", ""), r.get("due", ""),
+            r.get("status", ""),
+            (f"{r.get('page','')}/{r.get('pages_total','')}" if r.get("page") else ""),
+            r.get("pdf_file", ""), r.get("error", ""),
+        ])
+        row_idx = ws.max_row
+        for c_idx, h in enumerate(headers, start=1):
+            cell = ws.cell(row=row_idx, column=c_idx)
+            if h in text_cols and cell.value not in (None, ""):
+                cell.value = str(cell.value)
+                cell.number_format = "@"
+            if h == "ไฟล์ PDF" and cell.value:
+                fname = str(cell.value)
+                cell.value = f'=HYPERLINK("payment_receipts/{fname}","{fname}")'
+                cell.font = link_font
+
+    widths = [6, 30, 20, 22, 20, 28, 14, 24, 36, 12, 22, 22, 12, 10, 60, 40]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out_path)
+    log(f"บันทึกรายงาน: {out_path}")
+
+
+def run_payment_receipts(
+    cfg: dict,
+    request_excel: Path,
+    login_excel: Path,
+    out_path: Path,
+    row_range: str | None = None,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """ดาวน์โหลด 'ใบเสร็จรับเงิน' ทั้งชุด (900 + 100 + อื่นๆ) ตามเลขคำขอใน Request_Receipt.xlsx
+    - Loop ทีละ Username (sequential) — login/logout เปลี่ยน user อัตโนมัติ
+    - แต่ละคำขอ: เปิด /Center/MultiplePayments → วนทุกแถว ทุก page → ดาวน์โหลด → split per page → ตั้งชื่อ
+    - resume: ข้ามไฟล์ที่มีอยู่แล้ว
+    """
+    out_path = _timestamped_path(out_path)
+    records = _read_request_receipt_excel(request_excel)
+    accounts = _read_login_accounts(login_excel)
+    total = len(records)
+    indices = _parse_row_range(row_range, total)
+    selected = [records[i - 1] for i in indices]
+    log(f"[1/3] อ่าน {Path(request_excel).name}: {total} แถว → จะทำ {len(selected)} แถว "
+        f"({row_range or 'ทั้งหมด'})")
+    log(f"      บัญชี login จาก {Path(login_excel).name}: {len(accounts)} บัญชี")
+
+    save_dir = out_path.parent / "payment_receipts"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    # จัดกลุ่มตาม Username (รักษาลำดับ)
+    by_user: dict[str, list[dict[str, Any]]] = {}
+    for rec in selected:
+        by_user.setdefault(rec["username"], []).append(rec)
+
+    results: list[dict[str, Any]] = []
+    success = 0
+    done_rows = 0
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        ctx = browser.new_context(
+            locale="th-TH", ignore_https_errors=True,
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        try:
+            for u_idx, (username, recs) in enumerate(by_user.items(), start=1):
+                if is_cancelled and is_cancelled():
+                    log("[!] ผู้ใช้ยกเลิก — หยุด")
+                    break
+                acct = accounts.get(username.lower())
+                if not acct:
+                    log(f"  [{u_idx}/{len(by_user)}] ⛔ ไม่พบ {username} ใน UsernameLogin.xlsx — ข้าม "
+                        f"({len(recs)} คำขอ)")
+                    for r in recs:
+                        results.append({**r, "status": "NO_LOGIN",
+                                        "error": "ไม่พบบัญชีใน UsernameLogin.xlsx",
+                                        "username": username})
+                        done_rows += 1
+                    continue
+
+                log(f"  [{u_idx}/{len(by_user)}] === เปลี่ยน user: {username} ({len(recs)} คำขอ) ===")
+                _logout_safely(page)
+                page.wait_for_timeout(1500)
+                try:
+                    login(page, {
+                        "username": acct["username"], "password": acct["password"],
+                        "user_type": acct["type"],
+                        "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+                    })
+                except Exception as e:
+                    log(f"      ⛔ login ล้มเหลว: {str(e)[:160]}")
+                    for r in recs:
+                        results.append({**r, "status": "LOGIN_FAIL",
+                                        "error": str(e)[:160], "username": username})
+                        done_rows += 1
+                    continue
+                page.wait_for_timeout(1500)
+
+                for k, rec in enumerate(recs, start=1):
+                    if is_cancelled and is_cancelled():
+                        break
+                    req_no = rec["req_no"]
+                    log(f"    ({k}/{len(recs)}) คำขอ {req_no}")
+                    try:
+                        ok, err = _payreceipt_open_list_page(page, req_no, log=log)
+                        if not ok:
+                            log(f"      ⛔ {err}")
+                            results.append({**rec, "status": "FAIL", "error": err,
+                                            "username": username})
+                            done_rows += 1
+                            continue
+                        recs_one = _payreceipt_iter_and_download(page, req_no, save_dir, log=log)
+                        if not recs_one:
+                            results.append({**rec, "status": "EMPTY",
+                                            "error": "ไม่พบรายการใบเสร็จในระบบ",
+                                            "username": username})
+                        else:
+                            for rr in recs_one:
+                                results.append({**rec, **rr, "username": username})
+                                if rr.get("status") == "SUCCESS":
+                                    success += 1
+                    except Exception as e:
+                        results.append({**rec, "status": "ERROR",
+                                        "error": str(e).splitlines()[0][:200],
+                                        "username": username})
+                        log(f"      ✗ ผิดพลาด: {str(e).splitlines()[0][:160]}")
+                    done_rows += 1
+                    if progress:
+                        try: progress(done_rows, total)
+                        except Exception: pass
+                    _save_payreceipt_report(results, out_path, log=lambda *a: None)
+
+                # logout ก่อนเปลี่ยน user
+                _logout_safely(page)
+                page.wait_for_timeout(1500)
+        finally:
+            ctx.close(); browser.close()
+
+    _save_payreceipt_report(results, out_path, log=log)
+    fail = sum(1 for r in results if r.get("status") not in ("SUCCESS",))
+    log(f"[3/3] สรุป: ดาวน์โหลดใบเสร็จสำเร็จ {success} ใบ (ล้มเหลว/empty {fail})")
+    return success, out_path
+
+
+# =====================================================================
+# MODE: appointment (นัดหมายถ่ายบัตร) — เก็บที่อยู่จากใบเสร็จค่าธรรมเนียมใบอนุญาตทำงาน
+# =====================================================================
+
+def _appt_open_detail(page: Page, req_no: str, log=print) -> tuple[bool, str]:
+    """เปิดหน้า detail ของคำขอจาก Tracking. flow: goto Tracking → search req_no → click openDetail
+    คืน (ok, error)
+    """
+    try:
+        page.goto(TRACKING_URL, wait_until="domcontentloaded", timeout=40_000)
+        page.wait_for_timeout(2200)
+        if _is_logged_out(page):
+            return False, "session หมดอายุ"
+        _search_request(page, req_no)
+        page.wait_for_timeout(1500)
+
+        has = page.evaluate(
+            r"""() => !!document.querySelector('a[onclick*="openDetail"]')"""
+        )
+        if not has:
+            return False, "ไม่พบเลขคำขอในระบบ"
+
+        try:
+            with page.expect_navigation(timeout=20_000, wait_until="domcontentloaded"):
+                page.evaluate(
+                    r"""() => { const a = document.querySelector('a[onclick*="openDetail"]'); if (a) a.click(); }"""
+                )
+        except Exception:
+            pass
+        page.wait_for_timeout(2200)
+
+        # เปลี่ยนเป็นภาษาไทย + ปิด modal
+        try:
+            page.locator("#sltLang").first.select_option(value="th")
+            page.wait_for_timeout(500)
+        except Exception:
+            pass
+        page.evaluate(
+            r"""() => {
+            if (window.jQuery) { try { jQuery('.modal').modal('hide'); } catch(e){} }
+            document.querySelectorAll('.modal.show .btn-close,.modal.show [data-bs-dismiss]')
+                .forEach(b => { try { b.click(); } catch(e){} });
+        }"""
+        )
+        page.wait_for_timeout(400)
+        return True, ""
+    except Exception as e:
+        return False, str(e).splitlines()[0][:200]
+
+
+def _appt_get_company_th(page: Page) -> str:
+    """คลิก Tab 'ข้อมูลคนต่างด้าว' แล้วอ่านค่า 'ชื่อสถานประกอบการ(ไทย)' — retry สูงสุด 4 ครั้ง
+
+    ใช้ pattern เดียวกับ extract_label_value_pairs:
+    หา <p class="label-form-info">ชื่อสถานประกอบการ(ไทย)</p> แล้วเดินหา
+    <p class="form-info ...">value</p> ตัวถัดไปใน DOM order
+    """
+    read_js = r"""() => {
+        const norm = s => (s||'').replace(/\s+/g,' ').trim();
+        const root = document.querySelector('.tab-content, .container, main, body') || document.body;
+        const all = Array.from(root.querySelectorAll('.label-form-info, .form-info'));
+        for (let i = 0; i < all.length; i++) {
+            const el = all[i];
+            const cls = el.className || '';
+            const text = norm(el.innerText || el.textContent || '');
+            if (!cls.includes('label-form-info')) continue;
+            if (!/ชื่อสถานประกอบการ\s*\(\s*ไทย\s*\)/.test(text)) continue;
+            for (let j = i + 1; j < all.length; j++) {
+                const next = all[j];
+                const ncls = next.className || '';
+                if (ncls.includes('label-form-info')) break;  // เจอ label ถัดไป → เลิก
+                if (ncls.includes('form-info')) {
+                    const v = norm(next.innerText || next.textContent || '');
+                    if (v) return v;
+                }
+            }
+        }
+        return '';
+    }"""
+    for attempt in range(4):
+        page.evaluate(
+            r"""() => {
+                const f = [...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a, button')]
+                    .find(a => /ข้อมูลคนต่างด้าว/.test(a.innerText || a.textContent || ''));
+                if (f) f.click();
+            }"""
+        )
+        page.wait_for_timeout(1500 if attempt == 0 else 1100)
+        try:
+            v = page.evaluate(read_js)
+        except Exception:
+            v = ""
+        v = (v or "").strip()
+        if v:
+            return v
+    return ""
+
+
+def _appt_open_payment_tab(page: Page) -> None:
+    """คลิก Tab 'การชำระเงิน'"""
+    page.evaluate(
+        r"""() => {
+            const a = Array.from(document.querySelectorAll('a[href^="#"], .nav-link, .nav a'))
+                .find(e => /^การชำระเงิน$/.test((e.textContent||'').trim()));
+            if (a) a.click();
+        }"""
+    )
+    page.wait_for_timeout(1800)
+
+
+def _appt_get_appointment_tab_text(page: Page) -> str:
+    """คลิก Tab 'นัดหมาย' / 'การนัดหมาย' / 'รอนัดหมาย' (ถ้ามี) แล้วเก็บข้อความ
+    ที่แสดงใน pane นั้น — สำหรับใส่ในรายงานเป็น Note
+
+    คืน: ข้อความ (ตัดให้ไม่เกิน ~500 ตัวอักษร) หรือ "" ถ้าไม่พบ tab
+    """
+    clicked = page.evaluate(
+        r"""() => {
+            const tabs = [...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a, button')];
+            // หา tab ที่ text มีคำว่า "นัดหมาย" — เรียงลำดับ priority
+            const patterns = [/^นัดหมาย$/, /^การนัดหมาย$/, /^รอนัดหมาย$/, /นัดหมาย/];
+            for (const re of patterns) {
+                const t = tabs.find(a => re.test((a.textContent||a.innerText||'').trim()));
+                if (t) { t.click(); return (t.textContent||'').trim(); }
+            }
+            return '';
+        }"""
+    )
+    if not clicked:
+        return ""
+    page.wait_for_timeout(1500)
+    text = page.evaluate(
+        r"""() => {
+            const norm = s => (s||'').replace(/[\t\r]+/g,' ').replace(/[ ]{2,}/g,' ').trim();
+            // หาก pane ที่ active แล้วมีคำว่า "นัดหมาย" — ใช้ pane นั้น
+            const panes = [...document.querySelectorAll('.tab-pane')];
+            let target = panes.find(p => {
+                if (!(p.classList.contains('active') || p.classList.contains('show'))) return false;
+                const t = p.innerText || '';
+                return /นัดหมาย/.test(t);
+            });
+            if (!target) {
+                target = panes.find(p => (p.classList.contains('active') || p.classList.contains('show')));
+            }
+            const raw = target ? (target.innerText || '') : (document.body.innerText || '');
+            const lines = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+            // ตัดบรรทัดเปล่า + บรรทัดที่ซ้ำติดกัน
+            const out = [];
+            for (const ln of lines) {
+                if (out.length && out[out.length-1] === ln) continue;
+                out.push(ln);
+            }
+            return norm(out.join(' | '));
+        }"""
+    )
+    text = (text or "").strip()
+    if len(text) > 500:
+        text = text[:497] + "..."
+    return text
+
+
+def _appt_detect_payment_case(page: Page) -> str:
+    """ตรวจ Case บนแท็บการชำระเงิน:
+       - 'case1': มี Record การชำระเงิน + ปุ่ม 'หลักฐานการชำระเงิน'
+       - 'case2': มี banner 'ท่านได้ชำระเงินสำเร็จแล้ว' + ปุ่ม 'ดูใบเสร็จรับเงิน'
+       - 'empty': ไม่พบทั้งคู่ → ข้าม
+    """
+    info = page.evaluate(
+        r"""() => {
+            const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+            const allText = document.body.innerText || '';
+            const hasSuccess = /ท่านได้ชำระเงินสำเร็จแล้ว/.test(allText);
+            const hasReceiptBtn = Array.from(document.querySelectorAll('button,a'))
+                .some(e => vis(e) && /ดูใบเสร็จรับเงิน/.test((e.textContent||'').trim()));
+            const hasProofBtn = Array.from(document.querySelectorAll('button,a'))
+                .some(e => vis(e) && /หลักฐานการชำระเงิน/.test((e.textContent||'').trim()));
+            return { hasSuccess, hasReceiptBtn, hasProofBtn };
+        }"""
+    )
+    if info.get("hasProofBtn"):
+        return "case1"
+    if info.get("hasSuccess") or info.get("hasReceiptBtn"):
+        return "case2"
+    return "empty"
+
+
+def _appt_parse_address(text: str) -> tuple[str, str]:
+    """แยก (จังหวัด, อำเภอ/เขต) จากข้อความใบเสร็จ
+    Format ตัวอย่าง:
+        ที่อยู่
+        (Address)
+        เลขที่ 1/65 หมู่ 5 แขวง/ตำบล คานหาม เขต/อำเภอ อุทัย จังหวัด
+        พระนครศรีอยุธยา รหัสไปรษณีย์ 13210
+    ค่า 'จังหวัด' อาจอยู่บรรทัดถัดไป — รวมหลายบรรทัดก่อน regex
+    """
+    if not text:
+        return "", ""
+    import re as _re
+    # ตัดเฉพาะส่วนใกล้ ๆ label ที่อยู่ — กันชนะเอาจังหวัดจากนายจ้าง/ที่อื่น
+    addr_block = text
+    m_addr = _re.search(r"ที่อยู่\s*\n\s*\(Address\)([\s\S]{0,400})", text)
+    if m_addr:
+        addr_block = m_addr.group(1)
+    # ยุบ newline เป็น space เพื่อให้ regex จับข้าม linebreak ได้
+    flat = _re.sub(r"\s+", " ", addr_block).strip()
+
+    province = ""
+    district = ""
+    # จังหวัดมีได้สูงสุด 2 คำ (เช่น "นครราชสีมา") — หยุดก่อนเห็นคำ 'รหัสไปรษณีย์' หรือตัวเลข 5 หลัก
+    m_prov = _re.search(
+        r"จังหวัด\s+((?:(?!รหัสไปรษณีย์|\d{5})\S+)(?:\s+(?:(?!รหัสไปรษณีย์|\d{5})\S+))?)\s+(?:รหัสไปรษณีย์|\d{5})",
+        flat,
+    )
+    if not m_prov:
+        m_prov = _re.search(r"จังหวัด\s+(\S+)", flat)
+    if m_prov:
+        province = m_prov.group(1).strip().rstrip(",")
+
+    m_dist = _re.search(r"เขต/อำเภอ\s+([^\s]+)", flat)
+    if m_dist:
+        district = m_dist.group(1).strip().rstrip(",")
+    return province, district
+
+
+def _appt_case1_download(
+    page: Page, req_no: str, save_dir: Path, log=print,
+) -> tuple[bytes, str, str]:
+    """Case 1: คลิกปุ่ม 'หลักฐานการชำระเงิน'
+       - พยายามเลือกปุ่มบน "แถวเดียวกับ" ข้อความ 'ค่าธรรมเนียมใบอนุญาตทำงาน' ก่อน
+       - ถ้าไม่เจอ → fallback คลิกปุ่ม 'หลักฐานการชำระเงิน' ตัวแรกที่มองเห็น
+    """
+    info = page.evaluate(
+        r"""() => {
+            const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+            const trs = Array.from(document.querySelectorAll('table tbody tr')).filter(vis);
+            let preferred = -1;
+            for (let i = 0; i < trs.length; i++) {
+                const tx = trs[i].innerText || '';
+                if (/ค่าธรรมเนียมใบอนุญาตทำงาน/.test(tx)
+                        && Array.from(trs[i].querySelectorAll('button,a'))
+                            .some(b => /หลักฐานการชำระเงิน/.test((b.textContent||'').trim()))) {
+                    preferred = i; break;
+                }
+            }
+            const allBtns = Array.from(document.querySelectorAll('button,a'))
+                .filter(b => vis(b) && /หลักฐานการชำระเงิน/.test((b.textContent||'').trim()));
+            return { preferred, totalBtns: allBtns.length };
+        }"""
+    )
+    preferred = int(info.get("preferred", -1))
+    total_btns = int(info.get("totalBtns", 0))
+    if total_btns <= 0:
+        return b"", "", "ไม่พบปุ่ม 'หลักฐานการชำระเงิน' บนหน้า"
+    use_row = preferred >= 0
+    log(f"      · case1 row='ค่าธรรมเนียมใบอนุญาตทำงาน' {'พบ' if use_row else 'ไม่พบ'} — ปุ่มทั้งหมด {total_btns}")
+
+    def _do_click():
+        if use_row:
+            page.evaluate(
+                r"""(idx) => {
+                    const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+                    const trs = Array.from(document.querySelectorAll('table tbody tr')).filter(vis);
+                    const tr = trs[idx];
+                    if (!tr) return;
+                    const btn = Array.from(tr.querySelectorAll('button,a'))
+                        .find(b => /หลักฐานการชำระเงิน/.test((b.textContent||'').trim()));
+                    if (btn) btn.click();
+                }""", preferred,
+            )
+        else:
+            page.evaluate(
+                r"""() => {
+                    const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+                    const btn = Array.from(document.querySelectorAll('button,a'))
+                        .find(b => vis(b) && /หลักฐานการชำระเงิน/.test((b.textContent||'').trim()));
+                    if (btn) btn.click();
+                }"""
+            )
+
+    body = b""; err_last = ""
+    for attempt in range(1, 4):
+        b, err = _grab_pdf_after_click(page, _do_click, log=lambda *a: None)
+        if b and len(b) >= 500 and b[:5] == b"%PDF-":
+            body = b; break
+        err_last = err or "ไม่ได้ไฟล์"
+        log(f"      · ⚠ ดาวน์โหลดครั้งที่ {attempt} ไม่สำเร็จ ({err_last})")
+        page.wait_for_timeout(1500)
+    if not body:
+        return b"", "", f"ดาวน์โหลดล้มเหลว: {err_last}"
+
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"{_safe_filename(req_no)}_case1_receipt.pdf"
+    try:
+        (save_dir / fname).write_bytes(body)
+    except Exception as e:
+        return body, "", f"เขียนไฟล์ไม่สำเร็จ: {str(e)[:120]}"
+    return body, fname, ""
+
+
+def _appt_case2_download(
+    page: Page, req_no: str, save_dir: Path, log=print,
+) -> tuple[bytes, str, str]:
+    """Case 2: คลิก 'ดูใบเสร็จรับเงิน' → /Center/MultiplePayments → search ด้วย req_no → click record #2
+    → ดาวน์โหลด PDF (อาจมีหลายหน้า) → คืน (body, filename, error)
+    """
+    # คลิกปุ่ม "ดูใบเสร็จรับเงิน" → navigate
+    try:
+        with page.expect_navigation(timeout=20_000, wait_until="domcontentloaded"):
+            page.evaluate(
+                r"""() => {
+                    const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+                    const b = Array.from(document.querySelectorAll('button,a'))
+                        .find(e => vis(e) && /ดูใบเสร็จรับเงิน/.test((e.textContent||'').trim()));
+                    if (b) b.click();
+                }"""
+            )
+    except Exception:
+        pass
+    page.wait_for_timeout(3000)
+
+    if "/Center/MultiplePayments" not in (page.url or ""):
+        return b"", "", f"ไม่ได้เข้าหน้า MultiplePayments (อยู่ที่ {page.url[:80]})"
+
+    # ค้นหาด้วยเลขคำขอ — ใช้ช่องค้นหาบนหน้า MultiplePayments
+    # หน้านี้มักมี input ค้นหาที่ผูกกับ tablesorter/datatable — ใส่ค่าและ trigger keyup
+    page.evaluate(
+        r"""(reqNo) => {
+            const inputs = Array.from(document.querySelectorAll('input[type="text"], input[type="search"]'))
+                .filter(i => { try { const r = i.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } });
+            // หาช่องค้นหาที่มี placeholder/label ใกล้คำว่า "ค้นหา" หรือ "เลขคำขอ"
+            const target = inputs.find(i =>
+                /ค้นหา|เลขที่คำขอ|เลขคำขอ|Request/i.test((i.placeholder||'') + ' ' + (i.getAttribute('aria-label')||'')))
+                || inputs[0];
+            if (target) {
+                target.focus(); target.value = reqNo;
+                target.dispatchEvent(new Event('input', {bubbles:true}));
+                target.dispatchEvent(new Event('keyup', {bubbles:true}));
+                target.dispatchEvent(new Event('change', {bubbles:true}));
+            }
+        }""", req_no,
+    )
+    page.wait_for_timeout(1500)
+    # ปุ่มค้นหา (ถ้ามี)
+    page.evaluate(
+        r"""() => {
+            const btns = Array.from(document.querySelectorAll('button, a.btn, input[type=button], input[type=submit]'))
+                .filter(b => { try { const r = b.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } });
+            const f = btns.find(b => /^ค้นหา$/.test(((b.innerText||b.value||'')).trim()));
+            if (f) f.click();
+        }"""
+    )
+    page.wait_for_timeout(2500)
+
+    # นับจำนวนแถวที่มีปุ่ม 'ใบเสร็จรับเงิน'
+    row_count = page.evaluate(
+        r"""() => {
+            const trs = Array.from(document.querySelectorAll('table tbody tr'));
+            return trs.filter(tr =>
+                /ใบเสร็จรับเงิน/.test(tr.innerText || '') &&
+                Array.from(tr.querySelectorAll('button,a')).some(b => /ใบเสร็จรับเงิน/.test((b.textContent||'').trim()))
+            ).length;
+        }"""
+    )
+    if not row_count:
+        return b"", "", "ไม่พบแถวใบเสร็จในหน้า MultiplePayments"
+    log(f"      · พบ {row_count} แถวใบเสร็จ — เลือก record ที่ 2 (ตามสเปก)")
+    target_idx = 1 if row_count >= 2 else 0  # ผู้ใช้ระบุ record ที่ 2 เสมอ; ถ้ามีแถวเดียว fallback ไป 0
+
+    def _do_click(idx: int = int(target_idx)):
+        page.evaluate(
+            r"""(idx) => {
+                const trs = Array.from(document.querySelectorAll('table tbody tr'))
+                    .filter(tr => /ใบเสร็จรับเงิน/.test(tr.innerText || ''));
+                const tr = trs[idx];
+                if (!tr) return;
+                const btn = Array.from(tr.querySelectorAll('button,a'))
+                    .find(b => /ใบเสร็จรับเงิน/.test((b.textContent||'').trim()));
+                if (btn) btn.click();
+            }""", idx,
+        )
+
+    body = b""; err_last = ""
+    for attempt in range(1, 4):
+        b, err = _grab_pdf_after_click(page, _do_click, log=lambda *a: None)
+        if b and len(b) >= 500 and b[:5] == b"%PDF-":
+            body = b; break
+        err_last = err or "ไม่ได้ไฟล์"
+        log(f"      · ⚠ ดาวน์โหลดครั้งที่ {attempt} ไม่สำเร็จ ({err_last})")
+        page.wait_for_timeout(1500)
+    if not body:
+        return b"", "", f"ดาวน์โหลดล้มเหลว: {err_last}"
+
+    save_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"{_safe_filename(req_no)}_case2_receipt.pdf"
+    try:
+        (save_dir / fname).write_bytes(body)
+    except Exception as e:
+        return body, "", f"เขียนไฟล์ไม่สำเร็จ: {str(e)[:120]}"
+    return body, fname, ""
+
+
+def _appt_extract_address_for_req(body: bytes, req_no: str) -> tuple[str, str, str]:
+    """อ่าน PDF (อาจหลายหน้า) → หา page ที่ตรงกับ req_no → คืน (จังหวัด, อำเภอ, raw_text_of_matched_page)
+    ถ้าไม่พบ exact match → ใช้ page แรก
+    """
+    pages = _payreceipt_split_pages(body)
+    if not pages:
+        return "", "", ""
+    matched_text = ""
+    for _bytes, txt in pages:
+        if req_no and req_no in (txt or ""):
+            matched_text = txt
+            break
+    if not matched_text:
+        matched_text = pages[0][1]
+    prov, dist = _appt_parse_address(matched_text)
+    return prov, dist, matched_text
+
+
+def _appt_process_record(
+    page: Page, rec: dict, save_dir: Path, log=print,
+) -> dict[str, Any]:
+    """ประมวลผล 1 คำขอ — คืน dict ที่มี: company_th, province, district, pdf_file, case, status, error"""
+    req_no = rec.get("req_no", "")
+    out = {
+        "req_no": req_no,
+        "username": rec.get("username", ""),
+        "company_th": "",
+        "province": "",
+        "district": "",
+        "pdf_file": "",
+        "case": "",
+        "appointment_note": "",
+        "status": "FAIL",
+        "error": "",
+    }
+    ok, err = _appt_open_detail(page, req_no, log=log)
+    if not ok:
+        out["status"] = "FAIL"
+        out["error"] = err
+        return out
+
+    # ขั้น 2.4: ชื่อสถานประกอบการ(ไทย)
+    company = _appt_get_company_th(page)
+    out["company_th"] = company
+    if not company:
+        log("      · ⚠ อ่าน 'ชื่อสถานประกอบการ(ไทย)' ไม่ได้ (ดำเนินการต่อ)")
+
+    # ขั้น 2.4.5: tab 'นัดหมาย' (ถ้ามี) — เก็บข้อความที่แสดงเป็น Note
+    try:
+        appt_note = _appt_get_appointment_tab_text(page)
+    except Exception as e:
+        appt_note = ""
+        log(f"      · ⚠ อ่าน tab นัดหมายไม่ได้: {str(e).splitlines()[0][:120]}")
+    out["appointment_note"] = appt_note
+    if appt_note:
+        log(f"      · tab นัดหมาย: {appt_note[:120]}")
+
+    # ขั้น 2.5: เปิดแท็บการชำระเงิน
+    _appt_open_payment_tab(page)
+    case = _appt_detect_payment_case(page)
+    out["case"] = case
+    log(f"      · ตรวจการชำระเงิน: {case}")
+    if case == "empty":
+        out["status"] = "EMPTY"
+        out["error"] = "ไม่มี Record การชำระเงิน — ข้าม"
+        return out
+
+    if case == "case1":
+        body, fname, derr = _appt_case1_download(page, req_no, save_dir, log=log)
+    else:  # case2
+        body, fname, derr = _appt_case2_download(page, req_no, save_dir, log=log)
+
+    if not body:
+        out["status"] = "FAIL"
+        out["error"] = derr or "ดาวน์โหลด PDF ล้มเหลว"
+        return out
+
+    out["pdf_file"] = fname
+    prov, dist, _ = _appt_extract_address_for_req(body, req_no)
+    out["province"] = prov
+    out["district"] = dist
+    if not (prov or dist):
+        out["status"] = "PARTIAL"
+        out["error"] = "ดาวน์โหลด PDF ได้ แต่หาที่อยู่ในไฟล์ไม่พบ"
+    else:
+        out["status"] = "SUCCESS"
+    log(f"      · จังหวัด={prov or '-'} | อำเภอ/เขต={dist or '-'}")
+    return out
+
+
+def _save_appointment_report(rows: list[dict[str, Any]], out_path: Path, log=print) -> None:
+    """เซฟรายงาน — คอลัมน์ PDF เป็น hyperlink (file://) แสดงชื่อไฟล์ น้ำเงินขีดเส้นใต้"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "นัดหมายถ่ายบัตร"
+    headers = [
+        "ลำดับ", "Username", "เลขที่คำขอ",
+        "ชื่อสถานประกอบการ(ไทย)", "จังหวัด", "อำเภอ/เขต",
+        "Case", "สถานะ", "ไฟล์ PDF", "ข้อความ Tab นัดหมาย", "หมายเหตุ",
+    ]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    link_font = Font(color="0563C1", underline="single")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    text_cols = {"เลขที่คำขอ"}
+    save_subdir = "appointment_receipts"
+    for i, r in enumerate(rows, start=1):
+        ws.append([
+            i,
+            r.get("username", ""),
+            r.get("req_no", ""),
+            r.get("company_th", ""),
+            r.get("province", ""),
+            r.get("district", ""),
+            r.get("case", ""),
+            r.get("status", ""),
+            r.get("pdf_file", ""),
+            r.get("appointment_note", ""),
+            r.get("error", ""),
+        ])
+        row_idx = ws.max_row
+        for c_idx, h in enumerate(headers, start=1):
+            cell = ws.cell(row=row_idx, column=c_idx)
+            if h in text_cols and cell.value not in (None, ""):
+                cell.value = str(cell.value)
+                cell.number_format = "@"
+            if h == "ไฟล์ PDF" and cell.value:
+                fname = str(cell.value)
+                abs_path = (out_path.parent / save_subdir / fname).resolve()
+                try:
+                    cell.hyperlink = abs_path.as_uri()
+                except Exception:
+                    cell.hyperlink = f"{save_subdir}/{fname}"
+                cell.value = fname
+                cell.font = link_font
+            if h == "ข้อความ Tab นัดหมาย" and cell.value:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+    widths = [6, 28, 20, 40, 22, 22, 10, 12, 50, 60, 40]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        wb.save(out_path)
+        log(f"      · เซฟรายงาน → {out_path}")
+    except Exception as e:
+        log(f"      · ⚠ เซฟรายงานไม่สำเร็จ: {str(e)[:160]}")
+
+
+def run_appointment(
+    cfg: dict,
+    login_excel: Path,
+    out_path: Path,
+    request_type: str = "",
+    row_range: str | None = None,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด 'นัดหมายถ่ายบัตร' — เก็บที่อยู่ (จังหวัด + อำเภอ/เขต) จากใบเสร็จค่าธรรมเนียมใบอนุญาตทำงาน
+
+    Flow:
+        UsernameLogin.xlsx → login ทีละบัญชี →
+        Tracking → กรองสถานะ 'รอนัดหมาย' (AP) → วนทุก pagination →
+        ทำทุก req_no ที่เจอ:
+            tab ข้อมูลคนต่างด้าว (เก็บชื่อสถานประกอบการ(ไทย)) →
+            tab การชำระเงิน →
+                Case 1: กดปุ่ม 'หลักฐานการชำระเงิน' ของ 'ค่าธรรมเนียมใบอนุญาตทำงาน' →
+                Case 2: กด 'ดูใบเสร็จรับเงิน' → ค้นหาเลขคำขอ → กด record ที่ 2 →
+            ดาวน์โหลด PDF → parse จังหวัด/อำเภอ → เซฟรายงาน (hyperlink PDF)
+    """
+    out_path = _timestamped_path(out_path)
+    accounts = _read_login_accounts(login_excel)
+    log(f"[1/3] บัญชี login จาก {Path(login_excel).name}: {len(accounts)} บัญชี")
+    log("      รายการคำขอ: ทั้งหมด | สถานะ: AP (รอนัดหมาย)")
+
+    save_dir = out_path.parent / "appointment_receipts"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    results: list[dict[str, Any]] = []
+    success = 0
+    total_known = 0
+
+    if progress:
+        try: progress(0, 1)
+        except Exception: pass
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        ctx = browser.new_context(
+            locale="th-TH", ignore_https_errors=True,
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        try:
+            for u_idx, (ukey, acct) in enumerate(accounts.items(), start=1):
+                if is_cancelled and is_cancelled():
+                    log("[!] ผู้ใช้ยกเลิก — หยุด")
+                    break
+                username = acct["username"]
+                log(f"  [บัญชี {u_idx}/{len(accounts)}] === Login: {username} ({acct['type']}) ===")
+                try:
+                    if u_idx > 1:
+                        _logout_safely(page)
+                        page.wait_for_timeout(1000)
+                    login(page, {
+                        "username": acct["username"], "password": acct["password"],
+                        "user_type": acct["type"],
+                        "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+                    })
+                    goto_tracking(page)
+                    # โหมดนี้ force 'รายการคำขอ = ทั้งหมด' เสมอ — ไม่สนใจ cfg.request_type
+                    apply_wa_filter(page, "", status_ids=["AP"])
+                except Exception as e:
+                    log(f"      ⛔ login/เปิด tracking ไม่สำเร็จ: {str(e).splitlines()[0][:160]}")
+                    results.append({
+                        "req_no": "", "username": username,
+                        "status": "LOGIN_FAIL", "error": str(e).splitlines()[0][:200],
+                        "company_th": "", "province": "", "district": "",
+                        "pdf_file": "", "case": "",
+                    })
+                    continue
+
+                try:
+                    rows = collect_all_wa_rows(page, log=log)
+                except Exception as e:
+                    log(f"      ✗ เก็บรายการคำขอไม่สำเร็จ: {str(e).splitlines()[0][:160]}")
+                    continue
+
+                # apply_wa_filter ได้กรอง AP server-side แล้ว — ใช้ทั้งหมดที่ collect มา
+                # แต่กันพลาด: เก็บเฉพาะที่ statusText มี 'รอนัดหมาย' ถ้ามีอย่างน้อย 1 รายการ match
+                ap_rows = [r for r in rows if "รอนัดหมาย" in str(r.get("statusText", ""))]
+                if not ap_rows:
+                    ap_rows = rows
+                log(f"      พบ {len(ap_rows)} คำขอสถานะ 'รอนัดหมาย'")
+
+                # row_range: ใช้กับลำดับ AP-rows ของบัญชีนี้
+                indices = _parse_row_range(row_range, len(ap_rows)) if row_range else list(range(1, len(ap_rows) + 1))
+                selected_rows = [ap_rows[i - 1] for i in indices]
+                total_known += len(selected_rows)
+
+                for k, row in enumerate(selected_rows, start=1):
+                    if is_cancelled and is_cancelled():
+                        break
+                    req_no = row.get("reqNo", "") or row.get("req_no", "")
+                    if not req_no:
+                        continue
+                    log(f"    ({k}/{len(selected_rows)}) คำขอ {req_no} — {row.get('statusText','')}")
+                    rec_in = {"req_no": req_no, "username": username, "_row": row}
+                    try:
+                        r = _appt_process_record(page, rec_in, save_dir, log=log)
+                        r["username"] = username
+                        results.append(r)
+                        if r.get("status") == "SUCCESS":
+                            success += 1
+                    except Exception as e:
+                        results.append({
+                            "req_no": req_no, "username": username,
+                            "status": "ERROR", "error": str(e).splitlines()[0][:200],
+                            "company_th": "", "province": "", "district": "",
+                            "pdf_file": "", "case": "",
+                        })
+                        log(f"      ✗ ผิดพลาด: {str(e).splitlines()[0][:160]}")
+                    if progress:
+                        try: progress(len(results), max(total_known, len(results)))
+                        except Exception: pass
+                    _save_appointment_report(results, out_path, log=lambda *a: None)
+        finally:
+            ctx.close(); browser.close()
+
+    _save_appointment_report(results, out_path, log=log)
+    fail = sum(1 for r in results if r.get("status") not in ("SUCCESS",))
+    log(f"[3/3] สรุป: เก็บที่อยู่สำเร็จ {success} คำขอ (ล้มเหลว/empty {fail})")
+    return success, out_path
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="0 = ทั้งหมด, >0 = จำกัด N รายการ")
@@ -6027,8 +14631,8 @@ def main() -> int:
         help="รหัสรายการคำขอ เช่น MT_59_MOU_RENEWAL (default ใช้จาก .env)",
     )
     ap.add_argument(
-        "--mode", choices=["etracking", "aliens", "register", "receipts", "results", "inform"], default="etracking",
-        help="etracking=ดึงจาก e-Tracking, aliens=ดึงรายชื่อคนต่างด้าว, register=ลงทะเบียน, receipts=ดาวน์โหลดใบเสร็จ, results=ดาวน์โหลดใบแจ้งผล/ใบรับคำขอ, inform=แจ้งการจ้างคนต่างด้าวเข้าทำงาน (บต.52)",
+        "--mode", choices=["etracking", "aliens", "register", "receipts", "results", "inform", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment"], default="etracking",
+        help="etracking=ดึงจาก e-Tracking, aliens=ดึงรายชื่อคนต่างด้าว, register=ลงทะเบียน, receipts=ดาวน์โหลดใบเสร็จ, results=ดาวน์โหลดใบแจ้งผล/ใบรับคำขอ, inform=แจ้งการจ้างคนต่างด้าวเข้าทำงาน (บต.52), bt30=ยื่นต่ออายุใบอนุญาตทำงานตาม MoU (แบบ บต.30), bt44=แจ้งการทำงาน/เปลี่ยนรายการในใบอนุญาต ซึ่งไม่กระทบ (แบบ บต.44), bill_payment=ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม), payment_receipts=ดาวน์โหลดใบเสร็จรับเงินทั้งชุด (900+100+อื่นๆ) ตามเลขคำขอ, appointment=นัดหมายถ่ายบัตร — เก็บที่อยู่ (จังหวัด+อำเภอ/เขต) จากใบเสร็จค่าธรรมเนียมใบอนุญาตทำงาน",
     )
     ap.add_argument(
         "--sub-tabs", default=None,
@@ -6055,6 +14659,10 @@ def main() -> int:
         help="(โหมด register) ช่วงแถวที่จะทำ เช่น '1-10,15,20-25' (default=ทั้งหมด)",
     )
     ap.add_argument(
+        "--request-types", default=None,
+        help="(โหมด bill_payment) รหัสรายการคำขอที่จะกรอง คั่นด้วย , เช่น 'MT_59_MOU_RENEWAL,MT_63_RENEWAL' (default=ทั้งหมด)",
+    )
+    ap.add_argument(
         "--doc-types", default=None,
         help="(โหมด receipts) ประเภทเอกสารที่จะดาวน์โหลด คั่นด้วย , เช่น 'receipt,bt44,bt22,bt53,bt56' หรือ 'all' (default=ทั้งหมด)",
     )
@@ -6071,6 +14679,36 @@ def main() -> int:
         help="(โหมด inform) ไฟล์ Excel ข้อมูลแจ้งจ้างคนต่างด้าว",
     )
     ap.add_argument(
+        "--bt30-excel", type=Path, default=ROOT / "from_bt30.xlsx",
+        help="(โหมด bt30) ไฟล์ Excel ข้อมูลคนต่างด้าว (No., คำนำหน้า, ชื่อ, สัญชาติ, เพศ, วันเกิด)",
+    )
+    ap.add_argument(
+        "--bt30-step1-only", action="store_true",
+        help="(โหมด bt30) ทำเฉพาะขั้นตอนที่ 1 (เพิ่ม/บันทึกคนต่างด้าว) — ไม่ทำขั้นตอนที่ 2 (ที่อยู่/เอกสาร/ตม./ถัดไป)",
+    )
+    ap.add_argument(
+        "--bt44-excel", type=Path, default=ROOT / "from_bt44.xlxs.xlsx",
+        help="(โหมด bt44) ไฟล์ Excel ข้อมูลคนต่างด้าว (No., คำนำหน้า, หมายเลขอ้างอิง, ชื่อ, สัญชาติ, เพศ, เกิดวันที่)",
+    )
+    ap.add_argument(
+        "--bt44-dry-run", action="store_true",
+        help="(โหมด bt44) 'ทดลองยื่น' — หยุดก่อนส่งคำขอจริง (ตามค่า --bt44-dry-stop)",
+    )
+    ap.add_argument(
+        "--bt44-dry-stop", choices=["step2", "step3"], default="step2",
+        help="(โหมด bt44, ใช้คู่กับ --bt44-dry-run) ระดับการหยุด: "
+             "step2=หลังตรวจเลขใบอนุญาต (Step 2.3) | "
+             "step3=หลังเลือกนายจ้าง+ประเภทกิจการ+งาน (Step 3.3-3.4) ก่อนแนบเอกสาร",
+    )
+    ap.add_argument(
+        "--bt44-skip-doc-check", action="store_true",
+        help="(โหมด bt44) ข้ามการตรวจไฟล์แนบ Step 4 ก่อนรัน — สำหรับทดสอบ flow เท่านั้น",
+    )
+    ap.add_argument(
+        "--request-receipt-excel", type=Path, default=ROOT / "Request_Receipt.xlsx",
+        help="(โหมด payment_receipts) ไฟล์ Excel เลขคำขอ + Username",
+    )
+    ap.add_argument(
         "--commit", action="store_true",
         help="(โหมด inform) ส่งคำขอจริง (กดข้อ 7+8) — ค่า default จะหยุดก่อนยืนยัน",
     )
@@ -6080,7 +14718,9 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    cfg = load_config()
+    # โหมดเหล่านี้ใช้บัญชี login จากไฟล์ Excel (--login-excel) ไม่ต้องบังคับ .env
+    _excel_login_modes = {"receipts", "results", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment"}
+    cfg = load_config(require_login=args.mode not in _excel_login_modes)
     if args.request_type is not None:
         cfg["request_type"] = args.request_type
     if args.list_request_types:
@@ -6177,6 +14817,53 @@ def main() -> int:
         run_inform_employer(
             cfg, args.inform_excel, args.login_excel, out,
             row_range=args.row_range, commit=args.commit, log=print,
+        )
+    elif args.mode == "bt30":
+        out = args.out
+        if str(out).endswith("WA_report.xlsx"):
+            out = REPORTS_DIR / "WA_bt30_report.xlsx"
+        run_bt30(
+            cfg, args.bt30_excel, args.login_excel, out,
+            row_range=args.row_range, do_step2=not args.bt30_step1_only, log=print,
+        )
+    elif args.mode == "bt44":
+        out = args.out
+        if str(out).endswith("WA_report.xlsx"):
+            out = REPORTS_DIR / "WA_bt44_report.xlsx"
+        run_bt44(
+            cfg, args.bt44_excel, args.login_excel, out,
+            row_range=args.row_range, dry_run=args.bt44_dry_run,
+            dry_stop_at=args.bt44_dry_stop,
+            check_docs=not args.bt44_skip_doc_check,
+            log=print,
+        )
+    elif args.mode == "bill_payment":
+        out = args.out
+        if str(out).endswith("WA_report.xlsx"):
+            out = REPORTS_DIR / "WA_bill_payment_report.xlsx"
+        _bp_types = None
+        if args.request_types:
+            _bp_types = [s.strip() for s in args.request_types.split(",") if s.strip()]
+        run_bill_payment(
+            cfg, args.login_excel, out,
+            row_range=args.row_range, request_types=_bp_types, log=print,
+        )
+    elif args.mode == "payment_receipts":
+        out = args.out
+        if str(out).endswith("WA_report.xlsx"):
+            out = REPORTS_DIR / "WA_payment_receipts_report.xlsx"
+        run_payment_receipts(
+            cfg, args.request_receipt_excel, args.login_excel, out,
+            row_range=args.row_range, log=print,
+        )
+    elif args.mode == "appointment":
+        out = args.out
+        if str(out).endswith("WA_report.xlsx"):
+            out = REPORTS_DIR / "WA_appointment_report.xlsx"
+        run_appointment(
+            cfg, args.login_excel, out,
+            request_type=cfg.get("request_type", ""),
+            row_range=args.row_range, log=print,
         )
     else:
         if args.multi_login:

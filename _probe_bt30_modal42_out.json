@@ -1,0 +1,405 @@
+{
+  "investigate": {
+    "fns": [
+      "OncOpenModalAddFileHelpdesk",
+      "OncOpenModalAddFile",
+      "SaveAddFileOrther",
+      "SaveAddFileOrtherHelpdesk",
+      "OpenModalPay1",
+      "backtoPayment_Modal",
+      "OncOpenModalAddFileIden",
+      "SaveAddFileIden",
+      "SaveAddFileIden_none_verify",
+      "closeModalCrop",
+      "setModalEditAlienComponentStayPermit",
+      "ModalEmpCheck",
+      "CloseModalTel",
+      "CloseModalProFile",
+      "CloseModalAddress",
+      "CloseModalStayPermit"
+    ],
+    "src": "function OncOpenModalAddFile() {\n    var buttonSaveFileSelect = document.getElementById(\"buttonSaveFileSelect\");\n    buttonSaveFileSelect.disabled = false;\n    $(\".modal-footer\").css(\"display\", \"flex\");\n    $(\".modal-footer\").css(\"opacity\", \"1\");\n\n    var chkList = jQuery(\"#ShowtxtBox_File .checklength\").length;\n    var setData = \"\";\n    if (chkList == 0) {\n        $(\"#AddFileOrther\").modal(\"show\");\n        setData +=\n            '<div class=\"upload mb-4\" id=\"div_show_upload\" style=\"margin-left:15px;\">';\n        setData +=\n            '<input type=\"file\" name=\"file_name_orther\" id=\"file_other_0\" onchange=\"AddNewFileOrther()\"  hidden=\"\">';\n        setData +=\n            '<label class=\"lang_lbl_selectfile\" for=\"file_other_0\" style=\"cursor:pointer;\">เลือกไฟล์</label>';\n        //setData += '<span id=\"divselect_file_name_orther\">No file chosen</span>'\n        setData += \"</div>\";\n\n        setData +=\n            '<div class=\"block-doc justify-content-between mb-4\" id=\"divshow_file_name_orther\" style=\"display:none;margin-left:15px;\">';\n        setData += '<div class=\"d-flex\">';\n        setData += '<div><img src = \"/assets/images/document.svg\"></div>';\n        setData +=\n            '<div",
+    "modals": [
+      {
+        "id": "",
+        "cls": "primary--color status_expire clickmodalstaypermit",
+        "disp": "inline"
+      },
+      {
+        "id": "clickmodalstaypermit",
+        "cls": "btn btn-primary btt-draft lang_add_info",
+        "disp": "inline-block"
+      },
+      {
+        "id": "AddFileIden",
+        "cls": "modal fade",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "exampleModalLabel",
+        "cls": "modal-title",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body",
+        "disp": "block"
+      },
+      {
+        "id": "ModalFileIden",
+        "cls": "row",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "AddFileOrther",
+        "cls": "modal fade",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "exampleModalLabel",
+        "cls": "modal-title lang_add_document",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body",
+        "disp": "block"
+      },
+      {
+        "id": "ModalFile",
+        "cls": "row",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "profileModal",
+        "cls": "modal",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog modal-lg",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-title fw-bold lang_txt_user_info",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body custom-height-md-modal",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "emailModal",
+        "cls": "modal",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "checkEmpModalLabel",
+        "cls": "modal-title fw-bold lang_txt_data_for_login",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body",
+        "disp": "block"
+      },
+      {
+        "id": "btnMB-case-1",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "otpModal",
+        "cls": "modal",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "checkEmpModalLabel",
+        "cls": "modal-title fw-bold lang_lbl_data_for_login",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body",
+        "disp": "block"
+      },
+      {
+        "id": "btnMB-case-1",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "locationModal",
+        "cls": "modal",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog modal-lg",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-title fw-bold lang_txt_contact_address",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body custom-height-sm-modal",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "staypermitModal",
+        "cls": "modal",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog modal-lg",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-title fw-bold lang_more_info",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body custom-height-sm-modal",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-footer",
+        "disp": "flex"
+      },
+      {
+        "id": "TelModal",
+        "cls": "modal",
+        "disp": "none"
+      },
+      {
+        "id": "",
+        "cls": "modal-dialog modal-lg",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-content",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-header",
+        "disp": "flex"
+      },
+      {
+        "id": "",
+        "cls": "modal-title fw-bold lang_txt_user_info",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-body custom-height-md-modal",
+        "disp": "block"
+      },
+      {
+        "id": "",
+        "cls": "modal-footer",
+        "disp": "flex"
+      }
+    ]
+  },
+  "add_modal": {
+    "found": true,
+    "id": "AddFileOrther",
+    "cls": "modal fade show",
+    "title": "เพิ่มเอกสาร ×",
+    "inputs": [
+      {
+        "tag": "INPUT",
+        "type": "file",
+        "id": "file_other_0",
+        "name": "file_name_orther",
+        "placeholder": "กรุณากรอก",
+        "accept": "",
+        "visible": false,
+        "cls": "",
+        "onchange": "AddNewFileOrther()",
+        "optionCount": null,
+        "options": null
+      },
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "id": "text_file_name_00",
+        "name": "",
+        "placeholder": "กรุณากรอก",
+        "accept": "",
+        "visible": true,
+        "cls": "form-control lang_please_input",
+        "onchange": "",
+        "optionCount": null,
+        "options": null
+      },
+      {
+        "tag": "INPUT",
+        "type": "hidden",
+        "id": "file_name_select_0",
+        "name": "",
+        "placeholder": "กรุณากรอก",
+        "accept": "",
+        "visible": false,
+        "cls": "",
+        "onchange": "",
+        "optionCount": null,
+        "options": null
+      }
+    ],
+    "buttons": [
+      {
+        "id": "",
+        "htmlFor": "",
+        "txt": "×",
+        "onclick": ""
+      },
+      {
+        "id": "",
+        "htmlFor": "file_other_0",
+        "txt": "เลือกไฟล์",
+        "onclick": ""
+      },
+      {
+        "id": "",
+        "htmlFor": "enddateofexpiry",
+        "txt": "ชื่อเอกสาร",
+        "onclick": ""
+      },
+      {
+        "id": "",
+        "htmlFor": "",
+        "txt": "ยกเลิก",
+        "onclick": ""
+      },
+      {
+        "id": "buttonSaveFileSelect",
+        "htmlFor": "",
+        "txt": "ยืนยัน",
+        "onclick": "SaveAddFileOrther()"
+      }
+    ],
+    "modalText": "เพิ่มเอกสาร × รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ชื่อเอกสารกรุณากรอก ยกเลิก ยืนยัน"
+  }
+}

@@ -1,0 +1,1693 @@
+{
+  "step5_initial": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": false,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น สรุปคำขอ หน้า 1/3 ข้อมูลผู้ยื่นคำขอ ชื่อคนต่างด้าว(Eng) Miss EI EI THWIN ชื่อคนต่างด้าว(ไทย) นางสาว อิ อิ ทวิน สัญชาติ เมียนมา เกิดวันที่ 25 พ.ย. 2005 อายุ 20 ปี ข้อมูลสำหรับติดต่อ โทรศัพท์ - อีเมล hanninj@mail.com ที่อยู่ในประเทศไทย ที่อยู่ 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130 ข้อมูลใบอนุญาต เลขที่ 0569200055150 ออกให้ที่ (จังหวัด) ชลบุรี วันที่ออกเอกสาร 13 ก.พ. 2026 วันที่เอกสารหมดอายุ 11 ธ.ค. 2026 ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  },
+  "step5_after_5_1": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "da": "showAll",
+        "type": "BUTTON",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all",
+        "onclick": ""
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "da": "hideAll",
+        "type": "BUTTON",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all",
+        "onclick": ""
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "da": "toggle",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": false,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น สรุปคำขอ หน้า 2/3 ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน แสดงทั้งหมด ซ่อนทั้งหมด นายจ้าง 1 เปลี่ยนนายจ้าง บริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด ซ่อน ข้อมูลนายจ้าง ข้อมูลนายจ้างเดิม : บริษัท แอ็ดวานซลักเก็จไทย จำกัด ประเภทนายจ้าง นิติบุคคล - จดทะเบียนในประเทศไทย รหัสนายจ้าง RE17634416214097020 เลขที่นิติบุคคล 0215566011533 ชื่อสถานประกอบการ (ไทย) บริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด ชื่อสถานประกอบการ (Eng) MELON BIO-TECH (THAILAND) CO., LTD. ที่อยู่ที่ติดต่อได้ 88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130 โทรศัพท์ - โทรสาร - อีเมล Paparve.np@gmail.com ข้อมูลการขออนุญาต สถานที่ทำงาน/สาขา สำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130 ลำดับ ประเภทกิจการ ประเภทงานที่ขออนุญาต ลักษณะงาน 1 ค้าส่ง ค้าปลีก แผงลอย (BT20)** กรรมกร ยก แบก หาม ใหม่ ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  },
+  "step5_after_5_2": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "da": "showAll",
+        "type": "BUTTON",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all",
+        "onclick": ""
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "da": "hideAll",
+        "type": "BUTTON",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all",
+        "onclick": ""
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "da": "toggle",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "consentButton",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": false,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น สรุปคำขอ หน้า 3/3 เอกสารผู้ยื่นคำขอ 1 สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ 2 สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง 3 ใบอนุญาตทำงาน 4 สำเนาหนังสือเดินทาง สำเนาเอกสารใช้แทนหนังสือเดินทาง - 5 สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร - 6 รูปถ่าย ขนาด 3 x 4 ซม. 7 หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน 8 ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) 9 สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) 10 สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) เอกสารอื่นๆที่เกี่ยวข้อง 1 5.DBD+เอกสารนายจ้าง 2 มอบอำนาจให้จิรนันท์1-18 (1) เอกสารนายจ้าง แสดงทั้งหมด ซ่อนทั้งหมด นายจ้าง เปลี่ยนนายจ้าง บริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด ซ่อน เอกสารนายจ้าง : นิติบุคคล 1 สำเนาใบอนุญาตหรือหนังสือรับรองการประกอบธุรกิจของนายจ้างต่างชาติ (ถ้ามี) อัปเดตล่าสุด : 10 ธ.ค. 2025 แบบแจ้งสถานที่เก็บรักษาบัญชีและเอกสารที่ต้องใช้ประกอบการลงบัญชีของนิติบุคคลที่ตั้งขึ้นตามกฎหมายต่างประเทศที่ประกอบธุรกิจในประเทศไทย ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นคำขอเปลี่ยนแปลงรายการผ่านระบบ e-WorkPermit กรมการจัดหางานไม่รับผิดชอบต่อความผิดพลาดที่เกิดจากการกรอกข้อมูลของผู้ยื่นคำขอ ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  },
+  "step6_initial": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "ถ่ายภาพ",
+        "id": "",
+        "da": "camera-capture",
+        "type": "BUTTON",
+        "cls": "btn btn-primary action-button mt-4 lang_take_photo",
+        "onclick": ""
+      },
+      {
+        "text": "อัปโหลด",
+        "id": "",
+        "da": "picture-uploader",
+        "type": "BUTTON",
+        "cls": "btn btn-dark action-button lang_btn_upload_photo",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": true,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น วิธีการยืนยันตัวตน อนุญาตการเข้าถึงกล้องถ่ายรูป และรูปถ่ายในอุปกรณ์ของคุณ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ’ เพื่อยืนยันใบหน้าเบื้องต้น วางใบหน้าในกรอบที่กำหนด และมองหน้าตรง และนิ่ง หากอัปโหลดภาพ ใช้ภาพหน้าตรง ที่มีแสงสว่างเพียงพอ และไม่มีบุคคลอื่นอยู่ในภาพ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ' เพื่อยืนยันใบหน้าเบื้องต้น กรุณาตรวจสอบว่าคุณไม่ได้อยู่ในบริเวณที่แสงสว่าง หรือมืดจนเกินไป และไม่มีบุคคลอื่นอยู่ในกรอบระหว่างถ่ายภาพ ถ่ายภาพ อัปโหลด ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  },
+  "step6_upload_clicked": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "ถ่ายภาพ",
+        "id": "",
+        "da": "camera-capture",
+        "type": "BUTTON",
+        "cls": "btn btn-primary action-button mt-4 lang_take_photo",
+        "onclick": ""
+      },
+      {
+        "text": "อัปโหลด",
+        "id": "",
+        "da": "picture-uploader",
+        "type": "BUTTON",
+        "cls": "btn btn-dark action-button lang_btn_upload_photo",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      },
+      {
+        "text": "ยืนยัน",
+        "id": "",
+        "da": "",
+        "type": "BUTTON",
+        "cls": "btn btn-primary float-right",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": true,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      },
+      {
+        "id": "upload-popup",
+        "name": "",
+        "accept": "image/*",
+        "visible": false,
+        "dataAttrs": []
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น วิธีการยืนยันตัวตน อนุญาตการเข้าถึงกล้องถ่ายรูป และรูปถ่ายในอุปกรณ์ของคุณ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ’ เพื่อยืนยันใบหน้าเบื้องต้น วางใบหน้าในกรอบที่กำหนด และมองหน้าตรง และนิ่ง หากอัปโหลดภาพ ใช้ภาพหน้าตรง ที่มีแสงสว่างเพียงพอ และไม่มีบุคคลอื่นอยู่ในภาพ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ' เพื่อยืนยันใบหน้าเบื้องต้น กรุณาตรวจสอบว่าคุณไม่ได้อยู่ในบริเวณที่แสงสว่าง หรือมืดจนเกินไป และไม่มีบุคคลอื่นอยู่ในกรอบระหว่างถ่ายภาพ ถ่ายภาพ อัปโหลด ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566 อัปโหลดภาพ รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ ยืนยัน ยกเลิก"
+  },
+  "step6_after_select_file": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "ถ่ายภาพ",
+        "id": "",
+        "da": "camera-capture",
+        "type": "BUTTON",
+        "cls": "btn btn-primary action-button mt-4 lang_take_photo",
+        "onclick": ""
+      },
+      {
+        "text": "อัปโหลด",
+        "id": "",
+        "da": "picture-uploader",
+        "type": "BUTTON",
+        "cls": "btn btn-dark action-button lang_btn_upload_photo",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      },
+      {
+        "text": "ยืนยัน",
+        "id": "",
+        "da": "",
+        "type": "BUTTON",
+        "cls": "btn btn-primary float-right",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": true,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      },
+      {
+        "id": "upload-popup",
+        "name": "",
+        "accept": "image/*",
+        "visible": false,
+        "dataAttrs": [
+          "data-gtm-form-interact-field-id=17"
+        ]
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น วิธีการยืนยันตัวตน อนุญาตการเข้าถึงกล้องถ่ายรูป และรูปถ่ายในอุปกรณ์ของคุณ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ’ เพื่อยืนยันใบหน้าเบื้องต้น วางใบหน้าในกรอบที่กำหนด และมองหน้าตรง และนิ่ง หากอัปโหลดภาพ ใช้ภาพหน้าตรง ที่มีแสงสว่างเพียงพอ และไม่มีบุคคลอื่นอยู่ในภาพ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ' เพื่อยืนยันใบหน้าเบื้องต้น กรุณาตรวจสอบว่าคุณไม่ได้อยู่ในบริเวณที่แสงสว่าง หรือมืดจนเกินไป และไม่มีบุคคลอื่นอยู่ในกรอบระหว่างถ่ายภาพ ถ่ายภาพ อัปโหลด ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566 อัปโหลดภาพ รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ EI EI THWIN.jpg ยืนยัน ยกเลิก"
+  },
+  "step6_after_confirm": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "type": "A",
+        "cls": "text-secondary font-weight-normal",
+        "onclick": ""
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "type": "BUTTON",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "onclick": ""
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "da": "next",
+        "type": "BUTTON",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next",
+        "onclick": ""
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "type": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back",
+        "onclick": ""
+      }
+    ],
+    "checkboxes": [
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": true,
+        "visible": false,
+        "label": "",
+        "near": "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ 2 Work Permit.pdf"
+      },
+      {
+        "id": "",
+        "name": "groupFormTypeDocId-4422004",
+        "checked": false,
+        "visible": false,
+        "label": "",
+        "near": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+      },
+      {
+        "id": "",
+        "name": "consent",
+        "checked": true,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค",
+        "near": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "near": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "fileInputs": [
+      {
+        "id": "file-1-5hlr8",
+        "name": "file-1-5hlr8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the",
+          "data-document-en=A copy of the alien's important identification document issued by the government",
+          "data-gtm-form-interact-field-id=5"
+        ]
+      },
+      {
+        "id": "file-1-33o84",
+        "name": "file-1-33o84",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจ",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit",
+          "data-gtm-form-interact-field-id=6"
+        ]
+      },
+      {
+        "id": "file-1-vyk8cf",
+        "name": "file-1-vyk8cf",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လု",
+          "data-document-en=Work permit",
+          "data-gtm-form-interact-field-id=7"
+        ]
+      },
+      {
+        "id": "file-1-kkxqo",
+        "name": "file-1-kkxqo",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiế",
+          "data-document-en=A copy of the passport.",
+          "data-gtm-form-interact-field-id=8"
+        ]
+      },
+      {
+        "id": "file-2-d0gmt",
+        "name": "file-2-d0gmt",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as ",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ]
+      },
+      {
+        "id": "file-1-nlkom",
+        "name": "file-1-nlkom",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit t",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ]
+      },
+      {
+        "id": "file-1-wp6lh",
+        "name": "file-1-wp6lh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\"",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=9"
+        ]
+      },
+      {
+        "id": "file-1-14gam",
+        "name": "file-1-14gam",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเ",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the",
+          "data-gtm-form-interact-field-id=10"
+        ]
+      },
+      {
+        "id": "file-1-bjcps",
+        "name": "file-1-bjcps",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เ",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behal",
+          "data-gtm-form-interact-field-id=11"
+        ]
+      },
+      {
+        "id": "file-1-gl27c",
+        "name": "file-1-gl27c",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพ",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (A",
+          "data-gtm-form-interact-field-id=12"
+        ]
+      },
+      {
+        "id": "file-1-ihnb2",
+        "name": "file-1-ihnb2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสา",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker imp",
+          "data-gtm-form-interact-field-id=13"
+        ]
+      },
+      {
+        "id": "file",
+        "name": "file",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=5.DBD+เอกสารนายจ้าง",
+          "data-document-en=5.DBD+เอกสารนายจ้าง"
+        ]
+      },
+      {
+        "id": "file-1",
+        "name": "file-1",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th=มอบอำนาจให้จิรนันท์1-18 (1)",
+          "data-document-en=มอบอำนาจให้จิรนันท์1-18 (1)"
+        ]
+      }
+    ],
+    "imgs": [
+      {
+        "src": "https://eworkpermit.doe.go.th/assets/images/DOE_logo.png",
+        "id": "",
+        "cls": ""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น วิธีการยืนยันตัวตน อนุญาตการเข้าถึงกล้องถ่ายรูป และรูปถ่ายในอุปกรณ์ของคุณ กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ’ เพื่อยืนยันใบหน้าเบื้องต้น วางใบหน้าในกรอบที่กำหนด และมองหน้าตรง และนิ่ง หากอัปโหลดภาพ ใช้ภาพหน้าตรง ที่มีแสงสว่างเพียงพอ และไม่มีบุคคลอื่นอยู่ในภาพ ยืนยันตัวตนสำเร็จ คุณได้ทำการยืนยันตัวตนแล้ว กรุณากด ‘ถัดไป’ เพื่อทำรายการต่อ ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  }
+}

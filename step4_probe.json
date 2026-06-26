@@ -1,0 +1,760 @@
+{
+  "step4": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "fileInputs": [
+      {
+        "idx": 0,
+        "id": "file-1-tdzil",
+        "name": "file-1-tdzil",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the alien's important identification document issued by the government.\",\"VN\":\"Bản sao giấy tờ tùy thân quan trọng của người nước ngoài do cơ quan nhà nước cấp\",\"MM\":\"အစိုးရမှထုတ်ပေးသော နိုင်ငံခြားသား၏တရားဝင်မှတ်ပုံတင်စာရွက်စာတမ်း မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារសម្គាល់អត្តសញ្ញាណសំខាន់ៗរបស់ជនបរទេសដែលចេញដោយរដ្ឋាភិបាល។\",\"LO\":\"ສຳເນົາເອກະສານສຳຄັນປະຈຳຕົວຂອງຄົນຕ່າງດ້າວທີ່ລາດຊະການອອກໃຫ້\"}",
+          "data-document-en=A copy of the alien's important identification document issued by the government."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 1,
+        "id": "file-1-c2zkj",
+        "name": "file-1-c2zkj",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง\",\"EN\":\"A Copy of Document or Evidence Showing Amendments in the Actual Work Permit\",\"VN\":\"Bản sao tài liệu hoặc bằng chứng cho thấy có sự thay đổi thông tin trong giấy phép lao động\",\"MM\":\"အလုပ်လုပ်ခွင့်ပါမစ်များ အမှန်တကယ်ပြောင်းလဲထားကြောင်းပြသသည့်စာရွက်စာတမ်း သို့မဟုတ် အထောက်အထားမိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារ ឬភស្តុតាងដែលបង្ហាញការកែប្រែនៅក្នុងលិខិតអនុញ្ញាតការងារជាក់ស្តែង\",\"LO\":\"ສໍາເນົາເອກະສານ ຫຼື ຫຼັກຖານທີ່ສະແດງໃຫ້ເຫັນວ່າມີການປ່ຽນແປງໃນໃບອະນຸຍາດເຮັດວຽກຈິງ\"}",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 2,
+        "id": "file-1-2k5i8",
+        "name": "file-1-2k5i8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လုပ်ခွင့်\",\"CB\":\"ប័ណ្ណការងារ\",\"LO\":\"ໃບອະນຸຍາດເຮັດວຽກ\"}",
+          "data-document-en=Work permit"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 3,
+        "id": "file-1-khknb",
+        "name": "file-1-khknb",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiếu\",\"MM\":\"နိုင်ငံကူးလက်မှတ် မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃលិខិតឆ្លងដែន។\",\"LO\":\"ສຳເນົາໜັງສືຜ່ານແດນ\"}",
+          "data-document-en=A copy of the passport."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 4,
+        "id": "file-2-ksun8",
+        "name": "file-2-ksun8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as a substitute for a passport.\",\"VN\":\"Bản sao tài liệu thay thế hộ chiếu\",\"MM\":\"နိုင်ငံကူးလက်မှတ်အစားအသုံးပြုမည် စာရွက်စာတမ်းမိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារដែលបម្រើការជំនួសលិខិតឆ្លងដែន។\",\"LO\":\"ສໍາເນົາເອກະສານຖືກໃຊ້ແທນຫນັງສືຜ່ານແດນ.\"}",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 5,
+        "id": "file-1-dwh1m",
+        "name": "file-1-dwh1m",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit to enter the kingdom.\",\"VN\":\"Bản sao tài liệu cho phép nhập cảnh vào Vương quốc Thái Lan\",\"MM\":\"နိုင်ငံတော်သို့ ဝင်ရောက်ခွင့် အထောက်အထား မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងលិខិតអនុញ្ញាតចូលព្រះរាជាណាចក្រ។\",\"LO\":\"ສໍາເນົາຫຼັກຖານອະນຸຍາດເຂົ້າໄປໃນລາຊະອານາຈັກ\"}",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 6,
+        "id": "file-1-884u2",
+        "name": "file-1-884u2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\":\"Ảnh 3 x 4 cm\",\"MM\":\"ဓာတ်ပုံအရွယ်အစား 3 x 4 စင်တီမီတာ\",\"CB\":\"រូបថតទំហំ 3 x 4 សង់ទីម៉ែត្រ។\",\"LO\":\"ຮູບຖ່າຍ ຂະນາດ 3 x 4 ຊມ\"}",
+          "data-document-en=A photograph, size 3 x 4 centimeters."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 7,
+        "id": "file-1-e3x9z",
+        "name": "file-1-e3x9z",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน\",\"EN\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"VN\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"MM\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"CB\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"LO\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\"}",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 8,
+        "id": "file-1-y2bat",
+        "name": "file-1-y2bat",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"VN\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"MM\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"CB\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"LO\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\"}",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เ",
+        "required": true
+      },
+      {
+        "idx": 9,
+        "id": "file-1-w8vh",
+        "name": "file-1-w8vh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"VN\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"MM\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"CB\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"LO\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\"}",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล",
+        "required": true
+      },
+      {
+        "idx": 10,
+        "id": "file-1-k7838",
+        "name": "file-1-k7838",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"VN\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"MM\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"CB\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"LO\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\"}",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือก",
+        "required": true
+      }
+    ],
+    "docLabels": [
+      "แนบเอกสารและหลักฐานประกอบการยื่นคำขอ สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ *",
+      "รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "เพิ่มเอกสาร",
+        "id": "",
+        "da": "popup-upload",
+        "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "button_next",
+        "da": "next",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น แนบเอกสาร แนบเอกสารและหลักฐานประกอบการยื่นคำขอ สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ เอกสารอื่นๆที่เกี่ยวข้อง เอกสารที่ใช้ประกอบการพิจารณาทั้งลูกจ้างและนายจ้าง สูงสุด 5 ไฟล์ เพิ่มเอกสาร ยังไม่มีเอกสารอื่น ๆ กดปุ่ม “เพิ่มเอกสาร” เพื่อเพิ่มเอกสาร ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  },
+  "crop_modal": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "fileInputs": [
+      {
+        "idx": 0,
+        "id": "file-1-tdzil",
+        "name": "file-1-tdzil",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the alien's important identification document issued by the government.\",\"VN\":\"Bản sao giấy tờ tùy thân quan trọng của người nước ngoài do cơ quan nhà nước cấp\",\"MM\":\"အစိုးရမှထုတ်ပေးသော နိုင်ငံခြားသား၏တရားဝင်မှတ်ပုံတင်စာရွက်စာတမ်း မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារសម្គាល់អត្តសញ្ញាណសំខាន់ៗរបស់ជនបរទេសដែលចេញដោយរដ្ឋាភិបាល។\",\"LO\":\"ສຳເນົາເອກະສານສຳຄັນປະຈຳຕົວຂອງຄົນຕ່າງດ້າວທີ່ລາດຊະການອອກໃຫ້\"}",
+          "data-document-en=A copy of the alien's important identification document issued by the government."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 1,
+        "id": "file-1-c2zkj",
+        "name": "file-1-c2zkj",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง\",\"EN\":\"A Copy of Document or Evidence Showing Amendments in the Actual Work Permit\",\"VN\":\"Bản sao tài liệu hoặc bằng chứng cho thấy có sự thay đổi thông tin trong giấy phép lao động\",\"MM\":\"အလုပ်လုပ်ခွင့်ပါမစ်များ အမှန်တကယ်ပြောင်းလဲထားကြောင်းပြသသည့်စာရွက်စာတမ်း သို့မဟုတ် အထောက်အထားမိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារ ឬភស្តុតាងដែលបង្ហាញការកែប្រែនៅក្នុងលិខិតអនុញ្ញាតការងារជាក់ស្តែង\",\"LO\":\"ສໍາເນົາເອກະສານ ຫຼື ຫຼັກຖານທີ່ສະແດງໃຫ້ເຫັນວ່າມີການປ່ຽນແປງໃນໃບອະນຸຍາດເຮັດວຽກຈິງ\"}",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 2,
+        "id": "file-1-2k5i8",
+        "name": "file-1-2k5i8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လုပ်ခွင့်\",\"CB\":\"ប័ណ្ណការងារ\",\"LO\":\"ໃບອະນຸຍາດເຮັດວຽກ\"}",
+          "data-document-en=Work permit"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 3,
+        "id": "file-1-khknb",
+        "name": "file-1-khknb",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiếu\",\"MM\":\"နိုင်ငံကူးလက်မှတ် မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃលិខិតឆ្លងដែន។\",\"LO\":\"ສຳເນົາໜັງສືຜ່ານແດນ\"}",
+          "data-document-en=A copy of the passport."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 4,
+        "id": "file-2-ksun8",
+        "name": "file-2-ksun8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as a substitute for a passport.\",\"VN\":\"Bản sao tài liệu thay thế hộ chiếu\",\"MM\":\"နိုင်ငံကူးလက်မှတ်အစားအသုံးပြုမည် စာရွက်စာတမ်းမိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារដែលបម្រើការជំនួសលិខិតឆ្លងដែន។\",\"LO\":\"ສໍາເນົາເອກະສານຖືກໃຊ້ແທນຫນັງສືຜ່ານແດນ.\"}",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 5,
+        "id": "file-1-dwh1m",
+        "name": "file-1-dwh1m",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit to enter the kingdom.\",\"VN\":\"Bản sao tài liệu cho phép nhập cảnh vào Vương quốc Thái Lan\",\"MM\":\"နိုင်ငံတော်သို့ ဝင်ရောက်ခွင့် အထောက်အထား မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងលិខិតអនុញ្ញាតចូលព្រះរាជាណាចក្រ។\",\"LO\":\"ສໍາເນົາຫຼັກຖານອະນຸຍາດເຂົ້າໄປໃນລາຊະອານາຈັກ\"}",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 6,
+        "id": "file-1-884u2",
+        "name": "file-1-884u2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\":\"Ảnh 3 x 4 cm\",\"MM\":\"ဓာတ်ပုံအရွယ်အစား 3 x 4 စင်တီမီတာ\",\"CB\":\"រូបថតទំហំ 3 x 4 សង់ទីម៉ែត្រ។\",\"LO\":\"ຮູບຖ່າຍ ຂະນາດ 3 x 4 ຊມ\"}",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=5"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "เลือกไฟล์ กรุณาเพิ่มไฟล์",
+        "required": true
+      },
+      {
+        "idx": 7,
+        "id": "file-1-e3x9z",
+        "name": "file-1-e3x9z",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน\",\"EN\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"VN\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"MM\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"CB\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"LO\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\"}",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 8,
+        "id": "file-1-y2bat",
+        "name": "file-1-y2bat",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"VN\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"MM\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"CB\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"LO\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\"}",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เ",
+        "required": true
+      },
+      {
+        "idx": 9,
+        "id": "file-1-w8vh",
+        "name": "file-1-w8vh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"VN\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"MM\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"CB\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"LO\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\"}",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล",
+        "required": true
+      },
+      {
+        "idx": 10,
+        "id": "file-1-k7838",
+        "name": "file-1-k7838",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"VN\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"MM\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"CB\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"LO\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\"}",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือก",
+        "required": true
+      }
+    ],
+    "docLabels": [
+      "แนบเอกสารและหลักฐานประกอบการยื่นคำขอ สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ *",
+      "รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ กรุณาเพิ่มไฟล์",
+      "หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "เพิ่มเอกสาร",
+        "id": "",
+        "da": "popup-upload",
+        "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "button_next",
+        "da": "next",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "",
+        "cls": "btn btn-dark m-0 lang_txt_cancel"
+      },
+      {
+        "text": "บันทึก",
+        "id": "crop-save-button",
+        "da": "",
+        "cls": "btn btn-primary lang_lbl_save"
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น แนบเอกสาร แนบเอกสารและหลักฐานประกอบการยื่นคำขอ สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ กรุณาเพิ่มไฟล์ หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ เอกสารอื่นๆที่เกี่ยวข้อง เอกสารที่ใช้ประกอบการพิจารณาทั้งลูกจ้างและนายจ้าง สูงสุด 5 ไฟล์ เพิ่มเอกสาร ยังไม่มีเอกสารอื่น ๆ กดปุ่ม “เพิ่มเอกสาร” เพื่อเพิ่มเอกสาร ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566 ยกเลิก บันทึก"
+  },
+  "crop_detail": {
+    "modalCount": 1,
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "เพิ่มเอกสาร",
+        "id": "",
+        "da": "popup-upload",
+        "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "button_next",
+        "da": "next",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "",
+        "cls": "btn btn-dark m-0 lang_txt_cancel"
+      },
+      {
+        "text": "บันทึก",
+        "id": "crop-save-button",
+        "da": "",
+        "cls": "btn btn-primary lang_lbl_save"
+      }
+    ],
+    "imgs": [
+      {
+        "tag": "IMG",
+        "id": "",
+        "cls": ""
+      },
+      {
+        "tag": "IMG",
+        "id": "",
+        "cls": "p-img"
+      },
+      {
+        "tag": "IMG",
+        "id": "",
+        "cls": "cropper-hide"
+      },
+      {
+        "tag": "IMG",
+        "id": "",
+        "cls": ""
+      }
+    ]
+  },
+  "after_crop": {
+    "url": "https://eworkpermit.doe.go.th/Forms/FormChangeEmployer?id=RA17662449023455621&ut=alien&uti=3",
+    "heading": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+    "fileInputs": [
+      {
+        "idx": 0,
+        "id": "file-1-tdzil",
+        "name": "file-1-tdzil",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้\",\"EN\":\"A copy of the alien's important identification document issued by the government.\",\"VN\":\"Bản sao giấy tờ tùy thân quan trọng của người nước ngoài do cơ quan nhà nước cấp\",\"MM\":\"အစိုးရမှထုတ်ပေးသော နိုင်ငံခြားသား၏တရားဝင်မှတ်ပုံတင်စာရွက်စာတမ်း မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារសម្គាល់អត្តសញ្ញាណសំខាន់ៗរបស់ជនបរទេសដែលចេញដោយរដ្ឋាភិបាល។\",\"LO\":\"ສຳເນົາເອກະສານສຳຄັນປະຈຳຕົວຂອງຄົນຕ່າງດ້າວທີ່ລາດຊະການອອກໃຫ້\"}",
+          "data-document-en=A copy of the alien's important identification document issued by the government."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 1,
+        "id": "file-1-c2zkj",
+        "name": "file-1-c2zkj",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง\",\"EN\":\"A Copy of Document or Evidence Showing Amendments in the Actual Work Permit\",\"VN\":\"Bản sao tài liệu hoặc bằng chứng cho thấy có sự thay đổi thông tin trong giấy phép lao động\",\"MM\":\"အလုပ်လုပ်ခွင့်ပါမစ်များ အမှန်တကယ်ပြောင်းလဲထားကြောင်းပြသသည့်စာရွက်စာတမ်း သို့မဟုတ် အထောက်အထားမိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារ ឬភស្តុតាងដែលបង្ហាញការកែប្រែនៅក្នុងលិខិតអនុញ្ញាតការងារជាក់ស្តែង\",\"LO\":\"ສໍາເນົາເອກະສານ ຫຼື ຫຼັກຖານທີ່ສະແດງໃຫ້ເຫັນວ່າມີການປ່ຽນແປງໃນໃບອະນຸຍາດເຮັດວຽກຈິງ\"}",
+          "data-document-en=A Copy of Document or Evidence Showing Amendments in the Actual Work Permit"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 2,
+        "id": "file-1-2k5i8",
+        "name": "file-1-2k5i8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบอนุญาตทำงาน\",\"EN\":\"Work permit\",\"VN\":\"Giấy phép lao động\",\"MM\":\"အလုပ်လုပ်ခွင့်\",\"CB\":\"ប័ណ្ណការងារ\",\"LO\":\"ໃບອະນຸຍາດເຮັດວຽກ\"}",
+          "data-document-en=Work permit"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 3,
+        "id": "file-1-khknb",
+        "name": "file-1-khknb",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหนังสือเดินทาง\",\"EN\":\"A copy of the passport.\",\"VN\":\"Bản sao hộ chiếu\",\"MM\":\"နိုင်ငံကူးလက်မှတ် မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃលិខិតឆ្លងដែន។\",\"LO\":\"ສຳເນົາໜັງສືຜ່ານແດນ\"}",
+          "data-document-en=A copy of the passport."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 4,
+        "id": "file-2-ksun8",
+        "name": "file-2-ksun8",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาเอกสารใช้แทนหนังสือเดินทาง\",\"EN\":\"A copy of the document serving as a substitute for a passport.\",\"VN\":\"Bản sao tài liệu thay thế hộ chiếu\",\"MM\":\"နိုင်ငံကူးလက်မှတ်အစားအသုံးပြုမည် စာရွက်စာတမ်းမိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងនៃឯកសារដែលបម្រើការជំនួសលិខិតឆ្លងដែន។\",\"LO\":\"ສໍາເນົາເອກະສານຖືກໃຊ້ແທນຫນັງສືຜ່ານແດນ.\"}",
+          "data-document-en=A copy of the document serving as a substitute for a passport."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 5,
+        "id": "file-1-dwh1m",
+        "name": "file-1-dwh1m",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร\",\"EN\":\"A copy of the permit to enter the kingdom.\",\"VN\":\"Bản sao tài liệu cho phép nhập cảnh vào Vương quốc Thái Lan\",\"MM\":\"နိုင်ငံတော်သို့ ဝင်ရောက်ခွင့် အထောက်အထား မိတ္တူ\",\"CB\":\"ច្បាប់ចម្លងលិខិតអនុញ្ញាតចូលព្រះរាជាណាចក្រ។\",\"LO\":\"ສໍາເນົາຫຼັກຖານອະນຸຍາດເຂົ້າໄປໃນລາຊະອານາຈັກ\"}",
+          "data-document-en=A copy of the permit to enter the kingdom."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": false
+      },
+      {
+        "idx": 6,
+        "id": "file-1-884u2",
+        "name": "file-1-884u2",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"รูปถ่าย ขนาด 3 x 4 ซม.\",\"EN\":\"A photograph, size 3 x 4 centimeters.\",\"VN\":\"Ảnh 3 x 4 cm\",\"MM\":\"ဓာတ်ပုံအရွယ်အစား 3 x 4 စင်တီမီတာ\",\"CB\":\"រូបថតទំហំ 3 x 4 សង់ទីម៉ែត្រ។\",\"LO\":\"ຮູບຖ່າຍ ຂະນາດ 3 x 4 ຊມ\"}",
+          "data-document-en=A photograph, size 3 x 4 centimeters.",
+          "data-gtm-form-interact-field-id=5"
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "เลือกไฟล์ EI EI THWIN.jpg",
+        "required": true
+      },
+      {
+        "idx": 7,
+        "id": "file-1-e3x9z",
+        "name": "file-1-e3x9z",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน\",\"EN\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"VN\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"MM\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"CB\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\",\"LO\":\"Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers.\"}",
+          "data-document-en=Power of Attorney document authorizing a licensed person to act on behalf of the principal to bring in foreign workers."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+        "required": true
+      },
+      {
+        "idx": 8,
+        "id": "file-1-y2bat",
+        "name": "file-1-y2bat",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"VN\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"MM\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"CB\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"LO\":\"Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\"}",
+          "data-document-en=Power of Attorney form with stamp duty affixed by the authorized person on behalf of the foreign worker import company (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เ",
+        "required": true
+      },
+      {
+        "idx": 9,
+        "id": "file-1-w8vh",
+        "name": "file-1-w8vh",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"VN\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"MM\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"CB\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\",\"LO\":\"Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy).\"}",
+          "data-document-en=Copy of the ID card of the authorizing person (foreign worker import company) (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล",
+        "required": true
+      },
+      {
+        "idx": 10,
+        "id": "file-1-k7838",
+        "name": "file-1-k7838",
+        "accept": "image/*,application/pdf",
+        "visible": false,
+        "dataAttrs": [
+          "data-document-th={\"TH\":\"สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)\",\"EN\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"VN\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"MM\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"CB\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\",\"LO\":\"Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy).\"}",
+          "data-document-en=Copy of the ID card of the authorized person on behalf of the foreign worker import company (Additional document for the proxy)."
+        ],
+        "labelText": "เลือกไฟล์",
+        "cardTitle": "สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือก",
+        "required": true
+      }
+    ],
+    "docLabels": [
+      "แนบเอกสารและหลักฐานประกอบการยื่นคำขอ สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "เลือกอย่างน้อย 1 ไฟล์ *",
+      "รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ EI EI THWIN.jpg",
+      "หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์",
+      "สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "เพิ่มเอกสาร",
+        "id": "",
+        "da": "popup-upload",
+        "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "button_next",
+        "da": "next",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ กรมการจัดหางาน บริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด นางสาว วนิดา วงค์แสง (ผู้กระทำการแทน) ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ หน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต อาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44) กรอกข้อมูลคำขอ แนบเอกสาร สรุปคำขอ ยืนยันตัวตน การชำระเงิน เสร็จสิ้น แนบเอกสาร แนบเอกสารและหลักฐานประกอบการยื่นคำขอ สำเนาเอกสารสำคัญประจำตัวของคนต่างด้าวที่ราชการออกให้ * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารหรือหลักฐานที่แสดงให้เห็นว่ามีการเปลี่ยนรายการในใบอนุญาตทำงานจริง * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ ใบอนุญาตทำงาน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ เลือกอย่างน้อย 1 ไฟล์ * สำเนาหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาเอกสารใช้แทนหนังสือเดินทาง รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ รูปถ่าย ขนาด 3 x 4 ซม. * รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์ EI EI THWIN.jpg หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน) * รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์ เอกสารอื่นๆที่เกี่ยวข้อง เอกสารที่ใช้ประกอบการพิจารณาทั้งลูกจ้างและนายจ้าง สูงสุด 5 ไฟล์ เพิ่มเอกสาร ยังไม่มีเอกสารอื่น ๆ กดปุ่ม “เพิ่มเอกสาร” เพื่อเพิ่มเอกสาร ยกเลิก ถัดไป ย้อนกลับ สงวนลิขสิทธิ์ © 2566"
+  },
+  "adddoc_modal": {
+    "fileInputs": [],
+    "textInputs": [
+      {
+        "id": "document",
+        "name": "document",
+        "placeholder": "กรุณากรอก"
+      }
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "da": "",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "เพิ่มเอกสาร",
+        "id": "",
+        "da": "popup-upload",
+        "cls": "btn btn-dark mt-3 mb-2 float-right-test lang_add_document"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "back-to-menu",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "button_next",
+        "da": "next",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "da": "prev",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "ยืนยัน",
+        "id": "",
+        "da": "",
+        "cls": "btn btn-primary float-right"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "da": "",
+        "cls": "btn btn-dark float-right"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1388 @@
+[
+  {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "heads": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "เอกสารนายจ้าง : นิติบุคคล - จดทะเบียนในประเทศไทย"
+    ],
+    "btns": [
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "header-logo",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal",
+        "text": "หน้าเเรก /",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "delete_draft",
+        "cls": "btn btn-primary btt-draft action-button",
+        "text": "ลบฉบับร่าง",
+        "onclick": "DeleteDataDraftRequestForm()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "save_draft",
+        "cls": "btn btn-primary btt-draft action-button",
+        "text": "บันทึกฉบับร่าง",
+        "onclick": "saveDataDraft()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "text": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "NextStepThreePageOneRenew",
+        "cls": "btn btn-next btn-primary action-button float-right w-100-bt lang_txt_n",
+        "text": "ถัดไป",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark previous action-button-previous float-right-test w-48-bt ",
+        "text": "ย้อนกลับ",
+        "onclick": "",
+        "disabled": false
+      }
+    ],
+    "checks": [
+      {
+        "id": "checkAll",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "เลือกทั้งหมด"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "files": [
+      {
+        "id": "file_name_34",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'34')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_35",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'35')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_33",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'33')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_36",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'36')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_59",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'59')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_41",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'41')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_42",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'42')",
+        "accept": "image/png, image/jpeg, image/jpeg",
+        "vis": false
+      },
+      {
+        "id": "file_name_71",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'71')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_134",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'134')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_135",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'135')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_136",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'136')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_137",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'137')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_106",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,\"106\")",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_0",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 0)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 1)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_0",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_1",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_2",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_3",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_4",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "AddNewFileOrther()",
+        "accept": "",
+        "vis": false
+      }
+    ],
+    "uploads": [],
+    "steps": [
+      "แนบเอกสาร หน้า 2/2",
+      "เอกสารนายจ้าง : นิติบุคคล - จดทะเบียนในประเทศไทย"
+    ],
+    "phase": 0
+  },
+  {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "heads": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "ใบอนุญาตทำงาน",
+      "ข้อมูลผู้ยื่นคำขอ",
+      "ข้อมูลสำหรับติดต่อ",
+      "ที่อยู่ในประเทศไทย",
+      "เอกสารแสดงการได้รับอนุญาตให้อยู่ในราชอาณาจักร",
+      "การตรวจลงตรา",
+      "วันที่เดินทางมาถึงราชอาณาจักร และ ได้รับอนุญาตให้อยู่ในราชอาณาจักร"
+    ],
+    "btns": [
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "header-logo",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal",
+        "text": "หน้าเเรก /",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "delete_draft",
+        "cls": "btn btn-primary btt-draft action-button",
+        "text": "ลบฉบับร่าง",
+        "onclick": "DeleteDataDraftRequestForm()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "save_draft",
+        "cls": "btn btn-primary btt-draft action-button",
+        "text": "บันทึกฉบับร่าง",
+        "onclick": "saveDataDraft()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "text": "ยกเลิก",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-100-bt nextStep l",
+        "text": "ถัดไป",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark previousSteptwo action-button-previous float-right-test w",
+        "text": "ย้อนกลับ",
+        "onclick": "",
+        "disabled": false
+      }
+    ],
+    "checks": [
+      {
+        "id": "checkAll",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "เลือกทั้งหมด"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "files": [
+      {
+        "id": "file_name_34",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'34')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_35",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'35')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_33",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'33')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_36",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'36')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_59",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'59')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_41",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'41')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_42",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'42')",
+        "accept": "image/png, image/jpeg, image/jpeg",
+        "vis": false
+      },
+      {
+        "id": "file_name_71",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'71')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_134",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'134')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_135",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'135')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_136",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'136')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_137",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'137')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_106",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,\"106\")",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_0",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 0)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 1)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_0",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_1",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_2",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_3",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_4",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "AddNewFileOrther()",
+        "accept": "",
+        "vis": false
+      }
+    ],
+    "uploads": [],
+    "steps": [
+      "สรุปคำขอ หน้า 1/2",
+      "ใบอนุญาตทำงาน",
+      "ข้อมูลผู้ยื่นคำขอ",
+      "ข้อมูลสำหรับติดต่อ",
+      "ที่อยู่ในประเทศไทย",
+      "เอกสารแสดงการได้รับอนุญาตให้อยู่ในราชอาณาจักร",
+      "การตรวจลงตรา",
+      "วันที่เดินทางมาถึงราชอาณาจักร และ ได้รับอนุญาตให้อยู่ในราชอาณาจักร",
+      "ถัดไป",
+      "ย้อนกลับ"
+    ],
+    "phase": 1
+  },
+  {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "heads": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "ข้อมูลนายจ้าง",
+      "โดยจะมาทำงาน",
+      "เอกสารแสดงการอนุญาตหรือการรับรอง",
+      "ข้อมูลการขออนุญาต",
+      "ระยะเวลาการขออนุญาตทำงาน",
+      "เอกสารผู้ยื่นคำขอ",
+      "ใบอนุญาตทำงาน",
+      "เอกสารอื่นๆที่เกี่ยวข้อง",
+      "เอกสารนายจ้าง : นิติบุคคล - จดทะเบียนในประเทศไทย"
+    ],
+    "btns": [
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "header-logo",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal",
+        "text": "หน้าเเรก /",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "delete_draft",
+        "cls": "btn btn-primary btt-draft action-button",
+        "text": "ลบฉบับร่าง",
+        "onclick": "DeleteDataDraftRequestForm()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "save_draft",
+        "cls": "btn btn-primary btt-draft action-button",
+        "text": "บันทึกฉบับร่าง",
+        "onclick": "saveDataDraft()",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "file_link_file_name_106",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel",
+        "text": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "nextstepfour59",
+        "cls": "btn btn-next btn-primary action-button float-right w-100-bt next lang_",
+        "text": "ถัดไป",
+        "onclick": "",
+        "disabled": true
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark previous action-button-previous float-right-test w-48-bt ",
+        "text": "ย้อนกลับ",
+        "onclick": "",
+        "disabled": false
+      }
+    ],
+    "checks": [
+      {
+        "id": "checkAll",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "เลือกทั้งหมด"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "files": [
+      {
+        "id": "file_name_34",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'34')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_35",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'35')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_33",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'33')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_36",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'36')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_59",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'59')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_41",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'41')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_42",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'42')",
+        "accept": "image/png, image/jpeg, image/jpeg",
+        "vis": false
+      },
+      {
+        "id": "file_name_71",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'71')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_134",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'134')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_135",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'135')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_136",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'136')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_137",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'137')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_106",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,\"106\")",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_0",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 0)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 1)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_0",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_1",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_2",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_3",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_4",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "AddNewFileOrther()",
+        "accept": "",
+        "vis": false
+      }
+    ],
+    "uploads": [],
+    "steps": [
+      "สรุปคำขอ หน้า 2/2",
+      "ข้อมูลนายจ้าง",
+      "โดยจะมาทำงาน",
+      "เอกสารแสดงการอนุญาตหรือการรับรอง",
+      "ข้อมูลการขออนุญาต",
+      "ระยะเวลาการขออนุญาตทำงาน",
+      "เอกสารผู้ยื่นคำขอ",
+      "ใบอนุญาตทำงาน",
+      "เอกสารอื่นๆที่เกี่ยวข้อง",
+      "เอกสารนายจ้าง : นิติบุคคล - จดทะเบียนในประเทศไทย"
+    ],
+    "phase": 2
+  },
+  {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "heads": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "วิธีการยืนยันตัวตน",
+      "กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ'เพื่อยืนยันใบหน้าเบื้องต้น"
+    ],
+    "btns": [
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "header-logo",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal",
+        "text": "หน้าเเรก /",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "open_camera",
+        "cls": "btn btn-primary btn-block lang_take_photo",
+        "text": "ถ่ายภาพ",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark btn-block mt-3 pb-0 border-0 lang_lbl_upload_photo",
+        "text": "อัปโหลดภาพ",
+        "onclick": "OncOpenModalAddFileIden()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-cancel  next  float-right float-left w-48-bt lang_txt_cancel",
+        "text": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "button_skip_next",
+        "cls": "btn btn-next btn-primary next action-button float-right w-100-bt next ",
+        "text": "ถัดไป",
+        "onclick": "",
+        "disabled": true
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark previousThree action-button-previous float-right-test  w-",
+        "text": "ย้อนกลับ",
+        "onclick": "",
+        "disabled": false
+      }
+    ],
+    "checks": [
+      {
+        "id": "checkAll",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "เลือกทั้งหมด"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": true,
+        "vis": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "files": [
+      {
+        "id": "file_name_34",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'34')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_35",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'35')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_33",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'33')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_36",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'36')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_59",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'59')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_41",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'41')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_42",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'42')",
+        "accept": "image/png, image/jpeg, image/jpeg",
+        "vis": false
+      },
+      {
+        "id": "file_name_71",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'71')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_134",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'134')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_135",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'135')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_136",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'136')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_137",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'137')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_106",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,\"106\")",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_0",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 0)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 1)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_0",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_1",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_2",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_3",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_4",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "AddNewFileOrther()",
+        "accept": "",
+        "vis": false
+      }
+    ],
+    "uploads": [
+      {
+        "tag": "span",
+        "id": "",
+        "text": "กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ'",
+        "onclick": ""
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "text": "อัปโหลดภาพ",
+        "onclick": "OncOpenModalAddFileIden()"
+      }
+    ],
+    "steps": [
+      "วิธีการยืนยันตัวตน",
+      "กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ'เพื่อยืนยันใบหน้าเบื้องต้น"
+    ],
+    "phase": 3
+  },
+  {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "heads": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "วิธีการยืนยันตัวตน",
+      "กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ'เพื่อยืนยันใบหน้าเบื้องต้น"
+    ],
+    "btns": [
+      {
+        "tag": "a",
+        "id": "",
+        "cls": "header-logo",
+        "text": "",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "a",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal",
+        "text": "หน้าเเรก /",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "open_camera",
+        "cls": "btn btn-primary btn-block lang_take_photo",
+        "text": "ถ่ายภาพ",
+        "onclick": "",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark btn-block mt-3 pb-0 border-0 lang_lbl_upload_photo",
+        "text": "อัปโหลดภาพ",
+        "onclick": "OncOpenModalAddFileIden()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-cancel  next  float-right float-left w-48-bt lang_txt_cancel",
+        "text": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "disabled": false
+      },
+      {
+        "tag": "button",
+        "id": "button_skip_next",
+        "cls": "btn btn-next btn-primary next action-button float-right w-100-bt next ",
+        "text": "ถัดไป",
+        "onclick": "",
+        "disabled": true
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "cls": "btn btn-dark previousThree action-button-previous float-right-test  w-",
+        "text": "ย้อนกลับ",
+        "onclick": "",
+        "disabled": false
+      }
+    ],
+    "checks": [
+      {
+        "id": "checkAll",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "เลือกทั้งหมด"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": true,
+        "vis": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลังอนุมัติ หากต้องการแก้ไขภายหลังต้องยื่นค"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "vis": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ],
+    "files": [
+      {
+        "id": "file_name_34",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'34')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_35",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'35')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_33",
+        "name": "file_name_group",
+        "onchange": "selectFileupload(event,'33')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_36",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'36')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_59",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'59')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_41",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'41')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_42",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'42')",
+        "accept": "image/png, image/jpeg, image/jpeg",
+        "vis": false
+      },
+      {
+        "id": "file_name_71",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'71')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_134",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'134')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_135",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'135')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_136",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'136')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_137",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,'137')",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_name_106",
+        "name": "file_name",
+        "onchange": "selectFileupload(event,\"106\")",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_0",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 0)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "SelectFileOrther(event, 1)",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_0",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_1",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_2",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_3",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "hidden_file_up_4",
+        "name": "",
+        "onchange": "",
+        "accept": "",
+        "vis": false
+      },
+      {
+        "id": "file_other_1",
+        "name": "file_name_orther",
+        "onchange": "AddNewFileOrther()",
+        "accept": "",
+        "vis": false
+      }
+    ],
+    "uploads": [
+      {
+        "tag": "span",
+        "id": "",
+        "text": "กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ'",
+        "onclick": ""
+      },
+      {
+        "tag": "button",
+        "id": "",
+        "text": "อัปโหลดภาพ",
+        "onclick": "OncOpenModalAddFileIden()"
+      }
+    ],
+    "steps": [
+      "วิธีการยืนยันตัวตน",
+      "กด ‘ถ่ายภาพ’ หรือ ‘อัปโหลดภาพ'เพื่อยืนยันใบหน้าเบื้องต้น"
+    ],
+    "phase": "3_modal",
+    "modal_html": ""
+  }
+]

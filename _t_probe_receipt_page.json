@@ -1,0 +1,77 @@
+{
+  "receipt_btn_info": {
+    "tag": "BUTTON",
+    "id": "",
+    "cls": "btn btn-dark mt-2 mb-2 previous action-button-previous float-right-test",
+    "onclick": "window.location.href='/Center/MultiplePayments?form_type=MT_63_2_3103_RENEWAL&emp_id=RE17040752712420000&group_status_id=NCOS&groupID=69125200694755&emp_addr=3&tab_default=2'",
+    "href": "",
+    "text": "ดูใบเสร็จรับเงิน"
+  },
+  "list_info": {
+    "url": "https://eworkpermit.doe.go.th/Center/MultiplePayments?form_type=MT_63_2_3103_RENEWAL&emp_id=RE17040752712420000&group_status_id=NCOS&groupID=69125200694755&emp_addr=3&tab_default=2",
+    "title": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์",
+    "firstRows": [
+      [
+        "ไม่พบข้อมูล"
+      ],
+      [
+        "1",
+        "110006900615161\n\n(1)ดูเพิ่มเติม",
+        "30 เมษายน 2569 23:59",
+        "21 เมษายน 2569 20:59",
+        "ชำระสำเร็จ",
+        "ใบเสร็จรับเงิน"
+      ],
+      [
+        "2",
+        "110006900615160\n\n(1)ดูเพิ่มเติม",
+        "30 เมษายน 2569 23:59",
+        "21 เมษายน 2569 20:59",
+        "ชำระสำเร็จ",
+        "ใบเสร็จรับเงิน"
+      ],
+      [
+        "3",
+        "114006900036976\n\n(1)ดูเพิ่มเติม",
+        "31 มีนาคม 2569 23:59",
+        "07 เมษายน 2569 17:33",
+        "ชำระสำเร็จ",
+        "ใบเสร็จรับเงิน"
+      ],
+      [
+        "4",
+        "121006900079573\n\n(1)ดูเพิ่มเติม",
+        "31 มีนาคม 2569 23:59",
+        "07 เมษายน 2569 16:22",
+        "ชำระสำเร็จ",
+        "ใบเสร็จรับเงิน"
+      ]
+    ],
+    "paginationBtns": [],
+    "downloadBtns": [
+      {
+        "tag": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-100 m-0",
+        "onclick": "",
+        "href": "",
+        "text": "ใบเสร็จรับเงิน"
+      },
+      {
+        "tag": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-100 m-0",
+        "onclick": "",
+        "href": "",
+        "text": "ใบเสร็จรับเงิน"
+      },
+      {
+        "tag": "BUTTON",
+        "cls": "btn btn-dark float-right-test w-100 m-0",
+        "onclick": "",
+        "href": "",
+        "text": "ใบเสร็จรับเงิน"
+      }
+    ],
+    "refreshBtn": null,
+    "totalText": "รายการคำขอที่ต้องชำระ"
+  }
+}

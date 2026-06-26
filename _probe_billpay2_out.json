@@ -1,0 +1,38 @@
+{
+  "target_url": "https://eworkpermit.doe.go.th/RenewMOU/DetailFormRenewMOU?user_id=303816&status=WP2&group_id=69123000048900&form_type=MT_59_MOU_RENEWAL",
+  "fn_src": {
+    "OpenModalPay1": "function OpenModalPay1(obj) {\n\n    console.log(\"func OpenModalPay1 is : \", obj);\n\n    $(\"#image_qrcode\").empty();\n    var objData = JSON.parse(obj.getAttribute(\"_payment-obj\"));\n    var objpayment = new Object();\n\n    objpayment.request_unique_no = objData.payment_uuid;\n    objpayment.payment_request_no = objData.payment_request_no;\n    objpayment.payment_amount = objData.payment_price;\n    objpayment.payment_channel = objData.ref3;\n\n    reqChanel = objData.ref_id;\n\n    group_id_value = objData.ref_id;\n    payment_id_value = objData.payment_id;\n    payment_type_id_value = objData.payment_type_id;\n    transaction_id = objData.ref_transaction_id;\n\n    $(\"#exampleModal\").modal(\"show\");\n\n    $(\"#total_payment_price\").html(\n        objData.payment_price + \" <span class='lang_lbl_currency'></span>\"\n    );\n\n    $(\"#ref3\").text(objData.ref3);\n    $(\"#payment_type\").html('<span class=\"lang_show_epayment\"></span>')\n\n    $(\"#ref1\").text(objData.ref1);\n    $(\"#ref2\").text(objData.ref2);\n    $(\"#lang_ref_code_3\").text(objData.ref3);\n    $(\"#lbl_price_payment_amount\").html(\n        objData.payment_price + \" <span class='lang_lbl_currency'></span>\"\n    );\n    $(\"#lbl_payment_type_name_th\").attr(\"data_th\", objData.payment_type_name_th);\n    $(\"#lbl_payment_type_name_th\").attr(\"data_en\", objData.payment_type_name_en);\n    $(\"#lbl_ref1\").text(objData.ref1);\n    $(\"#lbl_ref2\").text(objData.ref2);\n    $(\"#lbl_ref3\").text(objData.ref3);\n    $(\"#lbl_payment_price\").html(\n        objData.payment_price + \" <span class='lang_lbl_currency'></span>\"\n    );\n\n    var setdata = \"\";\n    var setdataOut = \"\";\n    if (objData.payment_list.length != 0) {\n        for (var i = 0; i < objData.payment_list.length; i++) {\n            var payment_list = objData.payment_list[i];\n\n            if (objData.payment_list[i].payment_type_id == \"PAYMENTFEE\") {\n                if (objData.is_payment_fee == \"IN\") {\n                    setdata +=\n                        '<div class=\"col-6 text-left\" data_th=\"' +\n                        payment_list.payment_type_name_th?.toSafeJsonHtml() +\n                        '\" data_en=\"' +\n                        payment_list.payment_type_name_en +\n                        '\"></div>';\n                    setdata +=\n                        '<div class=\"col-6 text-right\">' +\n                        payment_list.payment_price +\n                        ' <span class=\"lang_lbl_currency\"></span></div>';\n                } else if (objData.is_payment_fee == \"OUT\") {\n           ",
+    "Openproofpayment": "async function Openproofpayment(transaction_id_value, reference_no, multi, typepay) {\n    //if (important_data.is_mobile == \"Y\") {\n    //    mobileScriptChannel.postMessage('openFile:' + objData.payment_document_list[0].document_url)\n    //} else {\n    //    window.open(objData.payment_document_list[0].document_url, '_blank');\n    //}\n\n\n    if (transaction_id_value == \"\" || transaction_id_value == undefined) {\n        transaction_id_value = transaction_id;\n    }\n    var group_id_byname = getParameterByName(\"group_id\");\n    if (\n        group_id_byname == \"\" ||\n        group_id_byname == undefined ||\n        group_id_byname == null\n    ) {\n        group_id_byname = localStorage.getItem(\"group_id\");\n    }\n    let _relateaccount = \"\";\n\n    if (core_datas.default_profile.user_type_id == \"5\") {\n        _relateaccount = core_datas.current_profile.profile_id;\n    }\n    let objRequest = {\n        group_id: group_id_byname,\n        user_id: core_datas.default_profile.user_id,\n        transaction_id: transaction_id_value,\n        relate_account_id: _relateaccount,\n    };\n\n    let form_type = sessionStorage.getItem(\"form_type\");\n    let Calcu_Payment_alien_information = sessionStorage.getItem(\"Calcu_Payment_alien_information\");\n\n    if (multi == \"\" || multi == null || multi == undefined) {\n        multi = sessionStorage.getItem(\"multi\");\n    }\n\n    Calcu_Payment_alien_information = parseInt(Calcu_Payment_alien_information);\n\n    if (Calcu_Payment_alien_information > 1 || multi == \"true\") {\n        //if (form_type == \"MT_63_2_AGN_RENEWAL\") {\n        //    url_GetDocFilePaymentReceipt = \"/ETracking/Getdatainquirypaymentreceiptdetail\"\n\n\n        //    let type = $(\".button_payment\").val();\n        //    let res = await inquiryforopenfile(sessionStorage.getItem(\"reference_no\") || reference_no, typepay || type);\n        //    console.log(res)\n        //    reference_no = sessionStorage.getItem(\"reference_no\") || reference_no;\n        //    transaction_id = sessionStorage.getItem(\"payment_id_file\");\n\n        //    objRequest = {\n        //        request_unique_no: \"\",\n        //        transaction_id: res.payment_id,\n        //        reference_no: reference_no\n        //    }\n        //} else\n\n\n        if (form_type == \"MT_63_2_19\" || form_type == \"MT_63_2_3103_RENEWAL\" || form_type == \"MT_63_2_1302_RENEWAL\") {\n            url_GetDocFilePaymentReceipt = \"/ETracking/Getdatainquirypaymentreceiptdetail\"\n\n            if (transaction_id_value == \"\" || transaction_id_value == n"
+  },
+  "modals": [
+    {
+      "id": "exampleModal",
+      "title": "ชำระเงิน\n×",
+      "body_text": "เลือกวิธีชำระเงิน ชำระผ่าน e-payment รายการชำระเงิน ค่าธรรมเนียมขออนุญาตทำงาน 1,800.00 บาท รวม 1,800.00 บาท *ค่าธรรมเนียมพิเศษเพื่อการชำระเงินของธนาคาร 10.00 บาท",
+      "buttons": [
+        {
+          "text": "×",
+          "onclick": "reloadPage()",
+          "id": "",
+          "cls": "close"
+        },
+        {
+          "text": "ชำระเงิน",
+          "onclick": "OpentWP()",
+          "id": "openpaymentdetail",
+          "cls": "btn btn-primary lang_make_payment"
+        },
+        {
+          "text": "ปิดหน้าต่าง",
+          "onclick": "reloadPage()",
+          "id": "",
+          "cls": "btn btn-dark btn-block mt-0 mb-0 lang_btn_close_windown"
+        }
+      ]
+    }
+  ],
+  "modal_btn_fn_src": {
+    "reloadPage": "function reloadPage() {\n    if (important_data.is_mobile == \"Y\") {\n        mobileScriptChannel.postMessage(\"reloadPage\");\n    } else {\n        window.location.reload();\n    }\n}",
+    "OpentWP": "function OpentWP() {\n    $(\"#exampleModal\").modal(\"hide\");\n    $(\"#WP_Payment\").modal(\"show\");\n\n    let Calcu_Payment_alien_information = sessionStorage.getItem(\"Calcu_Payment_alien_information\");\n    Calcu_Payment_alien_information = parseInt(Calcu_Payment_alien_information);\n\n    //if ($(\"#select_form_type_id :selected\").val() == \"MT_63_2_19\" || $(\"#select_form_type_id :selected\").val() == \"MT_63_2_AGN_RENEWAL\") {\n\n    //if ($(\"#select_form_type_id :selected\").val() == \"MT_63_2_19\") {\n\n    let hid_multi = document.getElementById(\"hid_multi\")\n\n    if (hid_multi && hid_multi.value.trim()) {\n        //if (Calcu_Payment_alien_information > 1) {\n        //    createdatapaymentgroup();\n\n        //} else {\n        //    createdatapaymentSingle();\n\n        //}\n\n        createdatapaymentgroup();\n\n    } else {\n        if (typeof reqChanel !== \"undefined\" && reqChanel) {\n\n\n            console.log(\"if == reqChanel\");\n\n            sendPaymentStatus(reqChanel);\n        } else {\n            console.warn(\"reqChanel is missing or null\");\n        }\n    }\n\n\n}"
+  }
+}

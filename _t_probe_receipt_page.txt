@@ -1,0 +1,75 @@
+﻿Login: Raweewan68297@mailforeign.com type=เธเธนเนเธเธฃเธฐเธ—เธณเธเธฒเธฃเนเธ—เธ
+[+] Login OK โ’ https://eworkpermit.doe.go.th/
+=== Search request ===
+Clicked openDetail: True
+After detail nav: https://eworkpermit.doe.go.th/Requtst63_2/DetailRequest63_2_13?user_id=303816&status=NCOS&group_id=69125200694755&form_type=MT_63_2_3103_RENEWAL
+เธ”เธนเนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ button: {'tag': 'BUTTON', 'id': '', 'cls': 'btn btn-dark mt-2 mb-2 previous action-button-previous float-right-test', 'onclick': "window.location.href='/Center/MultiplePayments?form_type=MT_63_2_3103_RENEWAL&emp_id=RE17040752712420000&group_status_id=NCOS&groupID=69125200694755&emp_addr=3&tab_default=2'", 'href': '', 'text': 'เธ”เธนเนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ'}
+After เธ”เธนเนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ click URL: https://eworkpermit.doe.go.th/Center/MultiplePayments?form_type=MT_63_2_3103_RENEWAL&emp_id=RE17040752712420000&group_status_id=NCOS&groupID=69125200694755&emp_addr=3&tab_default=2
+{
+  "url": "https://eworkpermit.doe.go.th/Center/MultiplePayments?form_type=MT_63_2_3103_RENEWAL&emp_id=RE17040752712420000&group_status_id=NCOS&groupID=69125200694755&emp_addr=3&tab_default=2",
+  "title": "e-WorkPermit : เธฃเธฐเธเธเธญเธเธธเธเธฒเธ•เธ—เธณเธเธฒเธเธเธญเธเธเธเธ•เนเธฒเธเธ”เนเธฒเธงเธ—เธฒเธเธญเธดเน€เธฅเนเธเธ—เธฃเธญเธเธดเธเธชเน",
+  "firstRows": [
+    [
+      "เนเธกเนเธเธเธเนเธญเธกเธนเธฅ"
+    ],
+    [
+      "1",
+      "110006900615161\n\n(1)เธ”เธนเน€เธเธดเนเธกเน€เธ•เธดเธก",
+      "30 เน€เธกเธฉเธฒเธขเธ 2569 23:59",
+      "21 เน€เธกเธฉเธฒเธขเธ 2569 20:59",
+      "เธเธณเธฃเธฐเธชเธณเน€เธฃเนเธ",
+      "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    ],
+    [
+      "2",
+      "110006900615160\n\n(1)เธ”เธนเน€เธเธดเนเธกเน€เธ•เธดเธก",
+      "30 เน€เธกเธฉเธฒเธขเธ 2569 23:59",
+      "21 เน€เธกเธฉเธฒเธขเธ 2569 20:59",
+      "เธเธณเธฃเธฐเธชเธณเน€เธฃเนเธ",
+      "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    ],
+    [
+      "3",
+      "114006900036976\n\n(1)เธ”เธนเน€เธเธดเนเธกเน€เธ•เธดเธก",
+      "31 เธกเธตเธเธฒเธเธก 2569 23:59",
+      "07 เน€เธกเธฉเธฒเธขเธ 2569 17:33",
+      "เธเธณเธฃเธฐเธชเธณเน€เธฃเนเธ",
+      "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    ],
+    [
+      "4",
+      "121006900079573\n\n(1)เธ”เธนเน€เธเธดเนเธกเน€เธ•เธดเธก",
+      "31 เธกเธตเธเธฒเธเธก 2569 23:59",
+      "07 เน€เธกเธฉเธฒเธขเธ 2569 16:22",
+      "เธเธณเธฃเธฐเธชเธณเน€เธฃเนเธ",
+      "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    ]
+  ],
+  "paginationBtns": [],
+  "downloadBtns": [
+    {
+      "tag": "BUTTON",
+      "cls": "btn btn-dark float-right-test w-100 m-0",
+      "onclick": "",
+      "href": "",
+      "text": "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn btn-dark float-right-test w-100 m-0",
+      "onclick": "",
+      "href": "",
+      "text": "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    },
+    {
+      "tag": "BUTTON",
+      "cls": "btn btn-dark float-right-test w-100 m-0",
+      "onclick": "",
+      "href": "",
+      "text": "เนเธเน€เธชเธฃเนเธเธฃเธฑเธเน€เธเธดเธ"
+    }
+  ],
+  "refreshBtn": null,
+  "totalText": "เธฃเธฒเธขเธเธฒเธฃเธเธณเธเธญเธ—เธตเนเธ•เนเธญเธเธเธณเธฃเธฐ"
+}
+

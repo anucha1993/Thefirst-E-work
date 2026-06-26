@@ -1,0 +1,90 @@
+{
+  "row_before": {
+    "found": true,
+    "rowText": "สำเนาหนังสือเดินทางรองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+    "links": [
+      {
+        "tag": "SPAN",
+        "txt": "สำเนาหนังสือเดินทาง",
+        "id": "",
+        "cls": "",
+        "href": "",
+        "onclick": "",
+        "src": ""
+      },
+      {
+        "tag": "SPAN",
+        "txt": "No file chosen",
+        "id": "divselect_file_name_33",
+        "cls": "lang_nofile_chosen",
+        "href": "",
+        "onclick": "",
+        "src": ""
+      }
+    ]
+  },
+  "row_after": {
+    "found": true,
+    "rowText": "สำเนาหนังสือเดินทางรองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen1.พาส.pdf",
+    "links": [
+      {
+        "tag": "SPAN",
+        "txt": "สำเนาหนังสือเดินทาง",
+        "id": "",
+        "cls": "",
+        "href": "",
+        "onclick": "",
+        "src": ""
+      },
+      {
+        "tag": "IMG",
+        "txt": "",
+        "id": "",
+        "cls": "",
+        "href": "",
+        "onclick": "",
+        "src": "/assets/images/document.svg"
+      },
+      {
+        "tag": "SPAN",
+        "txt": "1.พาส.pdf",
+        "id": "show_file_name_33",
+        "cls": "name-file namedoc",
+        "href": "",
+        "onclick": "",
+        "src": ""
+      },
+      {
+        "tag": "A",
+        "txt": "1.พาส.pdf",
+        "id": "",
+        "cls": "",
+        "href": "blob:https://eworkpermit.doe.go.th/e4dfcd2c-671c-48fa-929c-5",
+        "onclick": "",
+        "src": ""
+      },
+      {
+        "tag": "SPAN",
+        "txt": "1.พาส.pdf",
+        "id": "",
+        "cls": "name-file",
+        "href": "",
+        "onclick": "",
+        "src": ""
+      },
+      {
+        "tag": "IMG",
+        "txt": "",
+        "id": "",
+        "cls": "close",
+        "href": "",
+        "onclick": "closefilerequest(\"33\",\"5909034\")",
+        "src": "/assets/images/Mark.svg"
+      }
+    ]
+  },
+  "add_modal": {
+    "found": false,
+    "nModals": 0
+  }
+}

@@ -1,0 +1,899 @@
+{
+  "attach": {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "nFileInputs": 18,
+    "fileInputs": [
+      {
+        "idx": 0,
+        "id": "file_name_34",
+        "name": "file_name_group",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'34')",
+        "rowText": "สำเนาเอกสารใช้แทนหนังสือเดินทางรองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_34",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 1,
+        "id": "file_name_35",
+        "name": "file_name_group",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'35')",
+        "rowText": "สำเนาใบสำคัญประจำตัวคนต่างด้าวและสำเนาใบสำคัญถิ่นที่อยู่รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_35",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 2,
+        "id": "file_name_33",
+        "name": "file_name_group",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'33')",
+        "rowText": "สำเนาหนังสือเดินทางรองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_33",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 3,
+        "id": "file_name_36",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'36')",
+        "rowText": "2.สำเนาหลักฐานการอนุญาตให้เข้ามาในราชอาณาจักร* กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_36",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 4,
+        "id": "file_name_59",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'59')",
+        "rowText": "3.สำเนาสัญญาจ้างรองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_59",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 5,
+        "id": "file_name_41",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'41')",
+        "rowText": "4.ใบรับรองของผู้ประกอบวิชาชีพเวชกรรมตามกฎหมายว่าด้วยวิชาชีพเวชกรรมที่รับรองว่าผู้ยื่นคำขอไม่เป็นบุคคลวิกลจริตหรือมีจิตฟั่นเฟือนไม่สมประกอบและไม่เป็นโรคตามที่กำห",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_41",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 6,
+        "id": "file_name_42",
+        "name": "file_name",
+        "accept": "image/png, image/jpeg, image/jpeg",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'42')",
+        "rowText": "5.รูปถ่าย ขนาด 3 x 4 ซม.รองรับไฟล์ JPG, PNG และ jpeg ขนาดไม่เกิน 4 MB เลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_42",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 7,
+        "id": "file_name_71",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'71')",
+        "rowText": "6.หนังสือรับรองการจ้างของผู้ซึ่งจะเป็นนายจ้างโดยระบุเหตุผลที่ไม่จ้างบุคคลสัญชาติไทยทำงาน (บต.46) * กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_71",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 8,
+        "id": "file_name_134",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'134')",
+        "rowText": "7.หนังสือมอบอำนาจซึ่งระบุข้อความมอบอำนาจให้ผู้รับอนุญาตนำคนต่างด้าวมาทำงานเป็นผู้ดำเนินการแทน* กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MB เลื",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_134",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 9,
+        "id": "file_name_135",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'135')",
+        "rowText": "8.ใบมอบอำนาจพร้อมติดอากรแสตมป์ของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)* กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนา",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_135",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 10,
+        "id": "file_name_136",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'136')",
+        "rowText": "9.สำเนาบัตรประจำตัวประชาชนของผู้มอบอำนาจ (บริษัทนำเข้าคนต่างด้าว) (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)* กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิ",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_136",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 11,
+        "id": "file_name_137",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,'137')",
+        "rowText": "10.สำเนาบัตรประจำตัวประชาชนของผู้รับมอบอำนาจแทนบริษัทนำเข้าคนต่างด้าว (เอกสารเพิ่มเติมสำหรับผู้กระทำการแทน)* กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_137",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 12,
+        "id": "file_name_106",
+        "name": "file_name",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "",
+        "onchange": "selectFileupload(event,\"106\")",
+        "rowText": "1.ใบอนุญาตทำงาน* กรุณาเพิ่มไฟล์รองรับไฟล์ JPG, PNG, jpeg, PDF ขนาดไม่เกิน 4 MBเลือกไฟล์No file chosen",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_106",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 13,
+        "id": "hidden_file_up_0",
+        "name": "",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "d-none",
+        "onchange": "",
+        "rowText": "กรอกข้อมูลคำขอ กรอกข้อมูลคำขอ แนบเอกสาร แนบเอกสาร สรุปคำขอ สรุปคำขอ ยืนยันตัวตน ชำระเงิน เสร็จสิ้น .error { border-color: #dc3545; } .error:focus, .form-control",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_34",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_35",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_33",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_36",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_59",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_41",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_42",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_71",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_134",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_135",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_136",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_137",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_106",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "เพิ่มเอกสาร",
+            "onclick": "OncOpenModalAddFile()"
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ยกเลิก",
+            "onclick": "backToMenu()"
+          },
+          {
+            "id": "nextstepcheckfile",
+            "htmlFor": "",
+            "txt": "ถัดไป",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ย้อนกลับ",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 14,
+        "id": "hidden_file_up_1",
+        "name": "",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "d-none",
+        "onchange": "",
+        "rowText": "กรอกข้อมูลคำขอ กรอกข้อมูลคำขอ แนบเอกสาร แนบเอกสาร สรุปคำขอ สรุปคำขอ ยืนยันตัวตน ชำระเงิน เสร็จสิ้น .error { border-color: #dc3545; } .error:focus, .form-control",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_34",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_35",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_33",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_36",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_59",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_41",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_42",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_71",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_134",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_135",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_136",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_137",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_106",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "เพิ่มเอกสาร",
+            "onclick": "OncOpenModalAddFile()"
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ยกเลิก",
+            "onclick": "backToMenu()"
+          },
+          {
+            "id": "nextstepcheckfile",
+            "htmlFor": "",
+            "txt": "ถัดไป",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ย้อนกลับ",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 15,
+        "id": "hidden_file_up_2",
+        "name": "",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "d-none",
+        "onchange": "",
+        "rowText": "กรอกข้อมูลคำขอ กรอกข้อมูลคำขอ แนบเอกสาร แนบเอกสาร สรุปคำขอ สรุปคำขอ ยืนยันตัวตน ชำระเงิน เสร็จสิ้น .error { border-color: #dc3545; } .error:focus, .form-control",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_34",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_35",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_33",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_36",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_59",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_41",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_42",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_71",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_134",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_135",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_136",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_137",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_106",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "เพิ่มเอกสาร",
+            "onclick": "OncOpenModalAddFile()"
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ยกเลิก",
+            "onclick": "backToMenu()"
+          },
+          {
+            "id": "nextstepcheckfile",
+            "htmlFor": "",
+            "txt": "ถัดไป",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ย้อนกลับ",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 16,
+        "id": "hidden_file_up_3",
+        "name": "",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "d-none",
+        "onchange": "",
+        "rowText": "กรอกข้อมูลคำขอ กรอกข้อมูลคำขอ แนบเอกสาร แนบเอกสาร สรุปคำขอ สรุปคำขอ ยืนยันตัวตน ชำระเงิน เสร็จสิ้น .error { border-color: #dc3545; } .error:focus, .form-control",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_34",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_35",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_33",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_36",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_59",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_41",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_42",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_71",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_134",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_135",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_136",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_137",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_106",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "เพิ่มเอกสาร",
+            "onclick": "OncOpenModalAddFile()"
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ยกเลิก",
+            "onclick": "backToMenu()"
+          },
+          {
+            "id": "nextstepcheckfile",
+            "htmlFor": "",
+            "txt": "ถัดไป",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ย้อนกลับ",
+            "onclick": ""
+          }
+        ]
+      },
+      {
+        "idx": 17,
+        "id": "hidden_file_up_4",
+        "name": "",
+        "accept": "",
+        "multiple": false,
+        "disabled": false,
+        "visible": false,
+        "cls": "d-none",
+        "onchange": "",
+        "rowText": "กรอกข้อมูลคำขอ กรอกข้อมูลคำขอ แนบเอกสาร แนบเอกสาร สรุปคำขอ สรุปคำขอ ยืนยันตัวตน ชำระเงิน เสร็จสิ้น .error { border-color: #dc3545; } .error:focus, .form-control",
+        "rowButtons": [
+          {
+            "id": "",
+            "htmlFor": "file_name_34",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_35",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_33",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_36",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_59",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_41",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_42",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_71",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_134",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_135",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_136",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_137",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "file_name_106",
+            "txt": "เลือกไฟล์",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "เพิ่มเอกสาร",
+            "onclick": "OncOpenModalAddFile()"
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ยกเลิก",
+            "onclick": "backToMenu()"
+          },
+          {
+            "id": "nextstepcheckfile",
+            "htmlFor": "",
+            "txt": "ถัดไป",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "htmlFor": "",
+            "txt": "ย้อนกลับ",
+            "onclick": ""
+          }
+        ]
+      }
+    ],
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "แนบเอกสาร",
+      "แนบเอกสารและหลักฐานประกอบการยื่นคำขอ",
+      "ใบอนุญาตทำงาน",
+      "เอกสารอื่นๆที่เกี่ยวข้อง"
+    ],
+    "buttons": [
+      {
+        "id": "delete_draft",
+        "txt": "ลบฉบับร่าง",
+        "htmlFor": "",
+        "onclick": "DeleteDataDraftRequestForm()",
+        "cls": "btn btn-primary btt-draft action-button"
+      },
+      {
+        "id": "save_draft",
+        "txt": "บันทึกฉบับร่าง",
+        "htmlFor": "",
+        "onclick": "saveDataDraft()",
+        "cls": "btn btn-primary btt-draft action-button"
+      },
+      {
+        "id": "",
+        "txt": "เพิ่มเอกสาร",
+        "htmlFor": "",
+        "onclick": "OncOpenModalAddFile()",
+        "cls": "btn btn-add-file action-button float-right"
+      },
+      {
+        "id": "",
+        "txt": "ยกเลิก",
+        "htmlFor": "",
+        "onclick": "backToMenu()",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cance"
+      },
+      {
+        "id": "nextstepcheckfile",
+        "txt": "ถัดไป",
+        "htmlFor": "",
+        "onclick": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-100-bt "
+      },
+      {
+        "id": "",
+        "txt": "ย้อนกลับ",
+        "htmlFor": "",
+        "onclick": "",
+        "cls": "btn btn-dark previous action-button-previous float-right-tes"
+      }
+    ]
+  }
+}

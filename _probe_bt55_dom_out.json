@@ -1,0 +1,141 @@
+{
+  "tabs": [
+    {
+      "text": "ออกจากระบบ",
+      "href": "#"
+    },
+    {
+      "text": "สถานะคำขอ",
+      "href": "#tab_default_1"
+    },
+    {
+      "text": "ข้อมูลคนต่างด้าว",
+      "href": "#tab_default_2"
+    },
+    {
+      "text": "คำขออนุญาต",
+      "href": "#tab_default_3"
+    },
+    {
+      "text": "เอกสารตอบรับจากระบบ",
+      "href": "#tab_default_4"
+    }
+  ],
+  "tab_clicked": true,
+  "onclick_handlers": [
+    {
+      "tag": "A",
+      "text": "จัดการบัญชี",
+      "onclick": "openprofile()"
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "onclick": "GetDocumentConfirm('null','01KV56D5DBFQC8XV5BX5GH0QWB')"
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "onclick": "GetDocumentConfirm('undefined','01KV56D6GXXS8FT62EWJ75H02P')"
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "onclick": "GetDocumentConfirm('undefined','01KV56DAVZC6TA71P51XHXANHW')"
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "onclick": "GetDocumentConfirm('undefined','01KV56D8Q036RGFFS9Y9FCBQZF')"
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "onclick": "GetDocumentConfirm('undefined','01KV56D9QTZ5WKQH8DCRDSVV5Y')"
+    },
+    {
+      "tag": "A",
+      "text": "",
+      "onclick": "GetDocumentConfirm('null','01KV56D7EY091A74ZS93D3DEQ8')"
+    }
+  ],
+  "bt_texts": [
+    {
+      "text": "แบบ บต. 55 แบบแจ้งเข้าทำงานของคนต่างด้าว ตามมาตรา ๖๔/๒",
+      "tag": "DIV",
+      "nlinks": 0,
+      "links": []
+    },
+    {
+      "text": "แบบ บต. 55 แบบแจ้งเข้าทำงานของคนต่างด้าว ตามมาตรา ๖๔/๒ (นางสาว ชี ซิน มิน)",
+      "tag": "DIV",
+      "nlinks": 0,
+      "links": []
+    },
+    {
+      "text": "แบบ บต. 55 แบบแจ้งเข้าทำงานของคนต่างด้าว ตามมาตรา ๖๔/๒ (นาย ไว ลู)",
+      "tag": "DIV",
+      "nlinks": 0,
+      "links": []
+    },
+    {
+      "text": "แบบ บต. 55 แบบแจ้งเข้าทำงานของคนต่างด้าว ตามมาตรา ๖๔/๒ (นางสาว ซา ลิ ไน)",
+      "tag": "DIV",
+      "nlinks": 0,
+      "links": []
+    },
+    {
+      "text": "แบบ บต. 55 แบบแจ้งเข้าทำงานของคนต่างด้าว ตามมาตรา ๖๔/๒ (นางสาว ซิน ซิน เมี๊ยะ)",
+      "tag": "DIV",
+      "nlinks": 0,
+      "links": []
+    },
+    {
+      "text": "3\nแบบ บต. 56 ใบรับเรื่องการแจ้ง",
+      "tag": "DIV",
+      "nlinks": 2,
+      "links": [
+        "GetDocumentConfirm('null','01KV56D7EY091A74ZS93D3DEQ8')",
+        "handleUpdateClick13_1('01KV56D7EY091A74ZS93D3DEQ8', '2026-06"
+      ]
+    },
+    {
+      "text": "แบบ บต. 56 ใบรับเรื่องการแจ้ง",
+      "tag": "DIV",
+      "nlinks": 0,
+      "links": []
+    }
+  ],
+  "panes": {
+    "has_tab_response": false,
+    "tab_panes": [
+      {
+        "id": "tab-show-another-acting",
+        "cls": "",
+        "shown": false
+      },
+      {
+        "id": "tab_default_1",
+        "cls": "tab-pane mt-1",
+        "shown": false
+      },
+      {
+        "id": "tab_default_2",
+        "cls": "tab-pane",
+        "shown": false
+      },
+      {
+        "id": "tab_default_3",
+        "cls": "tab-pane",
+        "shown": false
+      },
+      {
+        "id": "tab_default_4",
+        "cls": "tab-pane active",
+        "shown": true
+      }
+    ]
+  },
+  "tab_response_html": "\n\n    <div id=\"loading\" style=\"display: none;\">\n        <div class=\"loader__container\">\n            <div class=\"loader__dot\"></div>\n            <div class=\"loader__dot\"></div>\n            <div class=\"loader__dot\"></div>\n            <div class=\"loader__dot\"></div>\n            <div class=\"loader__dot\"></div>\n        </div>\n    </div>\n    \n    <meta charset=\"utf-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">\n    <title>ยื่นคำขอมาตรา 60 วรรค 2</title>\n\n    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\">\n    <script async=\"\" src=\"https://www.googletagmanager.com/gtag/js?id=G-CVQZ9DPHC0\"></script>\n   \n\n\n\n\n\n<!-- Start header -->\n<div class=\"header-top-fixed\">\n    <div class=\"iq-top-navbar rtl-iq-top-navbar px-3 d-flex flex-row align-items-center justify-content-between\" styly=\"width: 100% !important;\">\n        <div class=\"iq-navbar-custom flex-grow-1\">\n            <nav class=\"navbar navbar-expand-lg navbar-light p-0\">\n                <div class=\"iq-navbar-logo d-flex flex-row align-items-center justify-content-between\">\n                    <div class=\"d-flex\">\n                        <a href=\"/Home\" class=\"header-logo\">\n                            <img src=\"/assets/images/DOE_logo.png\">\n                        </a>\n                        <p class=\"text-wrapper show_respponsive\" style=\"display:none;margin-top:1rem;\"><span style=\"color: #e3548c;margin-left: 5px;\" data_th=\"\" data_en=\"\"></span></p>\n                        <div class=\"block-text-head\">\n                            <p class=\"text-wrapper\">e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์ <span style=\"color: #e3548c;margin-left: 5px;\" data_th=\"\" data_en=\"\"></span></p>\n                            <p class=\"mb-0 sub-text\">กรมการจัดหางาน</p>\n                        </div>\n                    </div>\n                    <i class=\"ri-menu-line wrapper-menu\"></i>\n                    <a href=\"index.html\" class=\"header-logo\"></a>\n                </div>\n\n\n\n            </nav>\n        </div>\n        <script src=\"/manage/UserMenuViewComponent.js?app_version=1.0.1271&amp;build_version=1.0.2236-fix-65\"></script>\n\n<style>\n    div.dropdown-item {\n        display: block;\n        width: 100%;\n        padding: 0.25rem 1.5rem;\n        clear: both;\n        font-weight: 400;\n        color: #212529;\n        text-align: inherit;\n        white-space: nowrap;\n        background-color: transparent;\n        border: 0;\n    }\n\n        div.dropdown-item:hover,\n        div.dropdown-item:focus {\n            color: #16181b;\n            text-decoration: none;\n            background-color: #f8f9fa;\n        }\n\n        div.dropdown-item.active,\n        div.dropdown-item:active {\n            color: #212529;\n            text-decoration: none;\n            background-color: #f8f9fa;\n        }\n\n        div.dropdown-item.disabled,\n        div.dropdown-item:disabled {\n            color: #6c757d;\n            pointer-events: none;\n            background-color: transparent;\n        }\n\n    .number_invitation_list {\n        background: #FF6259;\n        color: #FFFFFF;\n        padding: 4px;\n        border-radius: 15px;\n        font-weight: bold;\n        font-size: 10px;\n        margin-left: 5px;\n        width: 26px;\n        height: 24px;\n        text-align: center;\n    }\n\n    .div-border-pink {\n        margin: 15px;\n        border: 1px solid #F6C8D9;\n        border-radius: 8px;\n    }\n\n    .div-border-grey {\n        margin: 15px;\n        border: 1px solid #EAEAED;\n        border-radius: 8px;\n    }\n</style>\n\n<input type=\"hidden\" id=\"humvc_validate_token\" value=\"http://eworkpermit.doe.go.th/Home/ValidateToken\" placeholder=\"กรุณากรอก\">\n<input type=\"hidden\" id=\"humvc_get_profile_datas\" value=\"http://eworkpermit.doe.go.th/Home/GetProfileDatas\" placeholder=\"กรุณากรอก\">\n<input type=\"hidden\" id=\"humvc_change_profile\" value=\"http://eworkpermit.doe.go.th/Home/ChangeProfile\" placeholder=\"กรุณากรอก\">\n<input type=\"hidden\" id=\"humvc_set_lang\" value=\"/Home/SetLang\" placeholder=\"กรุณากรอก\">\n<input type=\"hidden\" id=\"humvc_profile_image\" value=\"/Profile/GetProfileImage\" placeholder=\"กรุณากรอก\">\n<input type=\"hidden\" id=\"humvc_logout\" value=\"http://eworkpermit.doe.go.th/Home/LogoutNew\" placeholder=\"กรุณากรอก\">\n<input type=\"hidden\" id=\"humvc_lang\" value=\"http://eworkpermit.doe.go.th/Home/UpdateUserLanguage\" placeholder=\"กรุณากรอก\">\n\n\n\n\n<div id=\"humvc_menu_employer\" class=\"flex-shrink-1\">\n    <div class=\"header__info d-flex align-items-center\">\n        <div class=\"iq-navbar-logo d-flex align-items-center justify-content-between\">\n            <div class=\"profile pr-20 mx-2\">\n                <div class=\"profile-pic\">\n                    <div class=\"ellipse\">\n                        <img class=\"p-img\">\n                    </div>\n                </div>\n                <div id=\"name_user\" class=\"profile_selected_header user-login-info\">\n                <span data_en=\"AMALODIE TRAVELLING PRODUCTS (THAILAND) CO., LTD.\" data_th=\"บริษัท อมาโลดาย ทราเวลลิ่ง โปรดัคส์ (ไทยแลนด์) จำกัด\" data_title_en=\"AMALODIE TRAVELLING PRODUCTS (THAILAND) CO., LTD.\" data_title_th=\"บริษัท อมาโลดาย ทราเวลลิ่ง โปรดัคส์ (ไทยแลนด์) จำกัด\">บริษัท อมาโลดาย ทราเวลลิ่ง โปรดัคส์ (ไทยแลนด์) จำกัด</span>\n                \n                    <div class=\"name_n_sub\">\n                    <span class=\"name\"><span class=\"lang_REF_T2\">นิติบุคคล</span>&nbsp;:&nbsp;0205566002071</span>\n                    </div>\n                    </div>\n\n                <div id=\"profile_list\" class=\"dropdown d-none\">\n                    <img src=\"/assets/images/chevron-down-solid.svg\" class=\"btn-menu-icon\" title=\"menu\" aria-haspopup=\"true\" aria-expanded=\"false\" onclick=\"clickdropdown(event)\">\n                    <div class=\"custom_dropdown_space\">\n                        <div class=\"dropdown-menu dropdown-menu-end dropdown-menu-custom py-0\" data-popper-placement=\"bottom-end\">\n                            <!-- item-->\n                            <div class=\"dropdown-item p-3 profile_selected_item\">\n            <div class=\"d-inline-flex flex-column align-items-start w-100 pb-3\">\n    <div class=\"d-flex align-items-center w-100\">\n        <img class=\"me-2 success-img\" src=\"/assets/images/picmobile/correct.png\" style=\"height: 25px; width: 25px;\">\n        <span class=\"profile_menu_main_name text_overflow\" data_en=\"AMALODIE TRAVELLING PRODUCTS (THAILAND) CO., LTD.\" data_th=\"บริษัท อมาโลดาย ทราเวลลิ่ง โปรดัคส์ (ไทยแลนด์) จำกัด\" data_title_en=\"AMALODIE TRAVELLING PRODUCTS (THAILAND) CO., LTD.\" data_title_th=\"บริษัท อมาโลดาย ทราเวลลิ่ง โปรดัคส์ (ไทยแลนด์) จำกัด\">บริษัท อมาโลดาย ทราเวลลิ่ง โปรดัคส์ (ไทยแลนด์) จำกัด</span>\n            </div>\n    <span style=\"color:#6F6F85\"><span class=\"lang_REF_T2\">นิติบุคคล</span>&nbsp;:&nbsp;0205566002071</span>\n    <a id=\"profile_info\" onclick=\"openprofile()\" class=\"btn btn-outline-primary mt-2 w-100 justify-content-center lang_profile_management\">จัดการบัญชี</a>\n</div>\n\n<hr style=\"border-top: 1px solid rgba(111, 111, 133, 0.25);opacity: 1;\">\n\n<div style=\"display:flex; gap:20px; justify-content:center;\">\n    <a class=\"btn btn-outline-primary-pure equal-btn\" href=\"/profile/addaccount\" style=\"background-color: #F6DB87;\">\n        <span class=\"lang_add_self\">เพิ่มบัญชีตัวเอง</span>\n    </a>\n\n    <a class=\"btn btn-outline-primary-pure equal-btn\" onclick=\"goToregisterNew()\" style=\"background-color: #77D990;\">\n        <span class=\"lang_add_other\">ลงทะเบียนแทนผู้อื่น</span>\n    </a>\n</div>\n</div>\n                            <div class=\"dropdown-item p-0 d-flex flex-column profile_selector_list\"></div>\n                            <div class=\"div-border-grey\">\n                                <a class=\"dropdown-item p-3 lang_policy\" style=\"padding-top: 10px;color:var(--pink-700);\" href=\"/Policy\">นโยบายความเป็นส่วนตัว</a>\n                                <a class=\"dropdown-item p-3 lang_menu_term\" style=\"padding-top: 10px;color:var(--pink-700);\" href=\"http://eworkpermit.doe.go.th/profile/TermAndConsent\">ข้อ",
+  "rows": []
+}

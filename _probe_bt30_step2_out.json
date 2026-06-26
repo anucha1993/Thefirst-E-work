@@ -1,0 +1,511 @@
+{
+  "phaseA_afterSave": {
+    "url": "https://eworkpermit.doe.go.th/WorkPermit?user_type=alien&ft=RENEW_REQ&ut=alien&uti=3",
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "ข้อมูลผู้รับอนุญาตให้นำคนต่างด้าวมาทำงาน",
+      "ข้อมูลคนต่างด้าวที่ต้องการดำเนินการแทน"
+    ],
+    "buttons": [
+      {
+        "id": "",
+        "txt": "ค้นหาข้อมูลคนต่างด้าว",
+        "onclick": "search_alien_modal.show(event)",
+        "cls": "btn btn-outline-primary px-3 py-2 d-flex align-items-center"
+      },
+      {
+        "id": "buttoncancel",
+        "txt": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "cls": "btn btn-cancel float-right float-left lang_txt_cancel"
+      },
+      {
+        "id": "gonextSubmit",
+        "txt": "ถัดไป",
+        "onclick": "openSubmitPage('')",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_"
+      }
+    ],
+    "checks": [
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": false,
+        "visible": true,
+        "label": "ข้าพเจ้าขอรับรองว่า มีความประสงค์ในการยื่นคำขอใบอนุญาตแทนคนต่างด้าวหรือนายจ้าง และได้รับความยินยอมจากบุคคลดังกล่าวเป็นที่เรียบร้อยแล้ว"
+      },
+      {
+        "id": "accept-terms",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ที่อยู่ตรงกับที่อยู่ติดต่อได้"
+      },
+      {
+        "id": "",
+        "name": "fooby[1][]",
+        "checked": false,
+        "visible": false,
+        "label": "ประเภทกิจการระบบสารสนเทศแรงงานต่างด้าว 4 สัญชาติ (กัมพูชา ลาว เมียนมา และเวียดนาม)"
+      },
+      {
+        "id": "",
+        "name": "fooby[1][]",
+        "checked": false,
+        "visible": false,
+        "label": "ประเภทกิจการมาตรฐานอุตสาหกรรม"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ]
+  },
+  "nextButton_2_1": {
+    "id": "gonextSubmit",
+    "txt": "ถัดไป",
+    "onclick": "openSubmitPage('')"
+  },
+  "phaseC_detailPage": {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/FormRenewMOU?id=RA17611185825798695&ut=alien&uti=3",
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "กรอกข้อมูลคำขอ",
+      "แนบเอกสาร",
+      "สรุปคำขอ",
+      "ยืนยันตัวตน",
+      "ชำระเงิน",
+      "เสร็จสิ้น",
+      "ใบอนุญาตทำงาน",
+      "ข้อมูลคนต่างด้าว",
+      "ข้อมูลสำหรับติดต่อ",
+      "ที่อยู่ในประเทศไทย",
+      "เอกสารแสดงการได้รับอนุญาตให้อยู่ในราชอาณาจักร",
+      "การตรวจลงตรา",
+      "วันที่เดินทางมาถึงราชอาณาจักร และ ได้รับอนุญาตให้อยู่ในราชอาณาจักร"
+    ],
+    "buttons": [
+      {
+        "id": "delete_draft",
+        "txt": "ลบฉบับร่าง",
+        "onclick": "DeleteDataDraftRequestForm()",
+        "cls": "btn btn-primary btt-draft action-button"
+      },
+      {
+        "id": "save_draft",
+        "txt": "บันทึกฉบับร่าง",
+        "onclick": "saveDataDraft()",
+        "cls": "btn btn-primary btt-draft action-button"
+      },
+      {
+        "id": "",
+        "txt": "แก้ไขข้อมูล",
+        "onclick": "ModalEditAlienComponentCurrenAddress.init({event:event})",
+        "cls": "primary--color status_expire"
+      },
+      {
+        "id": "",
+        "txt": "แก้ไขข้อมูล",
+        "onclick": "ModalEditAlienComponentStayPermit.init({event:event,form_type_id:'MT_59',alien_emp_relate_id:''})",
+        "cls": "primary--color status_expire clickmodalstaypermit"
+      },
+      {
+        "id": "buttoncancel",
+        "txt": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "cls": "btn btn-cancel float-right float-left lang_txt_cancel"
+      },
+      {
+        "id": "validateRenewcheck",
+        "txt": "ถัดไป",
+        "onclick": "",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_"
+      }
+    ],
+    "checks": [
+      {
+        "id": "checkAll",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "เลือกทั้งหมด"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้วว่าถูกต้อง และรับทราบว่าข้อมูลนี้จะถูกพิมพ์ในใบอนุญาตทำงาน ไม่สามารถแก้ไขได้หลั"
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "checked": false,
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      }
+    ]
+  },
+  "phaseD_modals": [
+    {
+      "trigger": {
+        "idx": 0,
+        "btnId": "",
+        "btnTxt": "แก้ไขข้อมูล",
+        "onclick": "ModalEditAlienComponentCurrenAddress.init({event:event})",
+        "section": "ที่อยู่ในประเทศไทย"
+      },
+      "modal": {
+        "title": "ที่อยู่ที่ติดต่อได้",
+        "found": true,
+        "inputs": [
+          {
+            "tag": "INPUT",
+            "id": "tbx_current_address_desc",
+            "name": "address_alcheck",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-control address_alcheck",
+            "placeholder": "กรุณากรอก",
+            "value": "365/1",
+            "visible": true,
+            "label": "เลขที่",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "tbx_current_address_village_building",
+            "name": "",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-control",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": true,
+            "label": "หมู่ที่/อาคาร",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "tbx_current_address_soi",
+            "name": "",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-control",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": true,
+            "label": "ซอย",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "tbx_current_address_road",
+            "name": "",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-control",
+            "placeholder": "กรุณากรอก",
+            "value": "พหลโยธิน",
+            "visible": true,
+            "label": "ถนน",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "SELECT",
+            "id": "ddl_current_address_prov_id",
+            "name": "province_alcheck",
+            "type": "select-one",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-select form-control select2_lang province_alcheck select2-hidden-",
+            "placeholder": null,
+            "value": "10",
+            "visible": true,
+            "label": "จังหวัด",
+            "opts": [
+              "กรุณาเลือก",
+              "กรุงเทพมหานคร",
+              "สมุทรปราการ",
+              "นนทบุรี",
+              "ปทุมธานี",
+              "พระนครศรีอยุธยา",
+              "อ่างทอง",
+              "ลพบุรี",
+              "สิงห์บุรี",
+              "ชัยนาท",
+              "สระบุรี",
+              "ชลบุรี"
+            ],
+            "nopts": 79
+          },
+          {
+            "tag": "SELECT",
+            "id": "ddl_current_address_dist_id",
+            "name": "district_alcheck",
+            "type": "select-one",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-select form-control select2_lang district_alcheck select2-hidden-",
+            "placeholder": null,
+            "value": "1005",
+            "visible": true,
+            "label": "เขต/อำเภอ",
+            "opts": [
+              "กรุณาเลือก",
+              "คลองสาน",
+              "คลองสามวา",
+              "คลองเตย",
+              "คันนายาว",
+              "จตุจักร",
+              "จอมทอง",
+              "ดอนเมือง",
+              "ดินแดง",
+              "ดุสิต",
+              "ตลิ่งชัน",
+              "ทวีวัฒนา"
+            ],
+            "nopts": 51
+          },
+          {
+            "tag": "SELECT",
+            "id": "ddl_current_address_subdist_id",
+            "name": "sub_district_alcheck",
+            "type": "select-one",
+            "readonly": false,
+            "disabled": false,
+            "cls": "form-select form-control select2_lang sub_district_alcheck select2-hid",
+            "placeholder": null,
+            "value": "100502",
+            "visible": true,
+            "label": "แขวง/ตำบล",
+            "opts": [
+              "กรุณาเลือก",
+              "ท่าแร้ง",
+              "อนุสาวรีย์"
+            ],
+            "nopts": 3
+          },
+          {
+            "tag": "INPUT",
+            "id": "tbx_current_address_postcode",
+            "name": "zipcode_alcheck",
+            "type": "text",
+            "readonly": true,
+            "disabled": false,
+            "cls": "form-control zipcode_alcheck",
+            "placeholder": "กรุณากรอก",
+            "value": "10220",
+            "visible": true,
+            "label": "รหัสไปรษณีย์",
+            "opts": null,
+            "nopts": null
+          }
+        ],
+        "buttons": [
+          {
+            "id": "",
+            "txt": "ยกเลิก",
+            "onclick": "CloseModalAddress()"
+          },
+          {
+            "id": "btn_current_address_save",
+            "txt": "บันทึก",
+            "onclick": ""
+          }
+        ]
+      }
+    },
+    {
+      "trigger": null,
+      "modal": {
+        "title": "ข่าวสารประชาสัมพันธ์",
+        "found": false,
+        "inputs": [
+          {
+            "tag": "SELECT",
+            "id": "sltLang",
+            "name": "",
+            "type": "select-one",
+            "readonly": false,
+            "disabled": false,
+            "cls": "div-lang sltLang",
+            "placeholder": null,
+            "value": "th",
+            "visible": true,
+            "label": "",
+            "opts": [
+              "ไทย",
+              "English",
+              "မြန်မာ",
+              "ngôn ngữ tiếng Việt",
+              "ພາສາລາວ",
+              "ភាសាខ្មែរ"
+            ],
+            "nopts": 6
+          },
+          {
+            "tag": "SELECT",
+            "id": "sltLang",
+            "name": "",
+            "type": "select-one",
+            "readonly": false,
+            "disabled": false,
+            "cls": "div-lang sltLang",
+            "placeholder": null,
+            "value": "th",
+            "visible": false,
+            "label": "",
+            "opts": [
+              "ไทย",
+              "English",
+              "မြန်မာ",
+              "ngôn ngữ tiếng Việt",
+              "ພາສາລາວ",
+              "ភាសាខ្មែរ"
+            ],
+            "nopts": 6
+          },
+          {
+            "tag": "INPUT",
+            "id": "warningAlert2_title",
+            "name": "",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "d-none",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": false,
+            "label": "",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "warningAlert2_langmsg",
+            "name": "",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "d-none",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": false,
+            "label": "",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "warningAlert2_langdetail",
+            "name": "",
+            "type": "text",
+            "readonly": false,
+            "disabled": false,
+            "cls": "d-none",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": false,
+            "label": "",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "callcenterimg",
+            "name": "",
+            "type": "image",
+            "readonly": false,
+            "disabled": false,
+            "cls": "",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": false,
+            "label": "",
+            "opts": null,
+            "nopts": null
+          },
+          {
+            "tag": "INPUT",
+            "id": "bannerBlurImage",
+            "name": "",
+            "type": "image",
+            "readonly": false,
+            "disabled": false,
+            "cls": "",
+            "placeholder": "กรุณากรอก",
+            "value": "",
+            "visible": false,
+            "label": "",
+            "opts": null,
+            "nopts": null
+          }
+        ],
+        "buttons": [
+          {
+            "id": "",
+            "txt": "การยื่นขอใบอนุญาตทำงาน",
+            "onclick": "testactive2();openCity(\"tab_REQUEST\",event)"
+          },
+          {
+            "id": "",
+            "txt": "การยื่นขอต่ออายุใบอนุญาตทำงาน",
+            "onclick": "testactive2();openCity(\"tab_RENEW_REQ\",event)"
+          },
+          {
+            "id": "",
+            "txt": "แจ้งส่งมอบคนต่างด้าวให้นายจ้าง",
+            "onclick": "testactive2();openCity(\"tab_DELIVER\",event)"
+          },
+          {
+            "id": "",
+            "txt": "การยื่นขอรับใบแทนใบอนุญาตทํางา",
+            "onclick": "testactive2();openCity(\"tab_REQUEST_RE\",event)"
+          },
+          {
+            "id": "",
+            "txt": "การยื่นขอเปลี่ยนรายการในใบอนุญ",
+            "onclick": "testactive2();openCity(\"tab_CHANGE_REQ\",event)"
+          },
+          {
+            "id": "",
+            "txt": "การขอคืนค่าธรรมเนียม",
+            "onclick": "testactive2();openCity(\"tab_FEE\",event)"
+          },
+          {
+            "id": "",
+            "txt": "การแจ้งการจ้างคนต่างด้าว/การแจ",
+            "onclick": "testactive2();openCity(\"tab_INFORM_ENTER_EXIT\",event)"
+          },
+          {
+            "id": "",
+            "txt": "ปิด",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "txt": "บริษัท นำคนต่างด้าวมาทำงานในปร",
+            "onclick": ""
+          },
+          {
+            "id": "",
+            "txt": "ดำเนินการต่อ !!",
+            "onclick": "openmenu1331()"
+          }
+        ]
+      }
+    }
+  ]
+}

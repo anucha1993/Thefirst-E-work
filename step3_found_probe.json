@@ -1,0 +1,2432 @@
+{
+  "after_select": {
+    "select_value": "8",
+    "select_selected_text": "นายจ้างต่างชาติ",
+    "select2_text": "กรุณาเลือก",
+    "keyword_placeholder": "กรุณากรอก"
+  },
+  "found": true,
+  "not_found_alert": false,
+  "new_employer_block": "ข้อมูลนายจ้างใหม่\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17634416214097020\n\nเลขที่นิติบุคคล\n\n0215566011533\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nMELON BIO-TECH (THAILAND) CO., LTD.\n\nที่อยู่ที่ติดต่อได้\n\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nPaparve.np@gmail.com\n\nเหตุผลการเปลี่ยนนายจ้าง\nเหตุผลการเปลี่ยนนายจ้าง\nนายจ้างไม่จ่ายค่าจ้",
+  "modal_before_save": {
+    "headings": [
+      "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+      "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน",
+      "ข้อมูลนายจ้าง",
+      "ข้อมูลการขออนุญาต",
+      "เปลี่ยนนายจ้าง",
+      "วิธีการหาข้อมูลนายจ้าง",
+      "ประเภทค้นหา",
+      "ระบุ \"เลขประจำตัวผู้เสียภาษีอากรหรือเลขที่หนังสือเดินทาง\"",
+      "ข้อมูลนายจ้างใหม่",
+      "เหตุผลการเปลี่ยนนายจ้าง",
+      "เหตุผลการเปลี่ยนนายจ้าง"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all"
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all"
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide"
+      },
+      {
+        "text": "เปลี่ยนนายจ้าง",
+        "id": "changeEmployer",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2"
+      },
+      {
+        "text": "แก้ไขสถานประกอบการ",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2 mr-3"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "ค้นหา",
+        "id": "search-action",
+        "cls": "btn btn-dark float-right no-margin lang_search"
+      },
+      {
+        "text": "บันทึก",
+        "id": "",
+        "cls": "btn btn-primary float-right lang_lbl_save"
+      },
+      {
+        "text": "ปิด",
+        "id": "",
+        "cls": "btn btn-dark float-right lang_lbl_close"
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "title": "ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ",
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      },
+      {
+        "id": "search-type",
+        "name": "search-type",
+        "title": "ประเภทค้นหา รหัสอ้างอิงของนายจ้าง นายจ้างบุคคลธรรมดา นายจ้างนิติบุคคล นายจ้างสมาคมหรือมูลนิธิ นายจ้างหน่วยงานราชการ/รัฐวิสาหกิจ นายจ้างโรงเรียนเอกชน นายจ้างมหาวิทยาลัยเอกชน นายจ้างต่างชาติ นายจ้างถ่าย",
+        "options": [
+          "รหัสอ้างอิงของนายจ้าง",
+          "นายจ้างบุคคลธรรมดา",
+          "นายจ้างนิติบุคคล",
+          "นายจ้างสมาคมหรือมูลนิธิ",
+          "นายจ้างหน่วยงานราชการ/รัฐวิสาหกิจ",
+          "นายจ้างโรงเรียนเอกชน",
+          "นายจ้างมหาวิทยาลัยเอกชน",
+          "นายจ้างต่างชาติ",
+          "นายจ้างถ่ายทำภาพยนตร์จากต่างประเทศ"
+        ]
+      },
+      {
+        "id": "reason-type",
+        "name": "reason-type",
+        "title": "เหตุผลการเพิ่มนายจ้าง เหตุผลการเปลี่ยนนายจ้าง นายจ้างไม่จ่ายค่าจ้าง อื่นๆ นายจ้างเลิกจ้าง นายจ้างเสียชีวิต นายจ้างล้มละลาย นายจ้างกระทำทารุณกรรมหรือทำร้ายร่างกายลูกจ้าง นายจ้างไม่ปฏิบัติตามสัญญาจ้างหร",
+        "options": [
+          "นายจ้างไม่จ่ายค่าจ้าง",
+          "อื่นๆ",
+          "นายจ้างเลิกจ้าง นายจ้างเสียชีวิต",
+          "นายจ้างล้มละลาย",
+          "นายจ้างกระทำทารุณกรรมหรือทำร้ายร่างกายลูกจ้าง",
+          "นายจ้างไม่ปฏิบัติตามสัญญาจ้างหรือกฎหมายคุ้มครองแรงงาน",
+          "ลูกจ้างทำงานในสภาพแวดล้อมที่อันตรายต่อชีวิต จิตใจ หรือสุขภาพอนามัย",
+          "นายจ้างใหม่ยินยอมชดใช้ค่าเสียหายให้นายจ้างเดิม"
+        ]
+      }
+    ],
+    "inputs": [
+      {
+        "id": "search-keyword",
+        "name": "search-keyword",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "value": "0215566011533",
+        "title": "ระบุ \"เลขประจำตัวผู้เสียภาษีอากรหรือเลขที่หนังสือเดินทาง\""
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์\n\nกรมการจัดหางาน\n\nบริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด\nนางสาว วนิดา วงค์แสง (ผู้กระทำการแทน)\nไทย\nEnglish\nမြန်မာ\nngôn ngữ tiếng Việt\nພາສາລາວ\nភាសាខ្មែរ\nหน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\nการแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\n\nอาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44)\n\nกรอกข้อมูลคำขอ\nแนบเอกสาร\nสรุปคำขอ\nยืนยันตัวตน\nการชำระเงิน\nเสร็จสิ้น\n﻿﻿\nกรอกข้อมูลคำขอ\nหน้า 2/2\nข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน\nแสดงทั้งหมด ซ่อนทั้งหมด\nนายจ้าง 1\nนายจ้างหลัก\nบริษัท แอ็ดวานซลักเก็จไทย จำกัด\nซ่อน\nข้อมูลนายจ้าง\nเปลี่ยนนายจ้าง\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17604285302395508\n\nเลขที่นิติบุคคล\n\n0115535004161\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท แอ็ดวานซลักเก็จไทย จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nADVANCE LUGGAGE THAI COMPANY LIMITED\n\nที่อยู่ที่ติดต่อได้\n\n199/11 หมู่ที่ 3 ถนนบ้านบึง-พานทอง แขวง/ตำบล บ้านบึง เขต/อำเภอ บ้านบึง จังหวัด ชลบุรี รหัสไปรษณีย์ 20170\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nkaetie_ae@hotmail.com\n\nข้อมูลการขออนุญาต\nสถานที่ทำงาน/สาขา\n199/11 หมู่ 3 แขวง/ตำบล บ้านบึง เขต/อำเภอ บ้านบึง จังหวัด ชลบุรี รหัสไปรษณีย์ 20170\nแก้ไขสถานประกอบการ\nลำดับ\tประเภทกิจการ\tประเภทงานที่ขออนุญาต\tลักษณะงาน\t\n\n1\n\t\nการให้บริการต่างๆ (BT24)**\n\t\nกรรมกร\n\t\nยกของ ประกอบ\n\t\nยกเลิก\nถัดไป\nย้อนกลับ\nสงวนลิขสิทธิ์ © 2566\nเปลี่ยนนายจ้าง\nข้อมูลนายจ้างเดิม\nบริษัท แอ็ดวานซลักเก็จไทย จำกัด (นายจ้างหลัก)\nคืนค่าเดิม\nวิธีการหาข้อมูลนายจ้าง\nเลือกประเภทค้นหา\nกรอกหมายเลขของนายจ้าง เช่นเรหัสนายจ้าง เลขบัตรประจำตัวประชาชน หรือเลขที่นิติบุคคล\nกด “ค้นหา”\nประเภทค้นหา\nรหัสอ้างอิงของนายจ้าง\nนายจ้างบุคคลธรรมดา\nนายจ้างนิติบุคคล\nนายจ้างสมาคมหรือมูลนิธิ\nนายจ้างหน่วยงานราชการ/รัฐวิสาหกิจ\nนายจ้างโรงเรียนเอกชน\nนายจ้างมหาวิทยาลัยเอกชน\nนายจ้างต่างชาติ\nนายจ้างถ่ายทำภาพยนตร์จากต่างประเทศ\nระบุ \"เลขประจำตัวผู้เสียภาษีอากรหรือเลขที่หนังสือเดินทาง\"\nค้นหา\nข้อมูลนายจ้างใหม่\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17634416214097020\n\nเลขที่นิติบุคคล\n\n0215566011533\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nMELON BIO-TECH (THAILAND) CO., LTD.\n\nที่อยู่ที่ติดต่อได้\n\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nPaparve.np@gmail.com\n\nเหตุผลการเปลี่ยนนายจ้าง\nเหตุผลการเปลี่ยนนายจ้าง\nนายจ้างไม่จ่ายค่าจ้าง\nอื่นๆ\nนายจ้างเลิกจ้าง นายจ้างเสียชีวิต\nนายจ้างล้มละลาย\nนายจ้างกระทำทารุณกรรมหรือทำร้ายร่างกายลูกจ้าง\nนายจ้างไม่ปฏิบัติตามสัญญาจ้างหรือกฎหมายคุ้มครองแรงงาน\nลูกจ้างทำงานในสภาพแวดล้อมที่อันตรายต่อชีวิต จิตใจ หรือสุขภาพอนามัย\nนายจ้างใหม่ยินยอมชดใช้ค่าเสียหายให้นายจ้างเดิม\nบันทึก\nปิด"
+  },
+  "after_reason": [
+    {
+      "tag": "input",
+      "id": "name_encheckreg",
+      "name": "name_encheckreg",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "middlenamecheck",
+      "name": "middlenamecheck",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "lastname_encheckreg",
+      "name": "lastname_encheckreg",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "name_thcheckreg",
+      "name": "name_thcheckreg",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "mid_name_thcheckreg",
+      "name": "mid_name_thcheckreg",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "lastname_thcheckreg",
+      "name": "lastname_thcheckreg",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "birthdate_al",
+      "name": "birthdatecheck",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "user_tel",
+      "name": "user_tel",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "tbx_otp_code",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "tbx_current_address_desc",
+      "name": "address_alcheck",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": "88/7 หมู่ที่ 3"
+    },
+    {
+      "tag": "input",
+      "id": "tbx_current_address_village_building",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "tbx_current_address_soi",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "tbx_current_address_road",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "tbx_current_address_postcode",
+      "name": "zipcode_alcheck",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": "24130"
+    },
+    {
+      "tag": "input",
+      "id": "stay_permit_name",
+      "name": "stay_permit_name",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "stay_permit_name_other",
+      "name": "stay_permit_name_other",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "travelDocIdCheck",
+      "name": "travelDocIdCheck",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "placeIssuanceDocTravel",
+      "name": "placeIssuanceDocTravel",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "dateOfStartTravelDoc",
+      "name": "dateOfStartTravelDoc",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "dateOfTravelDocExpiry",
+      "name": "dateOfTravelDocExpiry",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "surveillanceId",
+      "name": "surveillanceId",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "surveillancePlace",
+      "name": "surveillancePlace",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "surveillanceDate",
+      "name": "surveillanceDate",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "surveillanceExpire",
+      "name": "surveillanceExpire",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "arrivalInTheKingdomDate",
+      "name": "arrivalInTheKingdomDate",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "arrivalInTheKingdomExpire",
+      "name": "arrivalInTheKingdomExpire",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "name_encheckreg",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "middlenamecheck",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "lastname_encheckreg",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "name_thcheckreg",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "mid_name_thcheckreg",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "lastname_thcheckreg",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "birthdate_al",
+      "name": "",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "user_tel_alien",
+      "name": "user_tel",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "search-keyword",
+      "name": "search-keyword",
+      "placeholder": "กรุณากรอก",
+      "visible": true,
+      "value": "0215566011533"
+    },
+    {
+      "tag": "input",
+      "id": "reason-other",
+      "name": "reason-other",
+      "placeholder": "กรุณากรอก",
+      "visible": true,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "jobPositionInput",
+      "name": "jobPosition",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "jobDescription",
+      "name": "jobDescription",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateNo",
+      "name": "alienCertificateNo",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateIssueAt",
+      "name": "alienCertificateIssueAt",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateIssueDatetime",
+      "name": "alienCertificateIssueDatetime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateIssueExpiredtime",
+      "name": "alienCertificateIssueExpiredtime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "businessRegistrationNo",
+      "name": "businessRegistrationNo",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "businessRegistrationName",
+      "name": "businessRegistrationName",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "licenseBusinessNo",
+      "name": "licenseBusinessNo",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "licenseBusinessIssueDatetime",
+      "name": "licenseBusinessIssueDatetime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "licenseBusinessIssueAt",
+      "name": "licenseBusinessIssueAt",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "taxFilingDatetime",
+      "name": "taxFilingDatetime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "annualIncome",
+      "name": "annualIncome",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "taxAmountPaid",
+      "name": "taxAmountPaid",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "jobPositionInput",
+      "name": "jobPosition",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "jobDescription",
+      "name": "jobDescription",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateNo",
+      "name": "alienCertificateNo",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateIssueAt",
+      "name": "alienCertificateIssueAt",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateIssueDatetime",
+      "name": "alienCertificateIssueDatetime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "alienCertificateIssueExpiredtime",
+      "name": "alienCertificateIssueExpiredtime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "businessRegistrationNo",
+      "name": "businessRegistrationNo",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "businessRegistrationName",
+      "name": "businessRegistrationName",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "licenseBusinessNo",
+      "name": "licenseBusinessNo",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "licenseBusinessIssueDatetime",
+      "name": "licenseBusinessIssueDatetime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "licenseBusinessIssueAt",
+      "name": "licenseBusinessIssueAt",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "taxFilingDatetime",
+      "name": "taxFilingDatetime",
+      "placeholder": "วว/ดด/ปปปป",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "annualIncome",
+      "name": "annualIncome",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    },
+    {
+      "tag": "input",
+      "id": "taxAmountPaid",
+      "name": "taxAmountPaid",
+      "placeholder": "กรุณากรอก",
+      "visible": false,
+      "value": ""
+    }
+  ],
+  "after_save": {
+    "headings": [
+      "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+      "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน",
+      "ข้อมูลนายจ้าง",
+      "ข้อมูลการขออนุญาต",
+      "เลือกสถานที่ทำงาน",
+      "เลือกสถานที่ทำงาน และประเภทงานในข้อมูลการขออนุญาต"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all"
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all"
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide"
+      },
+      {
+        "text": "แก้ไขเปลี่ยนนายจ้าง",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2"
+      },
+      {
+        "text": "เลือกสถานที่ทำงาน",
+        "id": "",
+        "cls": "position-relative btn btn-next btn-primary btn-primary__icon-plus m-0 lang_select_work_address"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "title": "ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ",
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      }
+    ],
+    "inputs": [],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์\n\nกรมการจัดหางาน\n\nบริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด\nนางสาว วนิดา วงค์แสง (ผู้กระทำการแทน)\nไทย\nEnglish\nမြန်မာ\nngôn ngữ tiếng Việt\nພາສາລາວ\nភាសាខ្មែរ\nหน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\nการแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\n\nอาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44)\n\nกรอกข้อมูลคำขอ\nแนบเอกสาร\nสรุปคำขอ\nยืนยันตัวตน\nการชำระเงิน\nเสร็จสิ้น\n﻿﻿\nกรอกข้อมูลคำขอ\nหน้า 2/2\nข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน\nแสดงทั้งหมด ซ่อนทั้งหมด\nนายจ้าง 1\nเปลี่ยนนายจ้าง\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\nซ่อน\nข้อมูลนายจ้าง\nข้อมูลนายจ้างเดิม : บริษัท แอ็ดวานซลักเก็จไทย จำกัด  คืนค่าเดิม\nแก้ไขเปลี่ยนนายจ้าง\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17634416214097020\n\nเลขที่นิติบุคคล\n\n0215566011533\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nMELON BIO-TECH (THAILAND) CO., LTD.\n\nที่อยู่ที่ติดต่อได้\n\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nPaparve.np@gmail.com\n\nข้อมูลการขออนุญาต\nเลือกสถานที่ทำงาน\nเลือกสถานที่ทำงาน และประเภทงานในข้อมูลการขออนุญาต\nเลือกสถานที่ทำงาน\nยกเลิก\nถัดไป\nย้อนกลับ\nสงวนลิขสิทธิ์ © 2566"
+  },
+  "workbtn_diag": {
+    "btnInfo": [
+      {
+        "tag": "button",
+        "visible": true,
+        "text": "เลือกสถานที่ทำงาน",
+        "onclick": "",
+        "href": "",
+        "cls": "position-relative btn btn-next btn-primary btn-primary__icon-plus m-0 lang_select_work_address",
+        "outer": "<button data-action=\"addEmployerAddr\" type=\"button\" class=\"position-relative btn btn-next btn-primary btn-primary__icon-plus m-0 lang_select_work_address\">เลือกสถานที่ทำงาน</button>"
+      }
+    ],
+    "modals": [
+      {
+        "id": "",
+        "cls": "ui-box__title lang_reason_for_work_permit ",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "",
+        "cls": "lang_amend_work_permit_details",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "",
+        "cls": "col-6 text-left lang_work_permit_number",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "",
+        "cls": "col-12 col-md-12 mt-4 show_text_latest_work_permit",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "",
+        "cls": "col-12 col-md-12 text-center mt-4 show_img_latest_work_permit",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "editCateWork",
+        "cls": "ui-drawer",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "cateWorkList",
+        "cls": "",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "cateWorkItem",
+        "cls": "ui-box mb-3",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "resetCateWork",
+        "cls": "m-2",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "jobInfo",
+        "cls": "m-2 pb-2",
+        "visible": false,
+        "display": "none",
+        "tag": "div"
+      },
+      {
+        "id": "jobInfoNotBoi",
+        "cls": "m-2 pb-2",
+        "visible": false,
+        "display": "none",
+        "tag": "div"
+      },
+      {
+        "id": "cateWorkHeader",
+        "cls": "ui-box mt-3 shadow-none",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "",
+        "cls": "ui-box__title mt-2 lang_job_type_desc",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "cateWorkList",
+        "cls": "",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "cateWorkItem",
+        "cls": "ui-box mb-3",
+        "visible": false,
+        "display": "block",
+        "tag": "div"
+      },
+      {
+        "id": "jobInfo",
+        "cls": "m-2 pb-2",
+        "visible": false,
+        "display": "none",
+        "tag": "div"
+      },
+      {
+        "id": "jobInfoNotBoi",
+        "cls": "m-2 pb-2",
+        "visible": false,
+        "display": "none",
+        "tag": "div"
+      }
+    ]
+  },
+  "workplace_modal": {
+    "headings": [
+      "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+      "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน",
+      "ข้อมูลนายจ้าง",
+      "ข้อมูลการขออนุญาต",
+      "เลือกสถานที่ทำงาน",
+      "เลือกสถานที่ทำงาน และประเภทงานในข้อมูลการขออนุญาต",
+      "เลือกสถานที่ทำงาน",
+      "ใหม่"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all"
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all"
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide"
+      },
+      {
+        "text": "แก้ไขเปลี่ยนนายจ้าง",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2"
+      },
+      {
+        "text": "เลือกสถานที่ทำงาน",
+        "id": "",
+        "cls": "position-relative btn btn-next btn-primary btn-primary__icon-plus m-0 lang_select_work_address"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "บันทึก",
+        "id": "",
+        "cls": "btn btn-primary float-right lang_lbl_save"
+      },
+      {
+        "text": "ปิด",
+        "id": "",
+        "cls": "btn btn-dark float-right lang_lbl_close"
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "title": "ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ",
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      },
+      {
+        "id": "search-type",
+        "name": "search-type",
+        "title": "ใหม่ -- กรุณาเลือก -- สำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130 88/7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+        "options": [
+          "-- กรุณาเลือก --",
+          "สำนักงาน :  \n                    88/7 หมู่ที่ 3 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 ม.3 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "98/156 หมู่ที่ 6 \n                    \n                    \n                    \n                    แขวง/ตำบล บางเมือง\n                    เขต/อำเภอ เมืองสมุทรปราการ\n                    จังหวัด สมุทรปราการ\n                    รหัสไปรษณีย์ 10270",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน ประเสริฐมนูกิจ 48\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 2\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน ลาดพร้าว\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย 13\n                    ถนน เพชรเกษม\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน สุขุมวิท 62\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 \n                    หมู่ที่/อาคาร 3\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 9\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 5\n                    ซอย -\n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 7\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร -\n                    ซอย -\n                    ถนน เลียบคลองลำกอไผ่\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 1\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 2\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 1\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย ประชาอุทิศ 33 แยก 9\n                    ถนน ประชาอุทิศ\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย 5\n                    ถนน สาทรใต้\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน พระราม 6\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 8\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน วิภาวดีรังสิต 43\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    ซอย -\n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 5\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 13\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย พหลโยธิน54/1\n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน บรรเจิดใจราช\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130"
+        ]
+      }
+    ],
+    "inputs": [],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์\n\nกรมการจัดหางาน\n\nบริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด\nนางสาว วนิดา วงค์แสง (ผู้กระทำการแทน)\nไทย\nEnglish\nမြန်မာ\nngôn ngữ tiếng Việt\nພາສາລາວ\nភាសាខ្មែរ\nหน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\nการแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\n\nอาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44)\n\nกรอกข้อมูลคำขอ\nแนบเอกสาร\nสรุปคำขอ\nยืนยันตัวตน\nการชำระเงิน\nเสร็จสิ้น\n﻿﻿\nกรอกข้อมูลคำขอ\nหน้า 2/2\nข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน\nแสดงทั้งหมด ซ่อนทั้งหมด\nนายจ้าง 1\nเปลี่ยนนายจ้าง\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\nซ่อน\nข้อมูลนายจ้าง\nข้อมูลนายจ้างเดิม : บริษัท แอ็ดวานซลักเก็จไทย จำกัด  คืนค่าเดิม\nแก้ไขเปลี่ยนนายจ้าง\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17634416214097020\n\nเลขที่นิติบุคคล\n\n0215566011533\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nMELON BIO-TECH (THAILAND) CO., LTD.\n\nที่อยู่ที่ติดต่อได้\n\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nPaparve.np@gmail.com\n\nข้อมูลการขออนุญาต\nเลือกสถานที่ทำงาน\nเลือกสถานที่ทำงาน และประเภทงานในข้อมูลการขออนุญาต\nเลือกสถานที่ทำงาน\nยกเลิก\nถัดไป\nย้อนกลับ\nสงวนลิขสิทธิ์ © 2566\nเลือกสถานที่ทำงาน\nสถานที่ทำงาน/สาขา\nใหม่\n-- กรุณาเลือก --\nสำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 ม.3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n98/156 หมู่ที่ 6 แขวง/ตำบล บางเมือง เขต/อำเภอ เมืองสมุทรปราการ จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10270\n88/7 หมู่ที่ 3 ถนน ประเสริฐมนูกิจ 48 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 2 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน ลาดพร้าว แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย 13 ถนน เพชรเกษม แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน สุขุมวิท 62 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 9 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 5 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร - ซอย - ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 1 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 1 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย ประชาอุทิศ 33 แยก 9 ถนน ประชาอุทิศ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย 5 ถนน สาทรใต้ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน พระราม 6 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 8 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน วิภาวดีรังสิต 43 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 5 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 13 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย พหลโยธิน54/1 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน บรรเจิดใจราช แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน พระยามนธาตุฯ แยก 35-5 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร - ซอย 44 ถนน พระรามที่2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน สองแคว แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 19 ซอย - ถนน พหลโยธิน แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 11 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n28/1 แขวง/ตำบล บางวัว เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24180\n26/2 แขวง/ตำบล คลองนครเนื่องเขต เขต/อำเภอ เมืองฉะเชิงเทรา จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24000\n209. หมู่ที่ 1 ถนนเทพารักษ์ แขวง/ตำบล บางเสาธง เขต/อำเภอ บางเสาธง จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10570\n88/7 หมู่ที่ 3 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย - ถนน พหลโยธิน แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย - ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย 44 ถนน พระรามที่2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n26/2 หมู่ที่/อาคาร 7 แขวง/ตำบล คลองนครเนื่องเขต เขต/อำเภอ เมืองฉะเชิงเทรา จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24000\n28/1 หมู่ที่/อาคาร 10 แขวง/ตำบล บางวัว เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24180\n209. หมู่ที่ 1 ถนนเทพารักษ์ หมู่ที่/อาคาร 3 แขวง/ตำบล บางเสาธง เขต/อำเภอ บางเสาธง จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10570\n700/156 หมู่ที่/อาคาร 1 แขวง/ตำบล บ้านเก่า เขต/อำเภอ พานทอง จังหวัด ชลบุรี รหัสไปรษณีย์ 20160\n88/555,88/888,88/999 หมู่ที่ 2 ซอย14 แขวง/ตำบล มะขามคู่ เขต/อำเภอ นิคมพัฒนา จังหวัด ระยอง รหัสไปรษณีย์ 21180\n999 หมู่ที่ 4 แขวง/ตำบล หนองเสือช้าง เขต/อำเภอ หนองใหญ่ จังหวัด ชลบุรี รหัสไปรษณีย์ 20190\nกรุณาเลือก\nบันทึก\nปิด"
+  },
+  "workplace_fields": {
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "visible": true,
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      },
+      {
+        "id": "alien_prefix",
+        "name": "alien_prefix",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "นาย",
+          "นาง",
+          "นางสาว"
+        ]
+      },
+      {
+        "id": "nationality_al",
+        "name": "nationalityCheck",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "อัฟกัน",
+          "แอลเบเนีย",
+          "แอลจีเรีย",
+          "ซามัว",
+          "อันดอร์รา",
+          "แองโกลา",
+          "แอนตาร์กติกา",
+          "แอนติกาและบาร์บูดา",
+          "อาร์เจนตินา",
+          "อาร์เมเนีย",
+          "ออสเตรเลีย",
+          "ออสเตรีย",
+          "อาเซอร์ไบจาน",
+          "บาฮามาส",
+          "บาห์เรน",
+          "บังกลาเทศ",
+          "บาร์เบโดส",
+          "เบลารุส",
+          "เบลเยียม",
+          "เบลีซ",
+          "เบนิน",
+          "เบอร์มูด้า",
+          "ภูฏาน",
+          "โบลิเวีย",
+          "โบแนร์ ซินต์เอิสตาติอุสและซาบา",
+          "บอสเนียและเฮอร์เซโกวีนา",
+          "นอร์เวย์ (Bouvet Is.)",
+          "บราซิล",
+          "บัลแกเรีย"
+        ]
+      },
+      {
+        "id": "sexCheck",
+        "name": "sexCheck",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "ชาย",
+          "หญิง"
+        ]
+      },
+      {
+        "id": "birthDateCheckYear",
+        "name": "birthDateCheckYear",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "ddl_current_address_prov_id",
+        "name": "province_alcheck",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "กรุงเทพมหานคร",
+          "สมุทรปราการ",
+          "นนทบุรี",
+          "ปทุมธานี",
+          "พระนครศรีอยุธยา",
+          "อ่างทอง",
+          "ลพบุรี",
+          "สิงห์บุรี",
+          "ชัยนาท",
+          "สระบุรี",
+          "ชลบุรี",
+          "ระยอง",
+          "จันทบุรี",
+          "ตราด",
+          "ฉะเชิงเทรา",
+          "ปราจีนบุรี",
+          "นครนายก",
+          "สระแก้ว",
+          "นครราชสีมา",
+          "บุรีรัมย์",
+          "สุรินทร์",
+          "ศรีสะเกษ",
+          "อุบลราชธานี",
+          "ยโสธร",
+          "ชัยภูมิ",
+          "อำนาจเจริญ",
+          "บึงกาฬ",
+          "หนองบัวลำภู",
+          "ขอนแก่น"
+        ]
+      },
+      {
+        "id": "ddl_current_address_dist_id",
+        "name": "district_alcheck",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "คลองเขื่อน",
+          "ท่าตะเกียบ",
+          "บางคล้า",
+          "บางน้ำเปรี้ยว",
+          "บางปะกง",
+          "บ้านโพธิ์",
+          "พนมสารคาม",
+          "ราชสาส์น",
+          "สนามชัยเขต",
+          "เมืองฉะเชิงเทรา",
+          "แปลงยาว"
+        ]
+      },
+      {
+        "id": "ddl_current_address_subdist_id",
+        "name": "sub_district_alcheck",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "ท่าข้าม",
+          "ท่าสะอ้าน",
+          "บางปะกง",
+          "บางผึ้ง",
+          "บางวัว",
+          "บางสมัคร",
+          "บางเกลือ",
+          "พิมพา",
+          "สองคลอง",
+          "หนองจอก",
+          "หอมศีล",
+          "เขาดิน"
+        ]
+      },
+      {
+        "id": "GetDataProvince",
+        "name": "GetDataProvince",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "กรุงเทพมหานคร",
+          "สมุทรปราการ",
+          "นนทบุรี",
+          "ปทุมธานี",
+          "พระนครศรีอยุธยา",
+          "อ่างทอง",
+          "ลพบุรี",
+          "สิงห์บุรี",
+          "ชัยนาท",
+          "สระบุรี",
+          "ชลบุรี",
+          "ระยอง",
+          "จันทบุรี",
+          "ตราด",
+          "ฉะเชิงเทรา",
+          "ปราจีนบุรี",
+          "นครนายก",
+          "สระแก้ว",
+          "นครราชสีมา",
+          "บุรีรัมย์",
+          "สุรินทร์",
+          "ศรีสะเกษ",
+          "อุบลราชธานี",
+          "ยโสธร",
+          "ชัยภูมิ",
+          "อำนาจเจริญ",
+          "บึงกาฬ",
+          "หนองบัวลำภู",
+          "ขอนแก่น"
+        ]
+      },
+      {
+        "id": "countryTravelDocSelect",
+        "name": "countryTravelDocSelect",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "อันดอร์รา",
+          "สหรัฐอาหรับเอมิเรตส์",
+          "อัฟกานิสถาน",
+          "แอนทีกาและบาร์บิวดา",
+          "แองกวิลลา",
+          "แอลเบเนีย",
+          "อาร์มีเนีย",
+          "แองโกลา",
+          "ทวีปแอนตาร์กติกา",
+          "อาร์เจนตินา",
+          "อเมริกันซามัว",
+          "ออสเตรีย",
+          "ออสเตรเลีย",
+          "อารูบา",
+          "หมู่เกาะโอลันด์",
+          "อาเซอร์ไบจาน",
+          "บอสเนียและเฮอร์เซโกวีนา",
+          "บาร์เบโดส",
+          "บังกลาเทศ",
+          "เบลเยียม",
+          "บูร์กินาฟาโซ",
+          "บัลแกเรีย",
+          "บาห์เรน",
+          "บุรุนดี",
+          "เบนิน",
+          "แซ็ง–บาร์เตเลมี",
+          "เบอร์มิวดา",
+          "บรูไน",
+          "โบลิเวีย"
+        ]
+      },
+      {
+        "id": "typeOfSurveillance",
+        "name": "typeOfSurveillance",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "วีซ่าท่องเที่ยว",
+          "วีซ่าเดินทางผ่าน",
+          "วีซ่าอยู่ชั่วคราว ระยะยาว 1 ปี",
+          "วีซ่าอยู่ชั่วคราว (Non-F) : การปฏิบัติหน้าที่ทางราชการ",
+          "วีซ่าอยู่ชั่วคราว (Non-B) : การติดต่อหรือประกอบธุรกิจ และการทำงาน",
+          "วีซ่าอยู่ชั่วคราว (Non-IM) : การลงทุนที่ได้รับความเห็นชอบจากกระทรวงที่เกี่ยวข้อง",
+          "วีซ่าอยู่ชั่วคราว (Non-IB) : การลงทุนหรือการอื่นภายใต้ข้อบังคับกฎหมายว่าด้วยการส่งเสริมการลงทุน",
+          "วีซ่าอยู่ชั่วคราว (Non-ED) : การศึกษา ดูงาน และฝึกอบรมต่างๆ",
+          "วีซ่าอยู่ชั่วคราว (Non-M) : การปฏิบัติหน้าที่สื่อมวลชน",
+          "วีซ่าอยู่ชั่วคราว (Non-R) : การเผยแผ่ศาสนาที่ได้รับความเห็นชอบจากกรมการศาสนา กระทรวงศึกษาธิการ",
+          "วีซ่าอยู่ชั่วคราว (Non-RS) : การค้นคว้าทางวิทยาศาสตร์หรือฝึกสอนในสถาบันการค้นคว้า หรือสถาบันการศึกษาในราชอาณาจักร",
+          "วีซ่าอยู่ชั่วคราว (Non-EX) : การปฏิบัติงานด้านช่างฝีมือผู้เชี่ยวชาญ",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การเข้ามาใช้ชีวิตในบั้นปลายในฐานะผู้สูงอายุ",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การเข้ามาในฐานะคู่ความหรือพยานสำหรับการพิจารณาดำเนินคดี",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การปฏิบัติหน้าที่หรือภารกิจในครอบครัวคนต่างด้าว ซึ่งเข้ามาในราชอาณาจักรเป็นการชั่วคราวเพื่อปฏิบัติหน้าที่ทางการทูต กงสุลหรือปฏิบัติภารกิจอื่น โดยเป็นบิดา มารดา คู่สมรส หรือบุตร ซึ่งอยู่ในความอุปการะและเป็นส่วนแห่งครัวเรือนของบุคคล ดังกล่าว",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การปฏิบัติหน้าที่ในฐานะคนรับใช้ส่วนตัวซึ่งเดินทางมาจากต่างประเทศเพื่อมาทำงานตามปกติ ณ ที่พักอาศัยของบุคคลในคณะผู้แทนทางการทูต หรือบุคคลซึ่งมีเอกสิทธิ์เท่าเทียมกันกับบุคคลซึ่งมีตำแหน่งทางการทูตตามความตกลงที่รัฐบาลไทยได้ทำไว้กับรัฐบาลต่างประเทศ หรือกับองค์การ หรือทบวงการระหว่างประเทศ",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การให้ความอุปการะแก่หรือรับความอุปการะจากบุคคลสัญชาติไทย หรือบุคคลผู้มีถิ่นที่อยู่ในราชอาณาจักร โดยเป็นบิดา มารดา คู่สมรส หรือบุตร ซึ่งอยู่ในความอุปการะและเป็นส่วนแห่งครัวเรือนของบุคคลดังกล่าว",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การปฏิบัติหน้าที่ให้แก่รัฐวิสาหกิจ หรือองค์การกุศลสาธารณะ",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การเข้ามาในราชอาณาจักรของผู้เคยมีสัญชาติไทย เพื่อเยี่ยมญาติ หรือขอกลับเข้ามาอยู่ในราชอาณาจักร",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การเข้ามาในราชอาณาจักรเพื่อการรักษาพยาบาล",
+          "วีซ่าอยู่ชั่วคราว (Non-O) : การอื่น - การเข้ามาในราชอาณาจักรเพื่อเป็นผู้ฝึกสอนนักกีฬาตามความต้องการของทางราชการ",
+          "วีซ่าอยู่ชั่วคราว (Non-L-A) : แรงงาน 3 สัญชาติ (เมียนมา ลาว กัมพูชา)",
+          "วีซ่าบัตรผ่านแดน",
+          "วีซ่าประเภทคนเข้าเมืองนอกกำหนดจำนวนคนต่างด้าว",
+          "วีซ่าชาวต่างชาติที่ได้รับอนุญาตให้มีถิ่นที่อยู่ในไทย"
+        ]
+      },
+      {
+        "id": "arrivalInTheKingdomApproveTypeNew",
+        "name": "arrivalInTheKingdomApproveType",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "alien_prefix",
+        "name": "alien_prefix",
+        "visible": false,
+        "options": [
+          "กรุณาเลือก",
+          "นาย",
+          "นาง",
+          "นางสาว"
+        ]
+      },
+      {
+        "id": "nationality_al",
+        "name": "nationalityCheck",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "sexCheck",
+        "name": "sexCheck",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "businessType",
+        "name": "businessType",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "permitCateWork",
+        "name": "permitCateWork",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "jobPosition",
+        "name": "jobPosition",
+        "visible": false,
+        "options": []
+      },
+      {
+        "id": "search-type",
+        "name": "search-type",
+        "visible": false,
+        "options": [
+          "รหัสอ้างอิงของนายจ้าง",
+          "นายจ้างบุคคลธรรมดา",
+          "นายจ้างนิติบุคคล",
+          "นายจ้างสมาคมหรือมูลนิธิ",
+          "นายจ้างหน่วยงานราชการ/รัฐวิสาหกิจ",
+          "นายจ้างโรงเรียนเอกชน",
+          "นายจ้างมหาวิทยาลัยเอกชน",
+          "นายจ้างต่างชาติ",
+          "นายจ้างถ่ายทำภาพยนตร์จากต่างประเทศ"
+        ]
+      },
+      {
+        "id": "reason-type",
+        "name": "reason-type",
+        "visible": false,
+        "options": [
+          "นายจ้างไม่จ่ายค่าจ้าง",
+          "อื่นๆ",
+          "นายจ้างเลิกจ้าง นายจ้างเสียชีวิต",
+          "นายจ้างล้มละลาย",
+          "นายจ้างกระทำทารุณกรรมหรือทำร้ายร่างกายลูกจ้าง",
+          "นายจ้างไม่ปฏิบัติตามสัญญาจ้างหรือกฎหมายคุ้มครองแรงงาน",
+          "ลูกจ้างทำงานในสภาพแวดล้อมที่อันตรายต่อชีวิต จิตใจ หรือสุขภาพอนามัย",
+          "นายจ้างใหม่ยินยอมชดใช้ค่าเสียหายให้นายจ้างเดิม"
+        ]
+      },
+      {
+        "id": "search-type",
+        "name": "search-type",
+        "visible": true,
+        "options": [
+          "-- กรุณาเลือก --",
+          "สำนักงาน :  \n                    88/7 หมู่ที่ 3 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 ม.3 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "98/156 หมู่ที่ 6 \n                    \n                    \n                    \n                    แขวง/ตำบล บางเมือง\n                    เขต/อำเภอ เมืองสมุทรปราการ\n                    จังหวัด สมุทรปราการ\n                    รหัสไปรษณีย์ 10270",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน ประเสริฐมนูกิจ 48\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 2\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน ลาดพร้าว\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย 13\n                    ถนน เพชรเกษม\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน สุขุมวิท 62\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 \n                    หมู่ที่/อาคาร 3\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 9\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 5\n                    ซอย -\n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 7\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร -\n                    ซอย -\n                    ถนน เลียบคลองลำกอไผ่\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 1\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 2\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 1\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย ประชาอุทิศ 33 แยก 9\n                    ถนน ประชาอุทิศ\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย 5\n                    ถนน สาทรใต้\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน พระราม 6\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 8\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน วิภาวดีรังสิต 43\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    ซอย -\n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 5\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 13\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย พหลโยธิน54/1\n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน บรรเจิดใจราช\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130"
+        ]
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "input",
+        "id": "humvc_validate_token",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "http://eworkpermit.doe.go.th/Home/ValidateToken"
+      },
+      {
+        "tag": "input",
+        "id": "humvc_get_profile_datas",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "http://eworkpermit.doe.go.th/Home/GetProfileDatas"
+      },
+      {
+        "tag": "input",
+        "id": "humvc_change_profile",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "http://eworkpermit.doe.go.th/Home/ChangeProfile"
+      },
+      {
+        "tag": "input",
+        "id": "humvc_set_lang",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "/Home/SetLang"
+      },
+      {
+        "tag": "input",
+        "id": "humvc_profile_image",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "/Profile/GetProfileImage"
+      },
+      {
+        "tag": "input",
+        "id": "humvc_logout",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "http://eworkpermit.doe.go.th/Home/LogoutNew"
+      },
+      {
+        "tag": "input",
+        "id": "humvc_lang",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "http://eworkpermit.doe.go.th/Home/UpdateUserLanguage"
+      },
+      {
+        "tag": "input",
+        "id": "dgaUrl",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "https://connect.egov.go.th/"
+      },
+      {
+        "tag": "input",
+        "id": "eService_URL",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "https://e-service.doe.go.th/"
+      },
+      {
+        "tag": "input",
+        "id": "",
+        "name": "consent",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "value": "on"
+      },
+      {
+        "tag": "input",
+        "id": "",
+        "name": "radio-payment",
+        "type": "radio",
+        "placeholder": "",
+        "visible": false,
+        "value": "on"
+      },
+      {
+        "tag": "input",
+        "id": "searchFrom",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "requestType",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "FormChangeEmployer"
+      },
+      {
+        "tag": "input",
+        "id": "successIcon",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "/assets/images/picmobile/correct.png"
+      },
+      {
+        "tag": "input",
+        "id": "warningIcon",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "/assets/images/picmobile/warning.png"
+      },
+      {
+        "tag": "input",
+        "id": "errorIcon",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "/assets/images/picmobile/invalid.png"
+      },
+      {
+        "tag": "input",
+        "id": "infoIcon",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "/assets/images/picmobile/warning.png"
+      },
+      {
+        "tag": "input",
+        "id": "name_encheckreg",
+        "name": "name_encheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "middlenamecheck",
+        "name": "middlenamecheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "lastname_encheckreg",
+        "name": "lastname_encheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "name_thcheckreg",
+        "name": "name_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "mid_name_thcheckreg",
+        "name": "mid_name_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "lastname_thcheckreg",
+        "name": "lastname_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "birthdate_al",
+        "name": "birthdatecheck",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "checkBirthDateType",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "value": "on"
+      },
+      {
+        "tag": "input",
+        "id": "user_tel",
+        "name": "user_tel",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_new_email",
+        "name": "",
+        "type": "email",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_otp_code",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_addr_id",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_desc",
+        "name": "address_alcheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "88/7 หมู่ที่ 3"
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_village_building",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_soi",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_road",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_postcode",
+        "name": "zipcode_alcheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "24130"
+      },
+      {
+        "tag": "input",
+        "id": "tbx_current_address_addr_id",
+        "name": "",
+        "type": "hidden",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "stay_permit_name",
+        "name": "stay_permit_name",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "stay_permit_name_other",
+        "name": "stay_permit_name_other",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "travelDocIdCheck",
+        "name": "travelDocIdCheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "placeIssuanceDocTravel",
+        "name": "placeIssuanceDocTravel",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "dateOfStartTravelDoc",
+        "name": "dateOfStartTravelDoc",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "dateOfTravelDocExpiry",
+        "name": "dateOfTravelDocExpiry",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "surveillanceId",
+        "name": "surveillanceId",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "surveillancePlace",
+        "name": "surveillancePlace",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "surveillanceDate",
+        "name": "surveillanceDate",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "surveillanceExpire",
+        "name": "surveillanceExpire",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "arrivalInTheKingdomDate",
+        "name": "arrivalInTheKingdomDate",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "arrivalInTheKingdomExpire",
+        "name": "arrivalInTheKingdomExpire",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "name_encheckreg",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "middlenamecheck",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "lastname_encheckreg",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "name_thcheckreg",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "mid_name_thcheckreg",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "lastname_thcheckreg",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "birthdate_al",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "user_tel_alien",
+        "name": "user_tel",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "jobPositionInput",
+        "name": "jobPosition",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "jobDescription",
+        "name": "jobDescription",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "alienCertificateNo",
+        "name": "alienCertificateNo",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "alienCertificateIssueAt",
+        "name": "alienCertificateIssueAt",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "alienCertificateIssueDatetime",
+        "name": "alienCertificateIssueDatetime",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "alienCertificateIssueExpiredtime",
+        "name": "alienCertificateIssueExpiredtime",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "businessRegistrationNo",
+        "name": "businessRegistrationNo",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "businessRegistrationName",
+        "name": "businessRegistrationName",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "licenseBusinessNo",
+        "name": "licenseBusinessNo",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "licenseBusinessIssueDatetime",
+        "name": "licenseBusinessIssueDatetime",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "licenseBusinessIssueAt",
+        "name": "licenseBusinessIssueAt",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "taxFilingDatetime",
+        "name": "taxFilingDatetime",
+        "type": "text",
+        "placeholder": "วว/ดด/ปปปป",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "annualIncome",
+        "name": "annualIncome",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "taxExempt-Y",
+        "name": "taxExempt",
+        "type": "radio",
+        "placeholder": "",
+        "visible": false,
+        "value": "Y"
+      },
+      {
+        "tag": "input",
+        "id": "taxExempt-N",
+        "name": "taxExempt",
+        "type": "radio",
+        "placeholder": "",
+        "visible": false,
+        "value": "N"
+      },
+      {
+        "tag": "input",
+        "id": "taxAmountPaid",
+        "name": "taxAmountPaid",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      },
+      {
+        "tag": "input",
+        "id": "search-keyword",
+        "name": "search-keyword",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": "0215566011533"
+      },
+      {
+        "tag": "input",
+        "id": "reason-other",
+        "name": "reason-other",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "value": ""
+      }
+    ],
+    "radios": [
+      {
+        "id": "",
+        "name": "consent",
+        "visible": false,
+        "label": "ข้าพเจ้าได้ตรวจสอบข้อมูล (คำนำหน้า, ชื่อ-นามสกุล, วันเดือนปีเกิด, ประเภทงาน) แล้",
+        "checked": false
+      },
+      {
+        "id": "",
+        "name": "radio-payment",
+        "visible": false,
+        "label": "ชำระผ่าน e-payment\n                                ไม่มีค่าธรรมเนียมการดำเนินการ",
+        "checked": true
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน",
+        "checked": false
+      },
+      {
+        "id": "taxExempt-Y",
+        "name": "taxExempt",
+        "visible": false,
+        "label": "ได้รับยกเว้นการเรียกเก็บภาษี",
+        "checked": false
+      },
+      {
+        "id": "taxExempt-N",
+        "name": "taxExempt",
+        "visible": false,
+        "label": "ไม่ได้รับยกเว้น และได้ชำระภาษีบุคคลธรรมดา/ภาษีเงินได้นิติบุคคลคำนวณจากเงินสุทธิห",
+        "checked": false
+      }
+    ]
+  },
+  "after_branch": {
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      },
+      {
+        "id": "search-type",
+        "name": "search-type",
+        "options": [
+          "-- กรุณาเลือก --",
+          "สำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 ม.3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "98/156 หมู่ที่ 6 แขวง/ตำบล บางเมือง เขต/อำเภอ เมืองสมุทรปราการ จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10270",
+          "88/7 หมู่ที่ 3 ถนน ประเสริฐมนูกิจ 48 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 2 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน ลาดพร้าว แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ซอย 13 ถนน เพชรเกษม แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน สุขุมวิท 62 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 9 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 5 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร - ซอย - ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 1 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 1 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ซอย ประชาอุทิศ 33 แยก 9 ถนน ประชาอุทิศ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ซอย 5 ถนน สาทรใต้ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน พระราม 6 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 8 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน วิภาวดีรังสิต 43 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 5 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 13 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ซอย พหลโยธิน54/1 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน บรรเจิดใจราช แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน พระยามนธาตุฯ แยก 35-5 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร - ซอย 44 ถนน พระรามที่2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 ถนน สองแคว แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 19 ซอย - ถนน พหลโยธิน แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 11 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+          "28/1 แขวง/ตำบล บางวัว เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24180",
+          "26/2 แขวง/ตำบล คลองนครเนื่องเขต เขต/อำเภอ เมืองฉะเชิงเทรา จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24000",
+          "209. หมู่ที่ 1 ถนนเทพารักษ์ แขวง/ตำบล บางเสาธง เขต/อำเภอ บางเสาธง จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10570"
+        ]
+      },
+      {
+        "id": "businessType",
+        "name": "businessType",
+        "options": [
+          "ค้าส่ง ค้าปลีก แผงลอย (BT20)**"
+        ]
+      },
+      {
+        "id": "permitCateWork",
+        "name": "permitCateWork",
+        "options": [
+          "กรรมกร"
+        ]
+      }
+    ],
+    "inputs": [
+      {
+        "tag": "input",
+        "id": "jobDescription",
+        "name": "jobDescription",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "value": ""
+      }
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all"
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all"
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_l"
+      },
+      {
+        "text": "แก้ไขเปลี่ยนนายจ้าง",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2"
+      },
+      {
+        "text": "เลือกสถานที่ทำงาน",
+        "id": "",
+        "cls": "position-relative btn btn-next btn-primary btn-primary__icon"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cance"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt l"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "บันทึก",
+        "id": "",
+        "cls": "btn btn-primary float-right lang_lbl_save"
+      },
+      {
+        "text": "ปิด",
+        "id": "",
+        "cls": "btn btn-dark float-right lang_lbl_close"
+      }
+    ]
+  },
+  "after_job": {
+    "headings": [
+      "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+      "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน",
+      "ข้อมูลนายจ้าง",
+      "ข้อมูลการขออนุญาต",
+      "เลือกสถานที่ทำงาน",
+      "เลือกสถานที่ทำงาน และประเภทงานในข้อมูลการขออนุญาต",
+      "เลือกสถานที่ทำงาน",
+      "ใหม่",
+      "ประเภทงานที่ 1",
+      "ประเภทกิจการ",
+      "ประเภทงานที่ขออนุญาต",
+      "ลักษณะงาน"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all"
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all"
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide"
+      },
+      {
+        "text": "แก้ไขเปลี่ยนนายจ้าง",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2"
+      },
+      {
+        "text": "เลือกสถานที่ทำงาน",
+        "id": "",
+        "cls": "position-relative btn btn-next btn-primary btn-primary__icon-plus m-0 lang_select_work_address"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      },
+      {
+        "text": "บันทึก",
+        "id": "",
+        "cls": "btn btn-primary float-right lang_lbl_save"
+      },
+      {
+        "text": "ปิด",
+        "id": "",
+        "cls": "btn btn-dark float-right lang_lbl_close"
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "title": "ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ",
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      },
+      {
+        "id": "search-type",
+        "name": "search-type",
+        "title": "ใหม่ -- กรุณาเลือก -- สำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130 88/7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130",
+        "options": [
+          "-- กรุณาเลือก --",
+          "สำนักงาน :  \n                    88/7 หมู่ที่ 3 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 ม.3 \n                    \n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "98/156 หมู่ที่ 6 \n                    \n                    \n                    \n                    แขวง/ตำบล บางเมือง\n                    เขต/อำเภอ เมืองสมุทรปราการ\n                    จังหวัด สมุทรปราการ\n                    รหัสไปรษณีย์ 10270",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน ประเสริฐมนูกิจ 48\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 2\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน ลาดพร้าว\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย 13\n                    ถนน เพชรเกษม\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน สุขุมวิท 62\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 \n                    หมู่ที่/อาคาร 3\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 9\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 5\n                    ซอย -\n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 7\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร -\n                    ซอย -\n                    ถนน เลียบคลองลำกอไผ่\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 1\n                    \n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 2\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 1\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย ประชาอุทิศ 33 แยก 9\n                    ถนน ประชาอุทิศ\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย 5\n                    ถนน สาทรใต้\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน พระราม 6\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 8\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน วิภาวดีรังสิต 43\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 6\n                    ซอย -\n                    ถนน -\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 5\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    หมู่ที่/อาคาร 13\n                    \n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    ซอย พหลโยธิน54/1\n                    \n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130",
+          "88/7 หมู่ที่ 3 \n                    \n                    \n                    ถนน บรรเจิดใจราช\n                    แขวง/ตำบล ท่าข้าม\n                    เขต/อำเภอ บางปะกง\n                    จังหวัด ฉะเชิงเทรา\n                    รหัสไปรษณีย์ 24130"
+        ]
+      },
+      {
+        "id": "businessType",
+        "name": "businessType",
+        "title": "ประเภทกิจการ ค้าส่ง ค้าปลีก แผงลอย (BT20)**ค้าส่ง ค้าปลีก แผงลอย (BT20)**",
+        "options": [
+          "ค้าส่ง ค้าปลีก แผงลอย  (BT20)**"
+        ]
+      },
+      {
+        "id": "permitCateWork",
+        "name": "permitCateWork",
+        "title": "ประเภทงานที่ขออนุญาต กรรมกรกรรมกร",
+        "options": [
+          "กรรมกร"
+        ]
+      }
+    ],
+    "inputs": [
+      {
+        "id": "jobDescription",
+        "name": "jobDescription",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "value": "ยก แบก หาม",
+        "title": "ลักษณะงาน"
+      }
+    ],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์\n\nกรมการจัดหางาน\n\nบริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด\nนางสาว วนิดา วงค์แสง (ผู้กระทำการแทน)\nไทย\nEnglish\nမြန်မာ\nngôn ngữ tiếng Việt\nພາສາລາວ\nភាសាខ្មែរ\nหน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\nการแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\n\nอาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44)\n\nกรอกข้อมูลคำขอ\nแนบเอกสาร\nสรุปคำขอ\nยืนยันตัวตน\nการชำระเงิน\nเสร็จสิ้น\n﻿﻿\nกรอกข้อมูลคำขอ\nหน้า 2/2\nข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน\nแสดงทั้งหมด ซ่อนทั้งหมด\nนายจ้าง 1\nเปลี่ยนนายจ้าง\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\nซ่อน\nข้อมูลนายจ้าง\nข้อมูลนายจ้างเดิม : บริษัท แอ็ดวานซลักเก็จไทย จำกัด  คืนค่าเดิม\nแก้ไขเปลี่ยนนายจ้าง\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17634416214097020\n\nเลขที่นิติบุคคล\n\n0215566011533\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nMELON BIO-TECH (THAILAND) CO., LTD.\n\nที่อยู่ที่ติดต่อได้\n\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nPaparve.np@gmail.com\n\nข้อมูลการขออนุญาต\nเลือกสถานที่ทำงาน\nเลือกสถานที่ทำงาน และประเภทงานในข้อมูลการขออนุญาต\nเลือกสถานที่ทำงาน\nยกเลิก\nถัดไป\nย้อนกลับ\nสงวนลิขสิทธิ์ © 2566\nเลือกสถานที่ทำงาน\nสถานที่ทำงาน/สาขา\nใหม่\n-- กรุณาเลือก --\nสำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 ม.3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n98/156 หมู่ที่ 6 แขวง/ตำบล บางเมือง เขต/อำเภอ เมืองสมุทรปราการ จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10270\n88/7 หมู่ที่ 3 ถนน ประเสริฐมนูกิจ 48 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 2 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน ลาดพร้าว แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย 13 ถนน เพชรเกษม แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน สุขุมวิท 62 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 9 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 5 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 7 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร - ซอย - ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 1 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 1 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย ประชาอุทิศ 33 แยก 9 ถนน ประชาอุทิศ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย 5 ถนน สาทรใต้ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน พระราม 6 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 8 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน วิภาวดีรังสิต 43 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 6 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 5 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 13 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย พหลโยธิน54/1 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน บรรเจิดใจราช แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน พระยามนธาตุฯ แยก 35-5 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร - ซอย 44 ถนน พระรามที่2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ถนน สองแคว แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 19 ซอย - ถนน พหลโยธิน แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 11 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n28/1 แขวง/ตำบล บางวัว เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24180\n26/2 แขวง/ตำบล คลองนครเนื่องเขต เขต/อำเภอ เมืองฉะเชิงเทรา จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24000\n209. หมู่ที่ 1 ถนนเทพารักษ์ แขวง/ตำบล บางเสาธง เขต/อำเภอ บางเสาธง จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10570\n88/7 หมู่ที่ 3 ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย - ถนน พหลโยธิน แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย - ถนน เลียบคลองลำกอไผ่ แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย - ถนน - แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n88/7 หมู่ที่ 3 ซอย 44 ถนน พระรามที่2 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n26/2 หมู่ที่/อาคาร 7 แขวง/ตำบล คลองนครเนื่องเขต เขต/อำเภอ เมืองฉะเชิงเทรา จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24000\n28/1 หมู่ที่/อาคาร 10 แขวง/ตำบล บางวัว เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24180\n209. หมู่ที่ 1 ถนนเทพารักษ์ หมู่ที่/อาคาร 3 แขวง/ตำบล บางเสาธง เขต/อำเภอ บางเสาธง จังหวัด สมุทรปราการ รหัสไปรษณีย์ 10570\n700/156 หมู่ที่/อาคาร 1 แขวง/ตำบล บ้านเก่า เขต/อำเภอ พานทอง จังหวัด ชลบุรี รหัสไปรษณีย์ 20160\n88/555,88/888,88/999 หมู่ที่ 2 ซอย14 แขวง/ตำบล มะขามคู่ เขต/อำเภอ นิคมพัฒนา จังหวัด ระยอง รหัสไปรษณีย์ 21180\n999 หมู่ที่ 4 แขวง/ตำบล หนองเสือช้าง เขต/อำเภอ หนองใหญ่ จังหวัด ชลบุรี รหัสไปรษณีย์ 20190\nสำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\nข้อมูลประเภทงาน\nประเภทงานที่ 1\nประเภทกิจการ \nค้าส่ง ค้าปลีก แผงลอย (BT20)**\nค้าส่ง ค้าปลีก แผงลอย (BT20)**\nประเภทงานที่ขออนุญาต \nกรรมกร\nกรรมกร\nลักษณะงาน\nบัน"
+  },
+  "after_workplace_save": {
+    "headings": [
+      "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต",
+      "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน",
+      "ข้อมูลนายจ้าง",
+      "ข้อมูลการขออนุญาต"
+    ],
+    "buttons": [
+      {
+        "text": "หน้าเเรก /",
+        "id": "text_home",
+        "cls": "text-secondary font-weight-normal"
+      },
+      {
+        "text": "แสดงทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 mr-2 lang_lbl_show_all"
+      },
+      {
+        "text": "ซ่อนทั้งหมด",
+        "id": "",
+        "cls": "btn btn-dark mt-3 mb-2 lang_lbl_hide_all"
+      },
+      {
+        "text": "ซ่อน",
+        "id": "",
+        "cls": "btn btn-dark float-right-test m-0 pl-3 pr-3 pt-2 pb-2 lang_lbl_hide"
+      },
+      {
+        "text": "แก้ไขเปลี่ยนนายจ้าง",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2"
+      },
+      {
+        "text": "แก้ไขสถานประกอบการ",
+        "id": "",
+        "cls": "btn btn-dark mt-2 mb-3 d-flex pl-3 pr-3 pt-2 pb-2 mr-3"
+      },
+      {
+        "text": "ยกเลิก",
+        "id": "",
+        "cls": "btn btn-cancel float-right float-left w-48-bt lang_txt_cancel"
+      },
+      {
+        "text": "ถัดไป",
+        "id": "",
+        "cls": "btn btn-next btn-primary action-button float-right w-48-bt lang_txt_next"
+      },
+      {
+        "text": "ย้อนกลับ",
+        "id": "",
+        "cls": "btn btn-dark float-right-test w-48-bt lang_href_back"
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "title": "ไทย English မြန်မာ ngôn ngữ tiếng Việt ພາສາລາວ ភាសាខ្មែរ",
+        "options": [
+          "ไทย",
+          "English",
+          "မြန်မာ",
+          "ngôn ngữ tiếng Việt",
+          "ພາສາລາວ",
+          "ភាសាខ្មែរ"
+        ]
+      }
+    ],
+    "inputs": [],
+    "bodySample": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์\n\nกรมการจัดหางาน\n\nบริษัท นำคนต่างด้าวมาทำงานในประเทศ เดอะ เฟิร์ส กูด แมน กรุ๊ป จำกัด\nนางสาว วนิดา วงค์แสง (ผู้กระทำการแทน)\nไทย\nEnglish\nမြန်မာ\nngôn ngữ tiếng Việt\nພາສາລາວ\nភាសាខ្មែរ\nหน้าเเรก / ยื่นคําร้องขอใบอนุญาต / การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\nการแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต\n\nอาทิ กรณีการเปลี่ยนหรือการเพิ่มนายจ้าง (แบบ บต. 44)\n\nกรอกข้อมูลคำขอ\nแนบเอกสาร\nสรุปคำขอ\nยืนยันตัวตน\nการชำระเงิน\nเสร็จสิ้น\n﻿﻿\nกรอกข้อมูลคำขอ\nหน้า 2/2\nข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน\nแสดงทั้งหมด ซ่อนทั้งหมด\nนายจ้าง 1\nเปลี่ยนนายจ้าง\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\nซ่อน\nข้อมูลนายจ้าง\nข้อมูลนายจ้างเดิม : บริษัท แอ็ดวานซลักเก็จไทย จำกัด  คืนค่าเดิม\nแก้ไขเปลี่ยนนายจ้าง\n\nประเภทนายจ้าง\n\nนิติบุคคล - จดทะเบียนในประเทศไทย\n\nรหัสนายจ้าง\n\nRE17634416214097020\n\nเลขที่นิติบุคคล\n\n0215566011533\n\nชื่อสถานประกอบการ (ไทย)\n\nบริษัท เมลอน ไบโอ-เทค (ไทยแลนด์) จำกัด\n\nชื่อสถานประกอบการ (Eng)\n\nMELON BIO-TECH (THAILAND) CO., LTD.\n\nที่อยู่ที่ติดต่อได้\n\n88/7 หมู่ที่/อาคาร 3 แขวง/ตำบล ท่าสะอ้าน เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\n\nโทรศัพท์\n\n-\n\nโทรสาร\n\n-\n\nอีเมล\n\nPaparve.np@gmail.com\n\nข้อมูลการขออนุญาต\nสถานที่ทำงาน/สาขา\nสำนักงาน : 88/7 หมู่ที่ 3 แขวง/ตำบล ท่าข้าม เขต/อำเภอ บางปะกง จังหวัด ฉะเชิงเทรา รหัสไปรษณีย์ 24130\nแก้ไขสถานประกอบการ\nลำดับ\tประเภทกิจการ\tประเภทงานที่ขออนุญาต\tลักษณะงาน\t\n\n1\n\t\nค้าส่ง ค้าปลีก แผงลอย (BT20)**\n\t\nกรรมกร\n\t\nยก แบก หาม\n\t\nใหม่\nยกเลิก\nถัดไป\nย้อนกลับ\nสงวนลิขสิทธิ์ © 2566"
+  }
+}

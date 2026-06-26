@@ -1,0 +1,4407 @@
+{
+  "account": "Yupin@mailforeign.com",
+  "menu": {
+    "categories": [
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "การยื่นขอใบอนุญาตทำงาน",
+        "onclick": "testactive2();openCity(\"tab_REQUEST\",event)"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "การยื่นขอต่ออายุใบอนุญาตทำงาน",
+        "onclick": "testactive2();openCity(\"tab_RENEW_REQ\",event)"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "แจ้งส่งมอบคนต่างด้าวให้นายจ้าง",
+        "onclick": "testactive2();openCity(\"tab_DELIVER\",event)"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "การยื่นขอรับใบแทนใบอนุญาตทํางาน",
+        "onclick": "testactive2();openCity(\"tab_REQUEST_RE\",event)"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "การยื่นขอเปลี่ยนรายการในใบอนุญาตทำงาน",
+        "onclick": "testactive2();openCity(\"tab_CHANGE_REQ\",event)"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "การขอคืนค่าธรรมเนียม",
+        "onclick": "testactive2();openCity(\"tab_FEE\",event)"
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "txt": "การแจ้งการจ้างคนต่างด้าว/การแจ้งคนต่างด้าวออกจากงาน",
+        "onclick": "testactive2();openCity(\"tab_INFORM_ENTER_EXIT\",event)"
+      }
+    ],
+    "items": [
+      {
+        "id": "MT_59_MOU",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว (MoU)กระ",
+        "onclick": "setFormTypeRenew('MT_59','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว (MoU)','Application for Work Permit for Fo",
+        "visible": true
+      },
+      {
+        "id": "MT_59",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราวกระทำการแ",
+        "onclick": "setFormTypeRenew('MT_59','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว','Application for Work Permit for Foreigne",
+        "visible": true
+      },
+      {
+        "id": "MT_41_4_59",
+        "txt": "การยื่นคำร้องขอนำคนต่างด้าวสัญชาติกัมพูชา ลาว เวียดนาม เข้ามาทำงานกับนายจ้างในประเทศ (MoU) ของผู้รับ",
+        "onclick": "setFormTypeRenew('MT_59_MOU_RENEWAL','การยื่นคำร้องขอนำคนต่างด้าวสัญชาติกัมพูชา ลาว เวียดนาม เข้ามาทำงานกับนายจ้างในประเทศ (MoU) ของผู้รับใบอนุญาตนำคนต่างด้าวมา",
+        "visible": true
+      },
+      {
+        "id": "MT_61",
+        "txt": "การแจ้งการทำงานที่มีลักษณะจำเป็นหรือเร่งด่วนหรือเป็นงานเฉพาะกิจที่มีระยะเวลาทำงานให้เสร็จสิ้นภายใน 1",
+        "onclick": "setFormTypeRenew('MT_61','การแจ้งการทำงานที่มีลักษณะจำเป็นหรือเร่งด่วนหรือเป็นงานเฉพาะกิจที่มีระยะเวลาทำงานให้เสร็จสิ้นภายใน 15 วัน','Notification of work that ",
+        "visible": true
+      },
+      {
+        "id": "MT_60_2",
+        "txt": "นายจ้างยื่นคำขอรับใบอนุญาตทำงานแทนคนต่างด้าวที่อยู่ต่างประเทศเพื่อทำงานที่ใช้ความรู้ความสามารถทักษะฝ",
+        "onclick": "setFormTypeRenew('MT_59','นายจ้างยื่นคำขอรับใบอนุญาตทำงานแทนคนต่างด้าวที่อยู่ต่างประเทศเพื่อทำงานที่ใช้ความรู้ความสามารถทักษะฝีมือ','An employer submits an appl",
+        "visible": true
+      },
+      {
+        "id": "MT_63_V_2",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานขอคนต่างด้าวที่อยู่ในพื้นที่พักพิงชั่วคราวสำหรับผู้หนีภัยการสู้รบจากเมียน",
+        "onclick": "setFormTypeRenew('MT_63_V_2','การยื่นคำขอรับใบอนุญาตทำงานขอคนต่างด้าวที่อยู่ในพื้นที่พักพิงชั่วคราวสำหรับผู้หนีภัยการสู้รบจากเมียนมา','The application for a wor",
+        "visible": true
+      },
+      {
+        "id": "MT_63",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวกระทำการแทนคนต่างด้าว(1)ที่ถูกเนรเทศตามกฎหมายว่าด้วยการเนรเท",
+        "onclick": "setFormTypeRenew('MT_63','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าว','Application for a Work Permit for Foreigners','ពាក្យស្នើសុំលិខិតអនុញ្ញាតធ្វើការ ឬប័ណ្ណការងា",
+        "visible": true
+      },
+      {
+        "id": "MT_63_1",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวกระทำการแทนคนต่างด้าว(1) ถูกถอนสัญชาติ (2) เกิดในราชอาณาจักร",
+        "onclick": "setFormTypeRenew('MT_63_1','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าว','Application for a Work Permit for Foreigners','ពាក្យស្នើសុំលិខិតអនុញ្ញាតធ្វើការ ឬប័ណ្ណការ",
+        "visible": true
+      },
+      {
+        "id": "MT_63_2_19",
+        "txt": "การยื่นคำขอใบอนุญาตทำงานของคนต่างด้าวที่มีสถานะไม่ถูกต้องตามกฎหมายสัญชาติลาว เมียนมา และเวียดนาม ตาม",
+        "onclick": "setFormTypeRenew('MT_63_2_19','การยื่นคำขอใบอนุญาตทำงานของคนต่างด้าวที่มีสถานะไม่ถูกต้องตามกฎหมายสัญชาติลาว เมียนมา และเวียดนาม ตามมติ ครม. เมื่อวันที่ 11 พฤศจิ",
+        "visible": true
+      },
+      {
+        "id": "MT_64",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าว ที่ถือบัตรผ่านแดน (Border Pass)กระทำการแทนคนต่างด้าวมาตรา 6",
+        "onclick": "setFormTypeRenew('MT_64','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าว ที่ถือบัตรผ่านแดน (Border Pass)','Application for a Work Permit for Foreigners Holding a Bord",
+        "visible": true
+      },
+      {
+        "id": "MT_62_BOI",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการส่งเสริมการลงทุน (BOI)กระทำ",
+        "onclick": "setFormTypeRenew('MT_62_BOI','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการส่งเสริมการลงทุน (BOI)','Application for a Work Permit fo",
+        "visible": true
+      },
+      {
+        "id": "MT_62",
+        "txt": "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการนิคมอุตสาหกรรมแห่งประเทศไทย",
+        "onclick": "setFormTypeRenew('MT_62','การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการนิคมอุตสาหกรรมแห่งประเทศไทย กรมเชื้อเพลิง ธรรมชาติ และกฎหมายว",
+        "visible": true
+      },
+      {
+        "id": "MT_61_EXTEND",
+        "txt": "การแจ้งขยายระยะเวลาเพื่อทำงานอันมีลักษณะจำเป็นหรือเร่งด่วนหรืองานเฉพาะกิจกระทำการแทนคนต่างด้าวมาตรา ",
+        "onclick": "setFormTypeRenew('MT_61','การแจ้งขยายระยะเวลาเพื่อทำงานอันมีลักษณะจำเป็นหรือเร่งด่วนหรืองานเฉพาะกิจ','Notification for Extension of Time to Perform Necessary, U",
+        "visible": false
+      },
+      {
+        "id": "MT_59_RENEWAL",
+        "txt": "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว (Non",
+        "onclick": "setFormTypeRenew('MT_59','การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว (Non-Immigrant) เพื่อทำงานที่ใช้ความรู",
+        "visible": false
+      },
+      {
+        "id": "MT_59_MOU_RENEWAL",
+        "txt": "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoUกระทำการแทนคนต่างด้าวมาตรา 55",
+        "onclick": "setFormTypeRenew('MT_59_MOU_RENEWAL','การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU','Application for Extension of Work Permit for For",
+        "visible": false
+      },
+      {
+        "id": "MT_63_RENEWAL",
+        "txt": "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวกระทำการแทนคนต่างด้าว(1)ที่ถูกเนรเทศตามกฎหมายว่าด้วยการเ",
+        "onclick": "setFormTypeRenew('MT_63','การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าว','Application for Extension of Work Permit for Foreigners','ពាក្យស្នើសុំបន្តលិខិតអនុញ្ញាត",
+        "visible": false
+      },
+      {
+        "id": "MT_63_1_RENEWAL",
+        "txt": "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวกระทำการแทนคนต่างด้าว(1) ถูกถอนสัญชาติ (2) เกิดในราชอาณา",
+        "onclick": "setFormTypeRenew('MT_63_1','การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าว','Application for Extension of Work Permit for Foreigners','ពាក្យស្នើសុំបន្តលិខិតអនុញ្ញ",
+        "visible": false
+      },
+      {
+        "id": "MT_62_BOI_RENEWAL",
+        "txt": "การแจ้งขยายระยะเวลาทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการส่งเสริมการลงทุน (BOI)กระทำการ",
+        "onclick": "setFormTypeRenew('MT_62_BOI','การแจ้งขยายระยะเวลาทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการส่งเสริมการลงทุน (BOI)','Application for a Work Permit for F",
+        "visible": false
+      },
+      {
+        "id": "MT_62_RENEWAL",
+        "txt": "การแจ้งขยายระยะเวลาทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการนิคมอุตสาหกรรมแห่งประเทศไทย กร",
+        "onclick": "setFormTypeRenew('MT_62','การแจ้งขยายระยะเวลาทำงานของคนต่างด้าวที่เข้ามาทำงานตามกฎหมายว่าด้วยการนิคมอุตสาหกรรมแห่งประเทศไทย กรมเชื้อเพลิง ธรรมชาติ และกฎหมายว่าด",
+        "visible": false
+      },
+      {
+        "id": "MT_43",
+        "txt": "การแจ้งการส่งมอบคนต่างด้าวที่นำเข้ามาทำงานตาม MoU ให้กับนายจ้าง (บริษัทนำเข้าฯ ส่งมอบคนงานให้นายจ้าง",
+        "onclick": "setFormTypeRenew('','การแจ้งการส่งมอบคนต่างด้าวที่นำเข้ามาทำงานตาม MoU ให้กับนายจ้าง (บริษัทนำเข้าฯ ส่งมอบคนงานให้นายจ้าง)','Notification of the transfer of for",
+        "visible": false
+      },
+      {
+        "id": "REPLACE_CARD_25",
+        "txt": "การยื่นคำขอรับใบแทนใบอนุญาตทำงานกรณีใบอนุญาตทำงานสูญหายถูกทำลายหรือชำรุดในสาระสำคัญกระทำการแทนคนต่าง",
+        "onclick": "setFormTypeRenew('','การยื่นคำขอรับใบแทนใบอนุญาตทำงานกรณีใบอนุญาตทำงานสูญหายถูกทำลายหรือชำรุดในสาระสำคัญ','Application for Replacement of Work Permit in case th",
+        "visible": false
+      },
+      {
+        "id": "CHANGE_CARD",
+        "txt": "การยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งกระทบใบอนุญาตทำงานกระทำการแทนคนต่างด้าวอาทิ คำนำหน้า, ชื",
+        "onclick": "setFormTypeRenew('','การยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งกระทบใบอนุญาตทำงาน','Application to Change Information in the Work Permit, which affects the Wo",
+        "visible": false
+      },
+      {
+        "id": "CHANGE_EMPLOYER",
+        "txt": "การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาตกระทำการแทนคนต่างด้",
+        "onclick": "setFormTypeRenew('','การแจ้งการทำงาน และการยื่นคำขอเปลี่ยนรายการในใบอนุญาตทำงาน ซึ่งไม่กระทบในใบอนุญาต','Notification of Work and Submission of Request for Chan",
+        "visible": false
+      },
+      {
+        "id": "MT_13_1_INFORM",
+        "txt": "การแจ้งการจ้างคนต่างด้าวเข้าทํางานกับนายจ้างกระทำการแทนนายจ้างมาตรา 13 วรรคหนึ่ง (แบบ บต. 52)",
+        "onclick": "setFormTypeRenew('','การแจ้งการจ้างคนต่างด้าวเข้าทํางานกับนายจ้าง','Notification of the Employment of Foreign Workers with the Employer','ការជូនដំណឹងពលករបរទេសចូ",
+        "visible": false
+      },
+      {
+        "id": "MT_13_EXIT",
+        "txt": "การแจ้งคนต่างด้าวออกจากงานของนายจ้างกระทำการแทนนายจ้างมาตรา 13 วรรคหนึ่ง/ มาตรา 46 วรรคสาม (แบบ บต.5",
+        "onclick": "setFormTypeRenew('','การแจ้งคนต่างด้าวออกจากงานของนายจ้าง','Notification of Termination of Employment of a Foreigner by the Employer','ការជូនដំណឹងអំពី ពលករបរទេស",
+        "visible": false
+      }
+    ]
+  },
+  "target_item": {
+    "id": "MT_59_MOU_RENEWAL",
+    "txt": "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoUกระทำการแทนคนต่างด้าวมาตรา 55 (แบบ บต. 30)",
+    "onclick": "setFormTypeRenew('MT_59_MOU_RENEWAL','การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU','Application for Extension of Work Permit for Foreigners Authorized to Work under MoU','ពាក្យស្នើសុំបន្តលិខិតអនុញ្ញាតធ្វើការ ឬប័ណ្ណការងារសម្រាប់ពលករបរទេសដែលអនុញ្ញាតឱ្យធ្វើការតាមច្បាប់ MOU','MOU အလုပ်လုပ်ကိုင်ခွင့်ပြုထားသော နိုင်ငံခြားသားအလုပ်သမားများအား အလုပ်လုပ်ကိုင်ခွင့် သက်တမ်းတိုး လျှောက်ထားခြင်း','Nộp đơn xin gia hạn giấy phép lao động cho người nước ngoài được phép làm việc theo MOU','ການຍື່ນ​ຄໍາຮ້ອງ ​ຂໍ​ຕໍ່​ໃບ​ອະ​ນຸ​ຍາດ​ເຮັດ​ວຽກ​ໃຫ້​ຄົນ​ຕ່າງ​ດ້າວ​ທີ່​ໄດ້​ຮັບ​ອະ​ນຸ​ຍາດ​ໃຫ້​ເຮັດ​ວຽກ​ຕາມ​ບົດ​ບັນ​ທຶກ MoU','MT_59_MOU_RENEWAL','RenewMOU/FormRenewMOU','มาตรา 55 (แบบ บต. 30)','Section 55 (Form BT. 30)','អាត្រា 55 (ទម្រង់ បត.30)','အခန်း ၅၅ (ပုံစံ ဘတ.၃၀)','Điều 55 (mẫu BT.30)','ມາດຕາ 55 (ແບບ ບຕ.30)','/WorkPermit?user_type=alien&ft=RENEW_REQ&ut=alien&uti=3')",
+    "href": "",
+    "visible": true
+  },
+  "form_page": {
+    "url": "https://eworkpermit.doe.go.th/WorkPermit?user_type=alien&ft=RENEW_REQ&ut=alien&uti=3",
+    "title": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์",
+    "inputs": [
+      {
+        "id": "txt_search_alien_emp",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "สามารถค้นหาข้อมูลนายจ้าง ด้วยเลขบัตรประจำตัวประชาชน /เลขที่น"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ข้าพเจ้าขอรับรองว่า มีความประสงค์ในการยื่นคำขอใบอนุญาตแทนคนต"
+      },
+      {
+        "id": "alien_id",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "หมายเลขอ้างอิงของคนต่างด้าว"
+      },
+      {
+        "id": "other_name",
+        "name": "other_name",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ"
+      },
+      {
+        "id": "birthDateCheck",
+        "name": "birthDateCheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เกิดวันที่"
+      },
+      {
+        "id": "employer_id_search",
+        "name": "employerID_63_check",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "employer_id_search2",
+        "name": "employerID_63_check",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "name_thcheckreg2",
+        "name": "name_thcheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(ไทย)"
+      },
+      {
+        "id": "mid_name_thcheckreg2",
+        "name": "mid_name_thcheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (ไทย)"
+      },
+      {
+        "id": "lastname_thcheckreg2",
+        "name": "lastname_thcheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล(ไทย)"
+      },
+      {
+        "id": "name_thcheckreg",
+        "name": "name_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(ไทย)"
+      },
+      {
+        "id": "mid_name_thcheckreg",
+        "name": "mid_name_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (ไทย)"
+      },
+      {
+        "id": "lastname_thcheckreg",
+        "name": "lastname_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล(ไทย)"
+      },
+      {
+        "id": "name_encheckreg",
+        "name": "name_encheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(Eng)"
+      },
+      {
+        "id": "middlenamecheck",
+        "name": "middlenamecheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (Eng)"
+      },
+      {
+        "id": "lastname_encheckreg2",
+        "name": "lastname_encheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล (Eng)"
+      },
+      {
+        "id": "companyname_th",
+        "name": "companyname_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อสมาคมหรือมูลนิธิ (ไทย)"
+      },
+      {
+        "id": "companyname_en",
+        "name": "companyname_en",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อสมาคมหรือมูลนิธิ (Eng)"
+      },
+      {
+        "id": "tax_id",
+        "name": "tax_id",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เลขประจำตัวผู้เสียภาษีอากร"
+      },
+      {
+        "id": "user_tel",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์"
+      },
+      {
+        "id": "addressCheck",
+        "name": "addressCheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เลขที่"
+      },
+      {
+        "id": "txt_moo",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "หมู่ที่/อาคาร"
+      },
+      {
+        "id": "txt_soi",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ซอย"
+      },
+      {
+        "id": "txt_road",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ถนน"
+      },
+      {
+        "id": "getdatapostcode",
+        "name": "getdatapostcode",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "รหัสไปรษณีย์"
+      },
+      {
+        "id": "address_tel",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์(ถ้ามี)"
+      },
+      {
+        "id": "accept-terms",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ที่อยู่ตรงกับที่อยู่ติดต่อได้"
+      },
+      {
+        "id": "addressCheck2",
+        "name": "addressCheck2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เลขที่"
+      },
+      {
+        "id": "txt_moo2",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "หมู่ที่/อาคาร"
+      },
+      {
+        "id": "txt_soi2",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ซอย"
+      },
+      {
+        "id": "txt_road2",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ถนน"
+      },
+      {
+        "id": "getdatapostcode2",
+        "name": "getdatapostcode2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "รหัสไปรษณีย์"
+      },
+      {
+        "id": "company_tel",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์(ถ้ามี)"
+      },
+      {
+        "id": "user_tel_JP",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์(ถ้ามี)"
+      },
+      {
+        "id": "user_fax_JP",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรสาร (ถ้ามี)"
+      },
+      {
+        "id": "",
+        "name": "fooby[1][]",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ประเภทกิจการระบบสารสนเทศแรงงานต่างด้าว 4 สัญชาติ (กัมพูชา ลา"
+      },
+      {
+        "id": "",
+        "name": "fooby[1][]",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ประเภทกิจการมาตรฐานอุตสาหกรรม"
+      },
+      {
+        "id": "txtsearchBus",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "firstName_en",
+        "name": "firstName_en",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(Eng)"
+      },
+      {
+        "id": "middleName_en",
+        "name": "middleName_en",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (Eng)"
+      },
+      {
+        "id": "lastName_en",
+        "name": "name_al_encheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล (Eng)"
+      },
+      {
+        "id": "firstName_th",
+        "name": "firstName_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(ไทย)"
+      },
+      {
+        "id": "middleName_th",
+        "name": "middleName_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (ไทย)"
+      },
+      {
+        "id": "lastName_th",
+        "name": "lastName_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล(ไทย)"
+      },
+      {
+        "id": "birthDateCheck-add",
+        "name": "birthDateCheck-add",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      },
+      {
+        "id": "new_email",
+        "name": "new_email",
+        "type": "email",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "อีเมล"
+      },
+      {
+        "id": "user_tel",
+        "name": "user_tel",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์"
+      },
+      {
+        "id": "",
+        "name": "radio-payment",
+        "type": "radio",
+        "placeholder": "",
+        "visible": false,
+        "label": ""
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "visible": true,
+        "opts": [
+          {
+            "v": "th",
+            "t": "ไทย"
+          },
+          {
+            "v": "en",
+            "t": "English"
+          },
+          {
+            "v": "mm",
+            "t": "မြန်မာ"
+          },
+          {
+            "v": "vn",
+            "t": "ngôn ngữ tiếng Việt"
+          },
+          {
+            "v": "lo",
+            "t": "ພາສາລາວ"
+          },
+          {
+            "v": "cb",
+            "t": "ភាសាខ្មែរ"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix",
+        "name": "alien_prefix",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "นาย"
+          },
+          {
+            "v": "2",
+            "t": "นาง"
+          },
+          {
+            "v": "3",
+            "t": "นางสาว"
+          }
+        ]
+      },
+      {
+        "id": "nationality_al",
+        "name": "nationalityCheck",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "AF",
+            "t": "อัฟกัน"
+          },
+          {
+            "v": "AL",
+            "t": "แอลเบเนีย"
+          },
+          {
+            "v": "DZ",
+            "t": "แอลจีเรีย"
+          },
+          {
+            "v": "AS",
+            "t": "ซามัว"
+          },
+          {
+            "v": "AD",
+            "t": "อันดอร์รา"
+          },
+          {
+            "v": "AO",
+            "t": "แองโกลา"
+          },
+          {
+            "v": "AQ",
+            "t": "แอนตาร์กติกา"
+          },
+          {
+            "v": "AG",
+            "t": "แอนติกาและบาร์บูดา"
+          },
+          {
+            "v": "AR",
+            "t": "อาร์เจนตินา"
+          },
+          {
+            "v": "AM",
+            "t": "อาร์เมเนีย"
+          },
+          {
+            "v": "AU",
+            "t": "ออสเตรเลีย"
+          },
+          {
+            "v": "AT",
+            "t": "ออสเตรีย"
+          },
+          {
+            "v": "AZ",
+            "t": "อาเซอร์ไบจาน"
+          },
+          {
+            "v": "BS",
+            "t": "บาฮามาส"
+          },
+          {
+            "v": "BH",
+            "t": "บาห์เรน"
+          },
+          {
+            "v": "BD",
+            "t": "บังกลาเทศ"
+          },
+          {
+            "v": "BB",
+            "t": "บาร์เบโดส"
+          },
+          {
+            "v": "BY",
+            "t": "เบลารุส"
+          },
+          {
+            "v": "BE",
+            "t": "เบลเยียม"
+          },
+          {
+            "v": "BZ",
+            "t": "เบลีซ"
+          },
+          {
+            "v": "BJ",
+            "t": "เบนิน"
+          },
+          {
+            "v": "BM",
+            "t": "เบอร์มูด้า"
+          },
+          {
+            "v": "BT",
+            "t": "ภูฏาน"
+          },
+          {
+            "v": "BO",
+            "t": "โบลิเวีย"
+          },
+          {
+            "v": "BQ",
+            "t": "โบแนร์ ซินต์เอิสตาติอุสและซาบา"
+          },
+          {
+            "v": "BA",
+            "t": "บอสเนียและเฮอร์เซโกวีนา"
+          },
+          {
+            "v": "BV",
+            "t": "นอร์เวย์ (Bouvet Is.)"
+          },
+          {
+            "v": "BR",
+            "t": "บราซิล"
+          },
+          {
+            "v": "BG",
+            "t": "บัลแกเรีย"
+          },
+          {
+            "v": "BI",
+            "t": "บุรุนดี"
+          },
+          {
+            "v": "CV",
+            "t": "เคปเวิร์ด"
+          },
+          {
+            "v": "SX",
+            "t": "ซินต์มาร์เติน"
+          },
+          {
+            "v": "SK",
+            "t": "สโลวาเกีย"
+          },
+          {
+            "v": "SI",
+            "t": "สโลวีเนีย"
+          },
+          {
+            "v": "SB",
+            "t": "หมู่เกาะโซโลมอน"
+          },
+          {
+            "v": "SO",
+            "t": "โซมาเลีย"
+          },
+          {
+            "v": "ES",
+            "t": "สเปน"
+          },
+          {
+            "v": "LK",
+            "t": "ศรีลังกา"
+          },
+          {
+            "v": "SD",
+            "t": "ซูดาน"
+          },
+          {
+            "v": "SR",
+            "t": "ซูรินาม"
+          },
+          {
+            "v": "SE",
+            "t": "สวีเดน"
+          },
+          {
+            "v": "CH",
+            "t": "สวิตเซอร์แลนด์"
+          },
+          {
+            "v": "TW",
+            "t": "จีน (ไต้หวัน)"
+          },
+          {
+            "v": "TJ",
+            "t": "ทาจิกิสถาน"
+          },
+          {
+            "v": "TG",
+            "t": "โตโก"
+          },
+          {
+            "v": "TO",
+            "t": "ตองกา"
+          },
+          {
+            "v": "TT",
+            "t": "ตรินิแดด หรือ โตเบโก"
+          },
+          {
+            "v": "TN",
+            "t": "ตูนิเซีย"
+          },
+          {
+            "v": "TR",
+            "t": "ตุรกี"
+          },
+          {
+            "v": "TM",
+            "t": "เติร์กเมนิสถาน"
+          },
+          {
+            "v": "TV",
+            "t": "ตูวาลู"
+          },
+          {
+            "v": "UG",
+            "t": "ยูกันดา"
+          },
+          {
+            "v": "UA",
+            "t": "ยูเครน"
+          },
+          {
+            "v": "AE",
+            "t": "เอมิเรตส์"
+          },
+          {
+            "v": "GB",
+            "t": "สหราชอาณาจักร"
+          },
+          {
+            "v": "US",
+            "t": "อเมริกัน"
+          },
+          {
+            "v": "UY",
+            "t": "อุรุกวัย"
+          },
+          {
+            "v": "UZ",
+            "t": "อุซเบกิสถาน"
+          },
+          {
+            "v": "VN",
+            "t": "เวียดนาม"
+          }
+        ]
+      },
+      {
+        "id": "sexCheck",
+        "name": "sexCheck",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "ชาย"
+          },
+          {
+            "v": "2",
+            "t": "หญิง"
+          }
+        ]
+      },
+      {
+        "id": "slt_employer_type",
+        "name": "employer_type_check",
+        "visible": false,
+        "opts": [
+          {
+            "v": "1,1",
+            "t": "บุคคลธรรมดา"
+          },
+          {
+            "v": "2,2",
+            "t": "นิติบุคคล - จดทะเบียนในประเทศไทย"
+          },
+          {
+            "v": "4,3",
+            "t": "โรงเรียนเอกชน"
+          },
+          {
+            "v": "5,4",
+            "t": "มหาวิทยาลัยเอกชน"
+          },
+          {
+            "v": "6,5",
+            "t": "หน่วยงานราชการ /รัฐวิสาหกิจ /มหาวิทยาลัยรัฐบาล/สถา"
+          },
+          {
+            "v": "7,6",
+            "t": "มูลนิธิ/สมาคม/องค์กรอิสระ"
+          },
+          {
+            "v": "8,7",
+            "t": "กิจการถ่ายทำภาพยนตร์จากต่างประเทศ"
+          },
+          {
+            "v": "1,8",
+            "t": "นายจ้าง-คนต่างชาติ บุคคลธรรมดา"
+          },
+          {
+            "v": "2,9",
+            "t": "นายจ้าง-คนต่างชาติ นิติบุคคล - จดทะเบียนในประเทศไท"
+          },
+          {
+            "v": "9,10",
+            "t": "นายจ้าง-คนต่างชาติ นิติบุคคล - จดทะเบียนในต่างประเ"
+          }
+        ]
+      },
+      {
+        "id": "user_type",
+        "name": "user_type",
+        "visible": false,
+        "opts": [
+          {
+            "v": "2",
+            "t": "นายจ้าง-คนไทย"
+          },
+          {
+            "v": "4",
+            "t": "นายจ้าง-คนต่างชาติ"
+          }
+        ]
+      },
+      {
+        "id": "Employer_typeRegister",
+        "name": "Employer_typeRegister",
+        "visible": false,
+        "opts": [
+          {
+            "v": "1,1",
+            "t": "บุคคลธรรมดา"
+          },
+          {
+            "v": "2,2",
+            "t": "นิติบุคคล - จดทะเบียนในประเทศไทย"
+          },
+          {
+            "v": "4,3",
+            "t": "โรงเรียนเอกชน"
+          },
+          {
+            "v": "5,4",
+            "t": "มหาวิทยาลัยเอกชน"
+          },
+          {
+            "v": "6,5",
+            "t": "หน่วยงานราชการ /รัฐวิสาหกิจ /มหาวิทยาลัยรัฐบาล/สถา"
+          },
+          {
+            "v": "7,6",
+            "t": "มูลนิธิ/สมาคม/องค์กรอิสระ"
+          },
+          {
+            "v": "8,7",
+            "t": "กิจการถ่ายทำภาพยนตร์จากต่างประเทศ"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix3",
+        "name": "alien_prefix3",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "นาย"
+          },
+          {
+            "v": "2",
+            "t": "นาง"
+          },
+          {
+            "v": "3",
+            "t": "นางสาว"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix2",
+        "name": "alien_prefix2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "นาย"
+          },
+          {
+            "v": "2",
+            "t": "นาง"
+          },
+          {
+            "v": "3",
+            "t": "นางสาว"
+          }
+        ]
+      },
+      {
+        "id": "GetDataProvince",
+        "name": "GetDataProvince",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "10",
+            "t": "กรุงเทพมหานคร"
+          },
+          {
+            "v": "11",
+            "t": "สมุทรปราการ"
+          },
+          {
+            "v": "12",
+            "t": "นนทบุรี"
+          },
+          {
+            "v": "13",
+            "t": "ปทุมธานี"
+          },
+          {
+            "v": "14",
+            "t": "พระนครศรีอยุธยา"
+          },
+          {
+            "v": "15",
+            "t": "อ่างทอง"
+          },
+          {
+            "v": "16",
+            "t": "ลพบุรี"
+          },
+          {
+            "v": "17",
+            "t": "สิงห์บุรี"
+          },
+          {
+            "v": "18",
+            "t": "ชัยนาท"
+          },
+          {
+            "v": "19",
+            "t": "สระบุรี"
+          },
+          {
+            "v": "20",
+            "t": "ชลบุรี"
+          },
+          {
+            "v": "21",
+            "t": "ระยอง"
+          },
+          {
+            "v": "22",
+            "t": "จันทบุรี"
+          },
+          {
+            "v": "23",
+            "t": "ตราด"
+          },
+          {
+            "v": "24",
+            "t": "ฉะเชิงเทรา"
+          },
+          {
+            "v": "25",
+            "t": "ปราจีนบุรี"
+          },
+          {
+            "v": "26",
+            "t": "นครนายก"
+          },
+          {
+            "v": "27",
+            "t": "สระแก้ว"
+          },
+          {
+            "v": "30",
+            "t": "นครราชสีมา"
+          },
+          {
+            "v": "31",
+            "t": "บุรีรัมย์"
+          },
+          {
+            "v": "32",
+            "t": "สุรินทร์"
+          },
+          {
+            "v": "33",
+            "t": "ศรีสะเกษ"
+          },
+          {
+            "v": "34",
+            "t": "อุบลราชธานี"
+          },
+          {
+            "v": "35",
+            "t": "ยโสธร"
+          },
+          {
+            "v": "36",
+            "t": "ชัยภูมิ"
+          },
+          {
+            "v": "37",
+            "t": "อำนาจเจริญ"
+          },
+          {
+            "v": "38",
+            "t": "บึงกาฬ"
+          },
+          {
+            "v": "39",
+            "t": "หนองบัวลำภู"
+          },
+          {
+            "v": "40",
+            "t": "ขอนแก่น"
+          },
+          {
+            "v": "41",
+            "t": "อุดรธานี"
+          },
+          {
+            "v": "42",
+            "t": "เลย"
+          },
+          {
+            "v": "43",
+            "t": "หนองคาย"
+          },
+          {
+            "v": "44",
+            "t": "มหาสารคาม"
+          },
+          {
+            "v": "45",
+            "t": "ร้อยเอ็ด"
+          },
+          {
+            "v": "46",
+            "t": "กาฬสินธุ์"
+          },
+          {
+            "v": "47",
+            "t": "สกลนคร"
+          },
+          {
+            "v": "48",
+            "t": "นครพนม"
+          },
+          {
+            "v": "49",
+            "t": "มุกดาหาร"
+          },
+          {
+            "v": "50",
+            "t": "เชียงใหม่"
+          },
+          {
+            "v": "51",
+            "t": "ลำพูน"
+          },
+          {
+            "v": "52",
+            "t": "ลำปาง"
+          },
+          {
+            "v": "53",
+            "t": "อุตรดิตถ์"
+          },
+          {
+            "v": "54",
+            "t": "แพร่"
+          },
+          {
+            "v": "55",
+            "t": "น่าน"
+          },
+          {
+            "v": "56",
+            "t": "พะเยา"
+          },
+          {
+            "v": "57",
+            "t": "เชียงราย"
+          },
+          {
+            "v": "58",
+            "t": "แม่ฮ่องสอน"
+          },
+          {
+            "v": "60",
+            "t": "นครสวรรค์"
+          },
+          {
+            "v": "61",
+            "t": "อุทัยธานี"
+          },
+          {
+            "v": "62",
+            "t": "กำแพงเพชร"
+          },
+          {
+            "v": "63",
+            "t": "ตาก"
+          },
+          {
+            "v": "64",
+            "t": "สุโขทัย"
+          },
+          {
+            "v": "65",
+            "t": "พิษณุโลก"
+          },
+          {
+            "v": "66",
+            "t": "พิจิตร"
+          },
+          {
+            "v": "67",
+            "t": "เพชรบูรณ์"
+          },
+          {
+            "v": "70",
+            "t": "ราชบุรี"
+          },
+          {
+            "v": "71",
+            "t": "กาญจนบุรี"
+          },
+          {
+            "v": "72",
+            "t": "สุพรรณบุรี"
+          },
+          {
+            "v": "73",
+            "t": "นครปฐม"
+          }
+        ]
+      },
+      {
+        "id": "GetDataDistrict",
+        "name": "GetDataDistrict",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "GetDataSubDistrict",
+        "name": "GetDataSubDistrict",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "GetDataProvince2",
+        "name": "GetDataProvince2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "10",
+            "t": "กรุงเทพมหานคร"
+          },
+          {
+            "v": "11",
+            "t": "สมุทรปราการ"
+          },
+          {
+            "v": "12",
+            "t": "นนทบุรี"
+          },
+          {
+            "v": "13",
+            "t": "ปทุมธานี"
+          },
+          {
+            "v": "14",
+            "t": "พระนครศรีอยุธยา"
+          },
+          {
+            "v": "15",
+            "t": "อ่างทอง"
+          },
+          {
+            "v": "16",
+            "t": "ลพบุรี"
+          },
+          {
+            "v": "17",
+            "t": "สิงห์บุรี"
+          },
+          {
+            "v": "18",
+            "t": "ชัยนาท"
+          },
+          {
+            "v": "19",
+            "t": "สระบุรี"
+          },
+          {
+            "v": "20",
+            "t": "ชลบุรี"
+          },
+          {
+            "v": "21",
+            "t": "ระยอง"
+          },
+          {
+            "v": "22",
+            "t": "จันทบุรี"
+          },
+          {
+            "v": "23",
+            "t": "ตราด"
+          },
+          {
+            "v": "24",
+            "t": "ฉะเชิงเทรา"
+          },
+          {
+            "v": "25",
+            "t": "ปราจีนบุรี"
+          },
+          {
+            "v": "26",
+            "t": "นครนายก"
+          },
+          {
+            "v": "27",
+            "t": "สระแก้ว"
+          },
+          {
+            "v": "30",
+            "t": "นครราชสีมา"
+          },
+          {
+            "v": "31",
+            "t": "บุรีรัมย์"
+          },
+          {
+            "v": "32",
+            "t": "สุรินทร์"
+          },
+          {
+            "v": "33",
+            "t": "ศรีสะเกษ"
+          },
+          {
+            "v": "34",
+            "t": "อุบลราชธานี"
+          },
+          {
+            "v": "35",
+            "t": "ยโสธร"
+          },
+          {
+            "v": "36",
+            "t": "ชัยภูมิ"
+          },
+          {
+            "v": "37",
+            "t": "อำนาจเจริญ"
+          },
+          {
+            "v": "38",
+            "t": "บึงกาฬ"
+          },
+          {
+            "v": "39",
+            "t": "หนองบัวลำภู"
+          },
+          {
+            "v": "40",
+            "t": "ขอนแก่น"
+          },
+          {
+            "v": "41",
+            "t": "อุดรธานี"
+          },
+          {
+            "v": "42",
+            "t": "เลย"
+          },
+          {
+            "v": "43",
+            "t": "หนองคาย"
+          },
+          {
+            "v": "44",
+            "t": "มหาสารคาม"
+          },
+          {
+            "v": "45",
+            "t": "ร้อยเอ็ด"
+          },
+          {
+            "v": "46",
+            "t": "กาฬสินธุ์"
+          },
+          {
+            "v": "47",
+            "t": "สกลนคร"
+          },
+          {
+            "v": "48",
+            "t": "นครพนม"
+          },
+          {
+            "v": "49",
+            "t": "มุกดาหาร"
+          },
+          {
+            "v": "50",
+            "t": "เชียงใหม่"
+          },
+          {
+            "v": "51",
+            "t": "ลำพูน"
+          },
+          {
+            "v": "52",
+            "t": "ลำปาง"
+          },
+          {
+            "v": "53",
+            "t": "อุตรดิตถ์"
+          },
+          {
+            "v": "54",
+            "t": "แพร่"
+          },
+          {
+            "v": "55",
+            "t": "น่าน"
+          },
+          {
+            "v": "56",
+            "t": "พะเยา"
+          },
+          {
+            "v": "57",
+            "t": "เชียงราย"
+          },
+          {
+            "v": "58",
+            "t": "แม่ฮ่องสอน"
+          },
+          {
+            "v": "60",
+            "t": "นครสวรรค์"
+          },
+          {
+            "v": "61",
+            "t": "อุทัยธานี"
+          },
+          {
+            "v": "62",
+            "t": "กำแพงเพชร"
+          },
+          {
+            "v": "63",
+            "t": "ตาก"
+          },
+          {
+            "v": "64",
+            "t": "สุโขทัย"
+          },
+          {
+            "v": "65",
+            "t": "พิษณุโลก"
+          },
+          {
+            "v": "66",
+            "t": "พิจิตร"
+          },
+          {
+            "v": "67",
+            "t": "เพชรบูรณ์"
+          },
+          {
+            "v": "70",
+            "t": "ราชบุรี"
+          },
+          {
+            "v": "71",
+            "t": "กาญจนบุรี"
+          },
+          {
+            "v": "72",
+            "t": "สุพรรณบุรี"
+          },
+          {
+            "v": "73",
+            "t": "นครปฐม"
+          }
+        ]
+      },
+      {
+        "id": "GetDataDistrict2",
+        "name": "GetDataDistrict2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "GetDataSubDistrict2",
+        "name": "GetDataSubDistrict2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "",
+        "name": "myTable_length",
+        "visible": false,
+        "opts": [
+          {
+            "v": "10",
+            "t": "10"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix_en",
+        "name": "alien_prefix_en",
+        "visible": false,
+        "opts": []
+      },
+      {
+        "id": "alien_prefix_th",
+        "name": "alien_prefix_th",
+        "visible": false,
+        "opts": []
+      },
+      {
+        "id": "nationality_al_add",
+        "name": "nationality_al_add",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "AF",
+            "t": "อัฟกัน"
+          },
+          {
+            "v": "AL",
+            "t": "แอลเบเนีย"
+          },
+          {
+            "v": "DZ",
+            "t": "แอลจีเรีย"
+          },
+          {
+            "v": "AS",
+            "t": "ซามัว"
+          },
+          {
+            "v": "AD",
+            "t": "อันดอร์รา"
+          },
+          {
+            "v": "AO",
+            "t": "แองโกลา"
+          },
+          {
+            "v": "AQ",
+            "t": "แอนตาร์กติกา"
+          },
+          {
+            "v": "AG",
+            "t": "แอนติกาและบาร์บูดา"
+          },
+          {
+            "v": "AR",
+            "t": "อาร์เจนตินา"
+          },
+          {
+            "v": "AM",
+            "t": "อาร์เมเนีย"
+          },
+          {
+            "v": "AU",
+            "t": "ออสเตรเลีย"
+          },
+          {
+            "v": "AT",
+            "t": "ออสเตรีย"
+          },
+          {
+            "v": "AZ",
+            "t": "อาเซอร์ไบจาน"
+          },
+          {
+            "v": "BS",
+            "t": "บาฮามาส"
+          },
+          {
+            "v": "BH",
+            "t": "บาห์เรน"
+          },
+          {
+            "v": "BD",
+            "t": "บังกลาเทศ"
+          },
+          {
+            "v": "BB",
+            "t": "บาร์เบโดส"
+          },
+          {
+            "v": "BY",
+            "t": "เบลารุส"
+          },
+          {
+            "v": "BE",
+            "t": "เบลเยียม"
+          },
+          {
+            "v": "BZ",
+            "t": "เบลีซ"
+          },
+          {
+            "v": "BJ",
+            "t": "เบนิน"
+          },
+          {
+            "v": "BM",
+            "t": "เบอร์มูด้า"
+          },
+          {
+            "v": "BT",
+            "t": "ภูฏาน"
+          },
+          {
+            "v": "BO",
+            "t": "โบลิเวีย"
+          },
+          {
+            "v": "BQ",
+            "t": "โบแนร์ ซินต์เอิสตาติอุสและซาบา"
+          },
+          {
+            "v": "BA",
+            "t": "บอสเนียและเฮอร์เซโกวีนา"
+          },
+          {
+            "v": "BV",
+            "t": "นอร์เวย์ (Bouvet Is.)"
+          },
+          {
+            "v": "BR",
+            "t": "บราซิล"
+          },
+          {
+            "v": "BG",
+            "t": "บัลแกเรีย"
+          },
+          {
+            "v": "BI",
+            "t": "บุรุนดี"
+          },
+          {
+            "v": "CV",
+            "t": "เคปเวิร์ด"
+          },
+          {
+            "v": "SX",
+            "t": "ซินต์มาร์เติน"
+          },
+          {
+            "v": "SK",
+            "t": "สโลวาเกีย"
+          },
+          {
+            "v": "SI",
+            "t": "สโลวีเนีย"
+          },
+          {
+            "v": "SB",
+            "t": "หมู่เกาะโซโลมอน"
+          },
+          {
+            "v": "SO",
+            "t": "โซมาเลีย"
+          },
+          {
+            "v": "ES",
+            "t": "สเปน"
+          },
+          {
+            "v": "LK",
+            "t": "ศรีลังกา"
+          },
+          {
+            "v": "SD",
+            "t": "ซูดาน"
+          },
+          {
+            "v": "SR",
+            "t": "ซูรินาม"
+          },
+          {
+            "v": "SE",
+            "t": "สวีเดน"
+          },
+          {
+            "v": "CH",
+            "t": "สวิตเซอร์แลนด์"
+          },
+          {
+            "v": "TW",
+            "t": "จีน (ไต้หวัน)"
+          },
+          {
+            "v": "TJ",
+            "t": "ทาจิกิสถาน"
+          },
+          {
+            "v": "TG",
+            "t": "โตโก"
+          },
+          {
+            "v": "TO",
+            "t": "ตองกา"
+          },
+          {
+            "v": "TT",
+            "t": "ตรินิแดด หรือ โตเบโก"
+          },
+          {
+            "v": "TN",
+            "t": "ตูนิเซีย"
+          },
+          {
+            "v": "TR",
+            "t": "ตุรกี"
+          },
+          {
+            "v": "TM",
+            "t": "เติร์กเมนิสถาน"
+          },
+          {
+            "v": "TV",
+            "t": "ตูวาลู"
+          },
+          {
+            "v": "UG",
+            "t": "ยูกันดา"
+          },
+          {
+            "v": "UA",
+            "t": "ยูเครน"
+          },
+          {
+            "v": "AE",
+            "t": "เอมิเรตส์"
+          },
+          {
+            "v": "GB",
+            "t": "สหราชอาณาจักร"
+          },
+          {
+            "v": "US",
+            "t": "อเมริกัน"
+          },
+          {
+            "v": "UY",
+            "t": "อุรุกวัย"
+          },
+          {
+            "v": "UZ",
+            "t": "อุซเบกิสถาน"
+          }
+        ]
+      },
+      {
+        "id": "sexCheck_add",
+        "name": "sexCheck_add",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "ชาย"
+          },
+          {
+            "v": "2",
+            "t": "หญิง"
+          }
+        ]
+      },
+      {
+        "id": "birthDateCheckYear-add",
+        "name": "birthDateCheckYear-add",
+        "visible": false,
+        "opts": []
+      }
+    ],
+    "buttons": [
+      {
+        "tag": "A",
+        "id": "profile_info",
+        "cls": "btn btn-outline-primary mt-2 w-100 justify-content-center lang_profile_managemen",
+        "txt": "จัดการบัญชี",
+        "onclick": "openprofile()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary-pure equal-btn",
+        "txt": "เพิ่มบัญชีตัวเอง",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary-pure equal-btn",
+        "txt": "ลงทะเบียนแทนผู้อื่น",
+        "onclick": "goToregisterNew()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "dropdown-item p-3 lang_logout",
+        "txt": "ออกจากระบบ",
+        "onclick": "logout()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-primary px-3 py-2 d-flex align-items-center",
+        "txt": "เพิ่มข้อมูลคนต่างด้าว",
+        "onclick": "add_alien_modal.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary px-3 py-2 d-flex align-items-center",
+        "txt": "ค้นหาข้อมูลคนต่างด้าว",
+        "onclick": "search_alien_modal.show(event)",
+        "visible": true
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "ค้นหาข้อมูลคนต่างด้าว",
+        "onclick": "search_alien_modal.show(event)",
+        "visible": true
+      },
+      {
+        "tag": "A",
+        "id": "addEmpBtn",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "เพิ่มนายจ้าง",
+        "onclick": "add_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "ค้นหานายจ้าง",
+        "onclick": "search_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "addEmpBtn",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "เพิ่มนายจ้าง",
+        "onclick": "add_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "ค้นหานายจ้าง",
+        "onclick": "search_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_search_alien_emp",
+        "cls": "btn btn-dark lang_search mb-0",
+        "txt": "ค้นหา",
+        "onclick": "GetDataEmployerListByAgency()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "buttoncancel",
+        "cls": "btn btn-cancel float-right float-left lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "visible": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "gonextSubmit",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_next",
+        "txt": "ถัดไป",
+        "onclick": "openSubmitPage('')",
+        "visible": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "gonextSubmit61",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_next d-none",
+        "txt": "ถัดไป",
+        "onclick": "openSubmitPage61('')",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "search_alien_modal.close(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_search_alien_submit",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark lang_search searchEmployer mb-0",
+        "txt": "ค้นหา",
+        "onclick": "searchempdata()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "search_emp.close(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_search_emp_submit",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark lang_search mb-0 empOther forDbd",
+        "txt": "ค้นหา",
+        "onclick": "searchDbd()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary px-5 py-3 forMT19 d-none",
+        "txt": "ตรวจสอบข้อมูล",
+        "onclick": "checkinformation()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary btt-draft action-button float-right",
+        "txt": "เพิ่มประเภทกิจการ",
+        "onclick": "checkedSltBusiness()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 only_individual d-none",
+        "txt": "ตรวจสอบข้อมูล DBD",
+        "onclick": "FindEmpinDBD()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "closemodalempadd()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "add_emp",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close m-0 p-0",
+        "txt": "×",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary btt-draft action-button float-right w-100 lang_search",
+        "txt": "ค้นหา",
+        "onclick": "GetDataRequestFormSearch()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-cancel  float-right float-left lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "clearBusiness()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_addBusiness",
+        "cls": "btn btn-next btn-primary  action-button float-right lang_lbl_comfirm",
+        "txt": "ยืนยัน",
+        "onclick": "addBusiness()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "add_alien_modal.close(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_add_alien_submit",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close",
+        "txt": "×",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark previous action-button-previous float-right-test w-48-bt button_can",
+        "txt": "ยกเลิก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "buttonclickacceptwork",
+        "cls": "btn btn-primary lang_lbl_comfirm",
+        "txt": "ยืนยัน",
+        "onclick": "buttonclickacceptwork()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "",
+        "txt": "“ยกเลิกคำขอ”",
+        "onclick": "CancelForm()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "",
+        "txt": "“ยกเลิกคำขอ”",
+        "onclick": "CancelForm2()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close",
+        "txt": "×",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "openpaymentdetail",
+        "cls": "btn btn-primary lang_make_payment",
+        "txt": "ชำระเงิน",
+        "onclick": "OpentWP()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark btn-block mt-0 mb-0 lang_btn_close_windown",
+        "txt": "ปิดหน้าต่าง",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close",
+        "txt": "×",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "button_payment",
+        "cls": "btn btn-primary m-0 lang_print_form_payment",
+        "txt": "พิมพ์แบบฟอร์มการชำระเงิน",
+        "onclick": "UpdatePayment()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark btn-block m-0 mt-2 col-12 col-md-6 btn-modal-payment lang_href_back",
+        "txt": "ย้อนกลับ",
+        "onclick": "backtoPayment_Modal()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark btn-block m-0 mt-2 col-12 col-md-6 btn-modal-payment lang_btn_close",
+        "txt": "ปิดหน้าต่าง",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close position_multi",
+        "txt": "×",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary proofpayment lang_print_proof_payment Openproofpayment",
+        "txt": "พิมพ์หลักฐานการชำระเงิน",
+        "onclick": "Openproofpayment()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "closemodalsuccess",
+        "cls": "btn btn-dark btn-block mt-0 mb-0 lang_btn_close_windown",
+        "txt": "ปิดหน้าต่าง",
+        "onclick": "reloadPage()",
+        "visible": false
+      }
+    ],
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "ข้อมูลผู้รับอนุญาตให้นำคนต่างด้าวมาทำงาน",
+      "ข้อมูลคนต่างด้าวที่ต้องการดำเนินการแทน",
+      "ข้อมูลนายจ้างที่ต้องการดำเนินการแทน",
+      "นายจ้าง 0 รายการ",
+      "ค้นหาข้อมูลคนต่างด้าว",
+      "ค้นหานายจ้าง",
+      "วิธีการหาข้อมูลนายจ้าง",
+      "เพิ่มนายจ้าง",
+      "ข้อมูลสถานที่ทำงาน/สาขา",
+      "ที่อยู่ที่ติดต่อได้",
+      "สถานที่ทำงาน/สาขา",
+      "ข้อมูลสถานที่ทำงาน/สาขา",
+      "รายชื่อกรรมการ",
+      "กรรมการลงชื่อผูกพัน",
+      "ประเภทกิจการ",
+      "เลือกประเภทกิจการ",
+      "เพิ่มข้อมูลคนต่างด้าว",
+      "เลือกเหตุผลปฏิเสธการจ้างงาน",
+      "ชำระเงิน",
+      "เลือกวิธีชำระเงิน",
+      "รายการชำระเงิน",
+      "รายการรอชำระเงิน"
+    ]
+  },
+  "form_url": "https://eworkpermit.doe.go.th/WorkPermit?user_type=alien&ft=RENEW_REQ&ut=alien&uti=3",
+  "after_search_click": {
+    "url": "https://eworkpermit.doe.go.th/WorkPermit?user_type=alien&ft=RENEW_REQ&ut=alien&uti=3",
+    "title": "e-WorkPermit : ระบบอนุญาตทำงานของคนต่างด้าวทางอิเล็กทรอนิกส์",
+    "inputs": [
+      {
+        "id": "txt_search_alien_emp",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "สามารถค้นหาข้อมูลนายจ้าง ด้วยเลขบัตรประจำตัวประชาชน /เลขที่น"
+      },
+      {
+        "id": "check_truth",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ข้าพเจ้าขอรับรองว่า มีความประสงค์ในการยื่นคำขอใบอนุญาตแทนคนต"
+      },
+      {
+        "id": "alien_id",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "หมายเลขอ้างอิงของคนต่างด้าว"
+      },
+      {
+        "id": "other_name",
+        "name": "other_name",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ"
+      },
+      {
+        "id": "birthDateCheck",
+        "name": "birthDateCheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เกิดวันที่"
+      },
+      {
+        "id": "employer_id_search",
+        "name": "employerID_63_check",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "employer_id_search2",
+        "name": "employerID_63_check",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "name_thcheckreg2",
+        "name": "name_thcheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(ไทย)"
+      },
+      {
+        "id": "mid_name_thcheckreg2",
+        "name": "mid_name_thcheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (ไทย)"
+      },
+      {
+        "id": "lastname_thcheckreg2",
+        "name": "lastname_thcheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล(ไทย)"
+      },
+      {
+        "id": "name_thcheckreg",
+        "name": "name_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(ไทย)"
+      },
+      {
+        "id": "mid_name_thcheckreg",
+        "name": "mid_name_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (ไทย)"
+      },
+      {
+        "id": "lastname_thcheckreg",
+        "name": "lastname_thcheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล(ไทย)"
+      },
+      {
+        "id": "name_encheckreg",
+        "name": "name_encheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(Eng)"
+      },
+      {
+        "id": "middlenamecheck",
+        "name": "middlenamecheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (Eng)"
+      },
+      {
+        "id": "lastname_encheckreg2",
+        "name": "lastname_encheckreg2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล (Eng)"
+      },
+      {
+        "id": "companyname_th",
+        "name": "companyname_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อสมาคมหรือมูลนิธิ (ไทย)"
+      },
+      {
+        "id": "companyname_en",
+        "name": "companyname_en",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อสมาคมหรือมูลนิธิ (Eng)"
+      },
+      {
+        "id": "tax_id",
+        "name": "tax_id",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เลขประจำตัวผู้เสียภาษีอากร"
+      },
+      {
+        "id": "user_tel",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์"
+      },
+      {
+        "id": "addressCheck",
+        "name": "addressCheck",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เลขที่"
+      },
+      {
+        "id": "txt_moo",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "หมู่ที่/อาคาร"
+      },
+      {
+        "id": "txt_soi",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ซอย"
+      },
+      {
+        "id": "txt_road",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ถนน"
+      },
+      {
+        "id": "getdatapostcode",
+        "name": "getdatapostcode",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "รหัสไปรษณีย์"
+      },
+      {
+        "id": "address_tel",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์(ถ้ามี)"
+      },
+      {
+        "id": "accept-terms",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ที่อยู่ตรงกับที่อยู่ติดต่อได้"
+      },
+      {
+        "id": "addressCheck2",
+        "name": "addressCheck2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "เลขที่"
+      },
+      {
+        "id": "txt_moo2",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "หมู่ที่/อาคาร"
+      },
+      {
+        "id": "txt_soi2",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ซอย"
+      },
+      {
+        "id": "txt_road2",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ถนน"
+      },
+      {
+        "id": "getdatapostcode2",
+        "name": "getdatapostcode2",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "รหัสไปรษณีย์"
+      },
+      {
+        "id": "company_tel",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์(ถ้ามี)"
+      },
+      {
+        "id": "user_tel_JP",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์(ถ้ามี)"
+      },
+      {
+        "id": "user_fax_JP",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรสาร (ถ้ามี)"
+      },
+      {
+        "id": "",
+        "name": "fooby[1][]",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ประเภทกิจการระบบสารสนเทศแรงงานต่างด้าว 4 สัญชาติ (กัมพูชา ลา"
+      },
+      {
+        "id": "",
+        "name": "fooby[1][]",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ประเภทกิจการมาตรฐานอุตสาหกรรม"
+      },
+      {
+        "id": "txtsearchBus",
+        "name": "",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "firstName_en",
+        "name": "firstName_en",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(Eng)"
+      },
+      {
+        "id": "middleName_en",
+        "name": "middleName_en",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (Eng)"
+      },
+      {
+        "id": "lastName_en",
+        "name": "name_al_encheckreg",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล (Eng)"
+      },
+      {
+        "id": "firstName_th",
+        "name": "firstName_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อ(ไทย)"
+      },
+      {
+        "id": "middleName_th",
+        "name": "middleName_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "ชื่อกลาง (ไทย)"
+      },
+      {
+        "id": "lastName_th",
+        "name": "lastName_th",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "นามสกุล(ไทย)"
+      },
+      {
+        "id": "birthDateCheck-add",
+        "name": "birthDateCheck-add",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": ""
+      },
+      {
+        "id": "checkBirthDateType",
+        "name": "",
+        "type": "checkbox",
+        "placeholder": "",
+        "visible": false,
+        "label": "ไม่ทราบวันเกิดที่ชัดเจน"
+      },
+      {
+        "id": "new_email",
+        "name": "new_email",
+        "type": "email",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "อีเมล"
+      },
+      {
+        "id": "user_tel",
+        "name": "user_tel",
+        "type": "text",
+        "placeholder": "กรุณากรอก",
+        "visible": false,
+        "label": "โทรศัพท์"
+      },
+      {
+        "id": "",
+        "name": "radio-payment",
+        "type": "radio",
+        "placeholder": "",
+        "visible": false,
+        "label": ""
+      }
+    ],
+    "selects": [
+      {
+        "id": "sltLang",
+        "name": "",
+        "visible": true,
+        "opts": [
+          {
+            "v": "th",
+            "t": "ไทย"
+          },
+          {
+            "v": "en",
+            "t": "English"
+          },
+          {
+            "v": "mm",
+            "t": "မြန်မာ"
+          },
+          {
+            "v": "vn",
+            "t": "ngôn ngữ tiếng Việt"
+          },
+          {
+            "v": "lo",
+            "t": "ພາສາລາວ"
+          },
+          {
+            "v": "cb",
+            "t": "ភាសាខ្មែរ"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix",
+        "name": "alien_prefix",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "นาย"
+          },
+          {
+            "v": "2",
+            "t": "นาง"
+          },
+          {
+            "v": "3",
+            "t": "นางสาว"
+          }
+        ]
+      },
+      {
+        "id": "nationality_al",
+        "name": "nationalityCheck",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "AF",
+            "t": "อัฟกัน"
+          },
+          {
+            "v": "AL",
+            "t": "แอลเบเนีย"
+          },
+          {
+            "v": "DZ",
+            "t": "แอลจีเรีย"
+          },
+          {
+            "v": "AS",
+            "t": "ซามัว"
+          },
+          {
+            "v": "AD",
+            "t": "อันดอร์รา"
+          },
+          {
+            "v": "AO",
+            "t": "แองโกลา"
+          },
+          {
+            "v": "AQ",
+            "t": "แอนตาร์กติกา"
+          },
+          {
+            "v": "AG",
+            "t": "แอนติกาและบาร์บูดา"
+          },
+          {
+            "v": "AR",
+            "t": "อาร์เจนตินา"
+          },
+          {
+            "v": "AM",
+            "t": "อาร์เมเนีย"
+          },
+          {
+            "v": "AU",
+            "t": "ออสเตรเลีย"
+          },
+          {
+            "v": "AT",
+            "t": "ออสเตรีย"
+          },
+          {
+            "v": "AZ",
+            "t": "อาเซอร์ไบจาน"
+          },
+          {
+            "v": "BS",
+            "t": "บาฮามาส"
+          },
+          {
+            "v": "BH",
+            "t": "บาห์เรน"
+          },
+          {
+            "v": "BD",
+            "t": "บังกลาเทศ"
+          },
+          {
+            "v": "BB",
+            "t": "บาร์เบโดส"
+          },
+          {
+            "v": "BY",
+            "t": "เบลารุส"
+          },
+          {
+            "v": "BE",
+            "t": "เบลเยียม"
+          },
+          {
+            "v": "BZ",
+            "t": "เบลีซ"
+          },
+          {
+            "v": "BJ",
+            "t": "เบนิน"
+          },
+          {
+            "v": "BM",
+            "t": "เบอร์มูด้า"
+          },
+          {
+            "v": "BT",
+            "t": "ภูฏาน"
+          },
+          {
+            "v": "BO",
+            "t": "โบลิเวีย"
+          },
+          {
+            "v": "BQ",
+            "t": "โบแนร์ ซินต์เอิสตาติอุสและซาบา"
+          },
+          {
+            "v": "BA",
+            "t": "บอสเนียและเฮอร์เซโกวีนา"
+          },
+          {
+            "v": "BV",
+            "t": "นอร์เวย์ (Bouvet Is.)"
+          },
+          {
+            "v": "BR",
+            "t": "บราซิล"
+          },
+          {
+            "v": "BG",
+            "t": "บัลแกเรีย"
+          },
+          {
+            "v": "BI",
+            "t": "บุรุนดี"
+          },
+          {
+            "v": "CV",
+            "t": "เคปเวิร์ด"
+          },
+          {
+            "v": "SX",
+            "t": "ซินต์มาร์เติน"
+          },
+          {
+            "v": "SK",
+            "t": "สโลวาเกีย"
+          },
+          {
+            "v": "SI",
+            "t": "สโลวีเนีย"
+          },
+          {
+            "v": "SB",
+            "t": "หมู่เกาะโซโลมอน"
+          },
+          {
+            "v": "SO",
+            "t": "โซมาเลีย"
+          },
+          {
+            "v": "ES",
+            "t": "สเปน"
+          },
+          {
+            "v": "LK",
+            "t": "ศรีลังกา"
+          },
+          {
+            "v": "SD",
+            "t": "ซูดาน"
+          },
+          {
+            "v": "SR",
+            "t": "ซูรินาม"
+          },
+          {
+            "v": "SE",
+            "t": "สวีเดน"
+          },
+          {
+            "v": "CH",
+            "t": "สวิตเซอร์แลนด์"
+          },
+          {
+            "v": "TW",
+            "t": "จีน (ไต้หวัน)"
+          },
+          {
+            "v": "TJ",
+            "t": "ทาจิกิสถาน"
+          },
+          {
+            "v": "TG",
+            "t": "โตโก"
+          },
+          {
+            "v": "TO",
+            "t": "ตองกา"
+          },
+          {
+            "v": "TT",
+            "t": "ตรินิแดด หรือ โตเบโก"
+          },
+          {
+            "v": "TN",
+            "t": "ตูนิเซีย"
+          },
+          {
+            "v": "TR",
+            "t": "ตุรกี"
+          },
+          {
+            "v": "TM",
+            "t": "เติร์กเมนิสถาน"
+          },
+          {
+            "v": "TV",
+            "t": "ตูวาลู"
+          },
+          {
+            "v": "UG",
+            "t": "ยูกันดา"
+          },
+          {
+            "v": "UA",
+            "t": "ยูเครน"
+          },
+          {
+            "v": "AE",
+            "t": "เอมิเรตส์"
+          },
+          {
+            "v": "GB",
+            "t": "สหราชอาณาจักร"
+          },
+          {
+            "v": "US",
+            "t": "อเมริกัน"
+          },
+          {
+            "v": "UY",
+            "t": "อุรุกวัย"
+          },
+          {
+            "v": "UZ",
+            "t": "อุซเบกิสถาน"
+          },
+          {
+            "v": "VN",
+            "t": "เวียดนาม"
+          }
+        ]
+      },
+      {
+        "id": "sexCheck",
+        "name": "sexCheck",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "ชาย"
+          },
+          {
+            "v": "2",
+            "t": "หญิง"
+          }
+        ]
+      },
+      {
+        "id": "slt_employer_type",
+        "name": "employer_type_check",
+        "visible": false,
+        "opts": [
+          {
+            "v": "1,1",
+            "t": "บุคคลธรรมดา"
+          },
+          {
+            "v": "2,2",
+            "t": "นิติบุคคล - จดทะเบียนในประเทศไทย"
+          },
+          {
+            "v": "4,3",
+            "t": "โรงเรียนเอกชน"
+          },
+          {
+            "v": "5,4",
+            "t": "มหาวิทยาลัยเอกชน"
+          },
+          {
+            "v": "6,5",
+            "t": "หน่วยงานราชการ /รัฐวิสาหกิจ /มหาวิทยาลัยรัฐบาล/สถา"
+          },
+          {
+            "v": "7,6",
+            "t": "มูลนิธิ/สมาคม/องค์กรอิสระ"
+          },
+          {
+            "v": "8,7",
+            "t": "กิจการถ่ายทำภาพยนตร์จากต่างประเทศ"
+          },
+          {
+            "v": "1,8",
+            "t": "นายจ้าง-คนต่างชาติ บุคคลธรรมดา"
+          },
+          {
+            "v": "2,9",
+            "t": "นายจ้าง-คนต่างชาติ นิติบุคคล - จดทะเบียนในประเทศไท"
+          },
+          {
+            "v": "9,10",
+            "t": "นายจ้าง-คนต่างชาติ นิติบุคคล - จดทะเบียนในต่างประเ"
+          }
+        ]
+      },
+      {
+        "id": "user_type",
+        "name": "user_type",
+        "visible": false,
+        "opts": [
+          {
+            "v": "2",
+            "t": "นายจ้าง-คนไทย"
+          },
+          {
+            "v": "4",
+            "t": "นายจ้าง-คนต่างชาติ"
+          }
+        ]
+      },
+      {
+        "id": "Employer_typeRegister",
+        "name": "Employer_typeRegister",
+        "visible": false,
+        "opts": [
+          {
+            "v": "1,1",
+            "t": "บุคคลธรรมดา"
+          },
+          {
+            "v": "2,2",
+            "t": "นิติบุคคล - จดทะเบียนในประเทศไทย"
+          },
+          {
+            "v": "4,3",
+            "t": "โรงเรียนเอกชน"
+          },
+          {
+            "v": "5,4",
+            "t": "มหาวิทยาลัยเอกชน"
+          },
+          {
+            "v": "6,5",
+            "t": "หน่วยงานราชการ /รัฐวิสาหกิจ /มหาวิทยาลัยรัฐบาล/สถา"
+          },
+          {
+            "v": "7,6",
+            "t": "มูลนิธิ/สมาคม/องค์กรอิสระ"
+          },
+          {
+            "v": "8,7",
+            "t": "กิจการถ่ายทำภาพยนตร์จากต่างประเทศ"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix3",
+        "name": "alien_prefix3",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "นาย"
+          },
+          {
+            "v": "2",
+            "t": "นาง"
+          },
+          {
+            "v": "3",
+            "t": "นางสาว"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix2",
+        "name": "alien_prefix2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "นาย"
+          },
+          {
+            "v": "2",
+            "t": "นาง"
+          },
+          {
+            "v": "3",
+            "t": "นางสาว"
+          }
+        ]
+      },
+      {
+        "id": "GetDataProvince",
+        "name": "GetDataProvince",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "10",
+            "t": "กรุงเทพมหานคร"
+          },
+          {
+            "v": "11",
+            "t": "สมุทรปราการ"
+          },
+          {
+            "v": "12",
+            "t": "นนทบุรี"
+          },
+          {
+            "v": "13",
+            "t": "ปทุมธานี"
+          },
+          {
+            "v": "14",
+            "t": "พระนครศรีอยุธยา"
+          },
+          {
+            "v": "15",
+            "t": "อ่างทอง"
+          },
+          {
+            "v": "16",
+            "t": "ลพบุรี"
+          },
+          {
+            "v": "17",
+            "t": "สิงห์บุรี"
+          },
+          {
+            "v": "18",
+            "t": "ชัยนาท"
+          },
+          {
+            "v": "19",
+            "t": "สระบุรี"
+          },
+          {
+            "v": "20",
+            "t": "ชลบุรี"
+          },
+          {
+            "v": "21",
+            "t": "ระยอง"
+          },
+          {
+            "v": "22",
+            "t": "จันทบุรี"
+          },
+          {
+            "v": "23",
+            "t": "ตราด"
+          },
+          {
+            "v": "24",
+            "t": "ฉะเชิงเทรา"
+          },
+          {
+            "v": "25",
+            "t": "ปราจีนบุรี"
+          },
+          {
+            "v": "26",
+            "t": "นครนายก"
+          },
+          {
+            "v": "27",
+            "t": "สระแก้ว"
+          },
+          {
+            "v": "30",
+            "t": "นครราชสีมา"
+          },
+          {
+            "v": "31",
+            "t": "บุรีรัมย์"
+          },
+          {
+            "v": "32",
+            "t": "สุรินทร์"
+          },
+          {
+            "v": "33",
+            "t": "ศรีสะเกษ"
+          },
+          {
+            "v": "34",
+            "t": "อุบลราชธานี"
+          },
+          {
+            "v": "35",
+            "t": "ยโสธร"
+          },
+          {
+            "v": "36",
+            "t": "ชัยภูมิ"
+          },
+          {
+            "v": "37",
+            "t": "อำนาจเจริญ"
+          },
+          {
+            "v": "38",
+            "t": "บึงกาฬ"
+          },
+          {
+            "v": "39",
+            "t": "หนองบัวลำภู"
+          },
+          {
+            "v": "40",
+            "t": "ขอนแก่น"
+          },
+          {
+            "v": "41",
+            "t": "อุดรธานี"
+          },
+          {
+            "v": "42",
+            "t": "เลย"
+          },
+          {
+            "v": "43",
+            "t": "หนองคาย"
+          },
+          {
+            "v": "44",
+            "t": "มหาสารคาม"
+          },
+          {
+            "v": "45",
+            "t": "ร้อยเอ็ด"
+          },
+          {
+            "v": "46",
+            "t": "กาฬสินธุ์"
+          },
+          {
+            "v": "47",
+            "t": "สกลนคร"
+          },
+          {
+            "v": "48",
+            "t": "นครพนม"
+          },
+          {
+            "v": "49",
+            "t": "มุกดาหาร"
+          },
+          {
+            "v": "50",
+            "t": "เชียงใหม่"
+          },
+          {
+            "v": "51",
+            "t": "ลำพูน"
+          },
+          {
+            "v": "52",
+            "t": "ลำปาง"
+          },
+          {
+            "v": "53",
+            "t": "อุตรดิตถ์"
+          },
+          {
+            "v": "54",
+            "t": "แพร่"
+          },
+          {
+            "v": "55",
+            "t": "น่าน"
+          },
+          {
+            "v": "56",
+            "t": "พะเยา"
+          },
+          {
+            "v": "57",
+            "t": "เชียงราย"
+          },
+          {
+            "v": "58",
+            "t": "แม่ฮ่องสอน"
+          },
+          {
+            "v": "60",
+            "t": "นครสวรรค์"
+          },
+          {
+            "v": "61",
+            "t": "อุทัยธานี"
+          },
+          {
+            "v": "62",
+            "t": "กำแพงเพชร"
+          },
+          {
+            "v": "63",
+            "t": "ตาก"
+          },
+          {
+            "v": "64",
+            "t": "สุโขทัย"
+          },
+          {
+            "v": "65",
+            "t": "พิษณุโลก"
+          },
+          {
+            "v": "66",
+            "t": "พิจิตร"
+          },
+          {
+            "v": "67",
+            "t": "เพชรบูรณ์"
+          },
+          {
+            "v": "70",
+            "t": "ราชบุรี"
+          },
+          {
+            "v": "71",
+            "t": "กาญจนบุรี"
+          },
+          {
+            "v": "72",
+            "t": "สุพรรณบุรี"
+          },
+          {
+            "v": "73",
+            "t": "นครปฐม"
+          }
+        ]
+      },
+      {
+        "id": "GetDataDistrict",
+        "name": "GetDataDistrict",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "GetDataSubDistrict",
+        "name": "GetDataSubDistrict",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "GetDataProvince2",
+        "name": "GetDataProvince2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "10",
+            "t": "กรุงเทพมหานคร"
+          },
+          {
+            "v": "11",
+            "t": "สมุทรปราการ"
+          },
+          {
+            "v": "12",
+            "t": "นนทบุรี"
+          },
+          {
+            "v": "13",
+            "t": "ปทุมธานี"
+          },
+          {
+            "v": "14",
+            "t": "พระนครศรีอยุธยา"
+          },
+          {
+            "v": "15",
+            "t": "อ่างทอง"
+          },
+          {
+            "v": "16",
+            "t": "ลพบุรี"
+          },
+          {
+            "v": "17",
+            "t": "สิงห์บุรี"
+          },
+          {
+            "v": "18",
+            "t": "ชัยนาท"
+          },
+          {
+            "v": "19",
+            "t": "สระบุรี"
+          },
+          {
+            "v": "20",
+            "t": "ชลบุรี"
+          },
+          {
+            "v": "21",
+            "t": "ระยอง"
+          },
+          {
+            "v": "22",
+            "t": "จันทบุรี"
+          },
+          {
+            "v": "23",
+            "t": "ตราด"
+          },
+          {
+            "v": "24",
+            "t": "ฉะเชิงเทรา"
+          },
+          {
+            "v": "25",
+            "t": "ปราจีนบุรี"
+          },
+          {
+            "v": "26",
+            "t": "นครนายก"
+          },
+          {
+            "v": "27",
+            "t": "สระแก้ว"
+          },
+          {
+            "v": "30",
+            "t": "นครราชสีมา"
+          },
+          {
+            "v": "31",
+            "t": "บุรีรัมย์"
+          },
+          {
+            "v": "32",
+            "t": "สุรินทร์"
+          },
+          {
+            "v": "33",
+            "t": "ศรีสะเกษ"
+          },
+          {
+            "v": "34",
+            "t": "อุบลราชธานี"
+          },
+          {
+            "v": "35",
+            "t": "ยโสธร"
+          },
+          {
+            "v": "36",
+            "t": "ชัยภูมิ"
+          },
+          {
+            "v": "37",
+            "t": "อำนาจเจริญ"
+          },
+          {
+            "v": "38",
+            "t": "บึงกาฬ"
+          },
+          {
+            "v": "39",
+            "t": "หนองบัวลำภู"
+          },
+          {
+            "v": "40",
+            "t": "ขอนแก่น"
+          },
+          {
+            "v": "41",
+            "t": "อุดรธานี"
+          },
+          {
+            "v": "42",
+            "t": "เลย"
+          },
+          {
+            "v": "43",
+            "t": "หนองคาย"
+          },
+          {
+            "v": "44",
+            "t": "มหาสารคาม"
+          },
+          {
+            "v": "45",
+            "t": "ร้อยเอ็ด"
+          },
+          {
+            "v": "46",
+            "t": "กาฬสินธุ์"
+          },
+          {
+            "v": "47",
+            "t": "สกลนคร"
+          },
+          {
+            "v": "48",
+            "t": "นครพนม"
+          },
+          {
+            "v": "49",
+            "t": "มุกดาหาร"
+          },
+          {
+            "v": "50",
+            "t": "เชียงใหม่"
+          },
+          {
+            "v": "51",
+            "t": "ลำพูน"
+          },
+          {
+            "v": "52",
+            "t": "ลำปาง"
+          },
+          {
+            "v": "53",
+            "t": "อุตรดิตถ์"
+          },
+          {
+            "v": "54",
+            "t": "แพร่"
+          },
+          {
+            "v": "55",
+            "t": "น่าน"
+          },
+          {
+            "v": "56",
+            "t": "พะเยา"
+          },
+          {
+            "v": "57",
+            "t": "เชียงราย"
+          },
+          {
+            "v": "58",
+            "t": "แม่ฮ่องสอน"
+          },
+          {
+            "v": "60",
+            "t": "นครสวรรค์"
+          },
+          {
+            "v": "61",
+            "t": "อุทัยธานี"
+          },
+          {
+            "v": "62",
+            "t": "กำแพงเพชร"
+          },
+          {
+            "v": "63",
+            "t": "ตาก"
+          },
+          {
+            "v": "64",
+            "t": "สุโขทัย"
+          },
+          {
+            "v": "65",
+            "t": "พิษณุโลก"
+          },
+          {
+            "v": "66",
+            "t": "พิจิตร"
+          },
+          {
+            "v": "67",
+            "t": "เพชรบูรณ์"
+          },
+          {
+            "v": "70",
+            "t": "ราชบุรี"
+          },
+          {
+            "v": "71",
+            "t": "กาญจนบุรี"
+          },
+          {
+            "v": "72",
+            "t": "สุพรรณบุรี"
+          },
+          {
+            "v": "73",
+            "t": "นครปฐม"
+          }
+        ]
+      },
+      {
+        "id": "GetDataDistrict2",
+        "name": "GetDataDistrict2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "GetDataSubDistrict2",
+        "name": "GetDataSubDistrict2",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          }
+        ]
+      },
+      {
+        "id": "",
+        "name": "myTable_length",
+        "visible": false,
+        "opts": [
+          {
+            "v": "10",
+            "t": "10"
+          }
+        ]
+      },
+      {
+        "id": "alien_prefix_en",
+        "name": "alien_prefix_en",
+        "visible": false,
+        "opts": []
+      },
+      {
+        "id": "alien_prefix_th",
+        "name": "alien_prefix_th",
+        "visible": false,
+        "opts": []
+      },
+      {
+        "id": "nationality_al_add",
+        "name": "nationality_al_add",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "AF",
+            "t": "อัฟกัน"
+          },
+          {
+            "v": "AL",
+            "t": "แอลเบเนีย"
+          },
+          {
+            "v": "DZ",
+            "t": "แอลจีเรีย"
+          },
+          {
+            "v": "AS",
+            "t": "ซามัว"
+          },
+          {
+            "v": "AD",
+            "t": "อันดอร์รา"
+          },
+          {
+            "v": "AO",
+            "t": "แองโกลา"
+          },
+          {
+            "v": "AQ",
+            "t": "แอนตาร์กติกา"
+          },
+          {
+            "v": "AG",
+            "t": "แอนติกาและบาร์บูดา"
+          },
+          {
+            "v": "AR",
+            "t": "อาร์เจนตินา"
+          },
+          {
+            "v": "AM",
+            "t": "อาร์เมเนีย"
+          },
+          {
+            "v": "AU",
+            "t": "ออสเตรเลีย"
+          },
+          {
+            "v": "AT",
+            "t": "ออสเตรีย"
+          },
+          {
+            "v": "AZ",
+            "t": "อาเซอร์ไบจาน"
+          },
+          {
+            "v": "BS",
+            "t": "บาฮามาส"
+          },
+          {
+            "v": "BH",
+            "t": "บาห์เรน"
+          },
+          {
+            "v": "BD",
+            "t": "บังกลาเทศ"
+          },
+          {
+            "v": "BB",
+            "t": "บาร์เบโดส"
+          },
+          {
+            "v": "BY",
+            "t": "เบลารุส"
+          },
+          {
+            "v": "BE",
+            "t": "เบลเยียม"
+          },
+          {
+            "v": "BZ",
+            "t": "เบลีซ"
+          },
+          {
+            "v": "BJ",
+            "t": "เบนิน"
+          },
+          {
+            "v": "BM",
+            "t": "เบอร์มูด้า"
+          },
+          {
+            "v": "BT",
+            "t": "ภูฏาน"
+          },
+          {
+            "v": "BO",
+            "t": "โบลิเวีย"
+          },
+          {
+            "v": "BQ",
+            "t": "โบแนร์ ซินต์เอิสตาติอุสและซาบา"
+          },
+          {
+            "v": "BA",
+            "t": "บอสเนียและเฮอร์เซโกวีนา"
+          },
+          {
+            "v": "BV",
+            "t": "นอร์เวย์ (Bouvet Is.)"
+          },
+          {
+            "v": "BR",
+            "t": "บราซิล"
+          },
+          {
+            "v": "BG",
+            "t": "บัลแกเรีย"
+          },
+          {
+            "v": "BI",
+            "t": "บุรุนดี"
+          },
+          {
+            "v": "CV",
+            "t": "เคปเวิร์ด"
+          },
+          {
+            "v": "SX",
+            "t": "ซินต์มาร์เติน"
+          },
+          {
+            "v": "SK",
+            "t": "สโลวาเกีย"
+          },
+          {
+            "v": "SI",
+            "t": "สโลวีเนีย"
+          },
+          {
+            "v": "SB",
+            "t": "หมู่เกาะโซโลมอน"
+          },
+          {
+            "v": "SO",
+            "t": "โซมาเลีย"
+          },
+          {
+            "v": "ES",
+            "t": "สเปน"
+          },
+          {
+            "v": "LK",
+            "t": "ศรีลังกา"
+          },
+          {
+            "v": "SD",
+            "t": "ซูดาน"
+          },
+          {
+            "v": "SR",
+            "t": "ซูรินาม"
+          },
+          {
+            "v": "SE",
+            "t": "สวีเดน"
+          },
+          {
+            "v": "CH",
+            "t": "สวิตเซอร์แลนด์"
+          },
+          {
+            "v": "TW",
+            "t": "จีน (ไต้หวัน)"
+          },
+          {
+            "v": "TJ",
+            "t": "ทาจิกิสถาน"
+          },
+          {
+            "v": "TG",
+            "t": "โตโก"
+          },
+          {
+            "v": "TO",
+            "t": "ตองกา"
+          },
+          {
+            "v": "TT",
+            "t": "ตรินิแดด หรือ โตเบโก"
+          },
+          {
+            "v": "TN",
+            "t": "ตูนิเซีย"
+          },
+          {
+            "v": "TR",
+            "t": "ตุรกี"
+          },
+          {
+            "v": "TM",
+            "t": "เติร์กเมนิสถาน"
+          },
+          {
+            "v": "TV",
+            "t": "ตูวาลู"
+          },
+          {
+            "v": "UG",
+            "t": "ยูกันดา"
+          },
+          {
+            "v": "UA",
+            "t": "ยูเครน"
+          },
+          {
+            "v": "AE",
+            "t": "เอมิเรตส์"
+          },
+          {
+            "v": "GB",
+            "t": "สหราชอาณาจักร"
+          },
+          {
+            "v": "US",
+            "t": "อเมริกัน"
+          },
+          {
+            "v": "UY",
+            "t": "อุรุกวัย"
+          },
+          {
+            "v": "UZ",
+            "t": "อุซเบกิสถาน"
+          }
+        ]
+      },
+      {
+        "id": "sexCheck_add",
+        "name": "sexCheck_add",
+        "visible": false,
+        "opts": [
+          {
+            "v": "",
+            "t": "กรุณาเลือก"
+          },
+          {
+            "v": "1",
+            "t": "ชาย"
+          },
+          {
+            "v": "2",
+            "t": "หญิง"
+          }
+        ]
+      },
+      {
+        "id": "birthDateCheckYear-add",
+        "name": "birthDateCheckYear-add",
+        "visible": false,
+        "opts": []
+      }
+    ],
+    "buttons": [
+      {
+        "tag": "A",
+        "id": "profile_info",
+        "cls": "btn btn-outline-primary mt-2 w-100 justify-content-center lang_profile_managemen",
+        "txt": "จัดการบัญชี",
+        "onclick": "openprofile()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary-pure equal-btn",
+        "txt": "เพิ่มบัญชีตัวเอง",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary-pure equal-btn",
+        "txt": "ลงทะเบียนแทนผู้อื่น",
+        "onclick": "goToregisterNew()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "dropdown-item p-3 lang_logout",
+        "txt": "ออกจากระบบ",
+        "onclick": "logout()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-primary px-3 py-2 d-flex align-items-center",
+        "txt": "เพิ่มข้อมูลคนต่างด้าว",
+        "onclick": "add_alien_modal.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary px-3 py-2 d-flex align-items-center",
+        "txt": "ค้นหาข้อมูลคนต่างด้าว",
+        "onclick": "search_alien_modal.show(event)",
+        "visible": true
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "ค้นหาข้อมูลคนต่างด้าว",
+        "onclick": "search_alien_modal.show(event)",
+        "visible": true
+      },
+      {
+        "tag": "A",
+        "id": "addEmpBtn",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "เพิ่มนายจ้าง",
+        "onclick": "add_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "ค้นหานายจ้าง",
+        "onclick": "search_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "addEmpBtn",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "เพิ่มนายจ้าง",
+        "onclick": "add_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "btn btn-outline-primary bus_type_modal",
+        "txt": "ค้นหานายจ้าง",
+        "onclick": "search_emp.show(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_search_alien_emp",
+        "cls": "btn btn-dark lang_search mb-0",
+        "txt": "ค้นหา",
+        "onclick": "GetDataEmployerListByAgency()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "buttoncancel",
+        "cls": "btn btn-cancel float-right float-left lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "backToMenu()",
+        "visible": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "gonextSubmit",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_next",
+        "txt": "ถัดไป",
+        "onclick": "openSubmitPage('')",
+        "visible": true
+      },
+      {
+        "tag": "BUTTON",
+        "id": "gonextSubmit61",
+        "cls": "btn btn-next btn-primary action-button float-right lang_txt_next d-none",
+        "txt": "ถัดไป",
+        "onclick": "openSubmitPage61('')",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "search_alien_modal.close(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_search_alien_submit",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark lang_search searchEmployer mb-0",
+        "txt": "ค้นหา",
+        "onclick": "searchempdata()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "search_emp.close(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_search_emp_submit",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark lang_search mb-0 empOther forDbd",
+        "txt": "ค้นหา",
+        "onclick": "searchDbd()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary px-5 py-3 forMT19 d-none",
+        "txt": "ตรวจสอบข้อมูล",
+        "onclick": "checkinformation()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary btt-draft action-button float-right",
+        "txt": "เพิ่มประเภทกิจการ",
+        "onclick": "checkedSltBusiness()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 only_individual d-none",
+        "txt": "ตรวจสอบข้อมูล DBD",
+        "onclick": "FindEmpinDBD()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "closemodalempadd()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "add_emp",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close m-0 p-0",
+        "txt": "×",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary btt-draft action-button float-right w-100 lang_search",
+        "txt": "ค้นหา",
+        "onclick": "GetDataRequestFormSearch()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-cancel  float-right float-left lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "clearBusiness()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_addBusiness",
+        "cls": "btn btn-next btn-primary  action-button float-right lang_lbl_comfirm",
+        "txt": "ยืนยัน",
+        "onclick": "addBusiness()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-outline-primary px-5 py-3 lang_txt_cancel",
+        "txt": "ยกเลิก",
+        "onclick": "add_alien_modal.close(event)",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "btn_add_alien_submit",
+        "cls": "btn btn-primary px-5 py-3 lang_lbl_save",
+        "txt": "บันทึก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close",
+        "txt": "×",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark previous action-button-previous float-right-test w-48-bt button_can",
+        "txt": "ยกเลิก",
+        "onclick": "",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "buttonclickacceptwork",
+        "cls": "btn btn-primary lang_lbl_comfirm",
+        "txt": "ยืนยัน",
+        "onclick": "buttonclickacceptwork()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "",
+        "txt": "“ยกเลิกคำขอ”",
+        "onclick": "CancelForm()",
+        "visible": false
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "cls": "",
+        "txt": "“ยกเลิกคำขอ”",
+        "onclick": "CancelForm2()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close",
+        "txt": "×",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "openpaymentdetail",
+        "cls": "btn btn-primary lang_make_payment",
+        "txt": "ชำระเงิน",
+        "onclick": "OpentWP()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark btn-block mt-0 mb-0 lang_btn_close_windown",
+        "txt": "ปิดหน้าต่าง",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close",
+        "txt": "×",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "button_payment",
+        "cls": "btn btn-primary m-0 lang_print_form_payment",
+        "txt": "พิมพ์แบบฟอร์มการชำระเงิน",
+        "onclick": "UpdatePayment()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark btn-block m-0 mt-2 col-12 col-md-6 btn-modal-payment lang_href_back",
+        "txt": "ย้อนกลับ",
+        "onclick": "backtoPayment_Modal()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-dark btn-block m-0 mt-2 col-12 col-md-6 btn-modal-payment lang_btn_close",
+        "txt": "ปิดหน้าต่าง",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "close position_multi",
+        "txt": "×",
+        "onclick": "reloadPage()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "cls": "btn btn-primary proofpayment lang_print_proof_payment Openproofpayment",
+        "txt": "พิมพ์หลักฐานการชำระเงิน",
+        "onclick": "Openproofpayment()",
+        "visible": false
+      },
+      {
+        "tag": "BUTTON",
+        "id": "closemodalsuccess",
+        "cls": "btn btn-dark btn-block mt-0 mb-0 lang_btn_close_windown",
+        "txt": "ปิดหน้าต่าง",
+        "onclick": "reloadPage()",
+        "visible": false
+      }
+    ],
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวที่ได้รับอนุญาตทำงานตาม MoU",
+      "ข้อมูลผู้รับอนุญาตให้นำคนต่างด้าวมาทำงาน",
+      "ข้อมูลคนต่างด้าวที่ต้องการดำเนินการแทน",
+      "ข้อมูลนายจ้างที่ต้องการดำเนินการแทน",
+      "นายจ้าง 0 รายการ",
+      "ค้นหาข้อมูลคนต่างด้าว",
+      "ค้นหานายจ้าง",
+      "วิธีการหาข้อมูลนายจ้าง",
+      "เพิ่มนายจ้าง",
+      "ข้อมูลสถานที่ทำงาน/สาขา",
+      "ที่อยู่ที่ติดต่อได้",
+      "สถานที่ทำงาน/สาขา",
+      "ข้อมูลสถานที่ทำงาน/สาขา",
+      "รายชื่อกรรมการ",
+      "กรรมการลงชื่อผูกพัน",
+      "ประเภทกิจการ",
+      "เลือกประเภทกิจการ",
+      "เพิ่มข้อมูลคนต่างด้าว",
+      "เลือกเหตุผลปฏิเสธการจ้างงาน",
+      "ชำระเงิน",
+      "เลือกวิธีชำระเงิน",
+      "รายการชำระเงิน",
+      "รายการรอชำระเงิน"
+    ]
+  }
+}
