@@ -1,0 +1,97 @@
+{
+  "inputs": [
+    {
+      "index": 0,
+      "id": "search_start_date",
+      "name": "",
+      "className": "form-control-date bg-white inputdatepicker date-input datepicker",
+      "type": "text",
+      "value": "",
+      "readonly": false,
+      "visible": true,
+      "outerHTML": "<input class=\"form-control-date bg-white inputdatepicker date-input datepicker\" type=\"text\" value=\"\" placeholder=\"วว/ดด/ปปปป\" style=\"width:100%;\" id=\"search_start_date\" autocomplete=\"off\" inputmode=\"tel\" data-original-title=\"\" title=\"\">",
+      "labelText": "",
+      "labelHTML": "",
+      "parentTag": "DIV",
+      "parentClass": "input-icon-wrapper",
+      "parentHTML": "<div class=\"input-icon-wrapper\">\n                    <input class=\"form-control-date bg-white inputdatepicker date-input datepicker\" type=\"text\" value=\"\" placeholder=\"วว/ดด/ปปปป\" style=\"width:100%;\" id=\"search_start_date\" autocomplete=\"off\" inputmode=\"tel\" data-original-title=\"\" title=\"\">\n                    <span class=\"icon\"><svg class=\"svg-inline--fa fa-calendar\" aria-hidden=\"true\" focusable=\"false\" data-prefix=\"far\" data-icon=\"calendar\" role=\"img\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 448 512\" data-fa-i2svg=\"\"><path fill=\"currentColor\" d=\"M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v16 48V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V192 144 128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192H400V448c0 8.8-7.2 16",
+      "grandparentClass": "form-group",
+      "jq_datepicker": true,
+      "jq_flatpickr": false,
+      "jq_events": [
+        "options",
+        "datepicker",
+        "bs.popover"
+      ]
+    },
+    {
+      "index": 1,
+      "id": "search_end_date",
+      "name": "",
+      "className": "form-control-date bg-white inputdatepicker date-input datepicker",
+      "type": "text",
+      "value": "",
+      "readonly": false,
+      "visible": true,
+      "outerHTML": "<input class=\"form-control-date bg-white inputdatepicker date-input datepicker\" type=\"text\" value=\"\" placeholder=\"วว/ดด/ปปปป\" style=\"width:100%;\" id=\"search_end_date\" autocomplete=\"off\" inputmode=\"tel\" data-original-title=\"\" title=\"\">",
+      "labelText": "",
+      "labelHTML": "",
+      "parentTag": "DIV",
+      "parentClass": "input-icon-wrapper",
+      "parentHTML": "<div class=\"input-icon-wrapper\">\n                    <input class=\"form-control-date bg-white inputdatepicker date-input datepicker\" type=\"text\" value=\"\" placeholder=\"วว/ดด/ปปปป\" style=\"width:100%;\" id=\"search_end_date\" autocomplete=\"off\" inputmode=\"tel\" data-original-title=\"\" title=\"\">\n                    <span class=\"icon\"><svg class=\"svg-inline--fa fa-calendar\" aria-hidden=\"true\" focusable=\"false\" data-prefix=\"far\" data-icon=\"calendar\" role=\"img\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 448 512\" data-fa-i2svg=\"\"><path fill=\"currentColor\" d=\"M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v16 48V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V192 144 128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192H400V448c0 8.8-7.2 16-1",
+      "grandparentClass": "form-group",
+      "jq_datepicker": true,
+      "jq_flatpickr": false,
+      "jq_events": [
+        "options",
+        "datepicker",
+        "bs.popover"
+      ]
+    }
+  ],
+  "searchButtons": [
+    {
+      "tag": "BUTTON",
+      "text": "ค้นหา",
+      "id": "",
+      "onclick": "GetDataRequestFormEtrackingForAlien()",
+      "outerHTML": "<button type=\"button\" name=\"next\" class=\"btn btn-next btn-primary lang_search\" style=\"margin-top:0px !important; margin-bottom:0px !important;\" onclick=\"GetDataRequestFormEtrackingForAlien()\">ค้นหา</button>"
+    }
+  ],
+  "dateScripts": [],
+  "getDataSource": "async function GetDataRequestFormEtrackingForAlien() {\n    table = $(\"#datatableE_Tracking\").DataTable({\n        destroy: true,\n        paging: true,\n        ordering: false,\n        searching: false,\n        processing: true,\n        serverSide: true,\n        info: true,\n        lengthChange: true,\n        lengthMenu: [10, 25, 50, 100],\n        drawCallback: function (settings) {\n            console.log(settings);\n            console.log(settings?.json?.statusAmont);\n       \n            function checkNumber(element, value) {\n                element.text(value);\n                //if (value && value != 0) {\n                //    element.text(value);\n                //} \n            }\n            checkNumber($(\"#numberform\"), settings?.json?.recordsTotal);\n            checkNumber($(\"#number_WP\"), settings?.json?.statusAmont?.wp || 0);\n            checkNumber($(\"#number_WCOSNA\"), settings?.json?.statusAmont?.wcosna || 0);\n            checkNumber($(\"#number_NCOS\"), settings?.json?.statusAmont?.ncos || 0);\n            checkNumber($(\"#number_APSS\"), settings?.json?.statusAmont?.apss || 0);\n            checkNumber($(\"#number_CCOS\"), settings?.json?.statusAmont?.ccos || 0);\n            checkNumber($(\"#number_AP\"), settings?.json?.statusAmont?.ap || 0);\n            checkNumber($(\"#number_WA\"), settings?.json?.statusAmont?.wa || 0);\n            checkNumber($(\"#number_SS\"), settings?.json?.statusAmont?.ss || 0);\n            changeDatalang();\n        },\n        columns: [\n            { data: \"group_id\" },\n            { data: \"group_id\" },\n            { data: \"form_type_name_th\", className: \"text-left\" },\n            { data: \"alien_first_name\", className: \"text-left\" },\n            { data: \"createdtimestamp\" },\n            { data: \"group_status_id\" },\n            { data: \"group_id\" },\n        ],\n        columnDefs: [\n            \n            {\n                targets: 0,\n                render: function (data, type, row, meta) {\n                    return `${meta.row + meta.settings._iDisplayStart + 1}`;\n                },\n            },\n            {\n                targets: 1,\n                render: function (data, type, row, meta) {\n\n                    let html = \"\";\n                    html += `<span>${row.group_id}</span><br><span style=\"color:#6F6F85;font-size:14px;\"><span data_th='${row.request_by_full_name_th}' data_en='${row.request_by_full_name_en}'></span></span><br>`;\n\n                    if (row.id) {\n                        html += `<a href='javascript:void(0)' onclick='openDetail(${row.request_by_user_id},&quot;${row.group_id}&quot;,&quot;${row.group_status_id}&quot;,&quot;${row.form_type_id}&quot;,&quot;${row.institution_id}&quot;,&quot;${row.id}&quot;)'><span class=\"btndetail\">ดูรายละเอียด <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\"><path d=\"M8.3332 5L7.1582 6.175L10.9749 10L7.1582 13.825L8.3332 15L13.3332 10L8.3332 5Z\" fill=\"#fff\"></path></svg></span></a >`;\n\n                    } else {\n ",
+  "hiddenLikelyDate": [
+    {
+      "id": "humvc_validate_token",
+      "name": "",
+      "type": "hidden",
+      "value": "http://eworkpermit.doe.go.th/Home/ValidateToken",
+      "className": "",
+      "outerHTML": "<input type=\"hidden\" id=\"humvc_validate_token\" value=\"http://eworkpermit.doe.go.th/Home/ValidateToken\" placeholder=\"กรุณากรอก\">"
+    },
+    {
+      "id": "search_start_date",
+      "name": "",
+      "type": "text",
+      "value": "",
+      "className": "form-control-date bg-white inputdatepicker date-input datepicker",
+      "outerHTML": "<input class=\"form-control-date bg-white inputdatepicker date-input datepicker\" type=\"text\" value=\"\" placeholder=\"วว/ดด/ปปปป\" style=\"width:100%;\" id=\"search_start_date\" autocomplete=\"off\" inputmode=\"tel\" data-original-title=\"\" title=\"\">"
+    },
+    {
+      "id": "search_end_date",
+      "name": "",
+      "type": "text",
+      "value": "",
+      "className": "form-control-date bg-white inputdatepicker date-input datepicker",
+      "outerHTML": "<input class=\"form-control-date bg-white inputdatepicker date-input datepicker\" type=\"text\" value=\"\" placeholder=\"วว/ดด/ปปปป\" style=\"width:100%;\" id=\"search_end_date\" autocomplete=\"off\" inputmode=\"tel\" data-original-title=\"\" title=\"\">"
+    },
+    {
+      "id": "appointment_datetime",
+      "name": "",
+      "type": "hidden",
+      "value": "",
+      "className": "",
+      "outerHTML": "<input id=\"appointment_datetime\" type=\"hidden\" placeholder=\"กรุณากรอก\">"
+    }
+  ]
+}

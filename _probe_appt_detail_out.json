@@ -1,0 +1,225 @@
+{
+  "url": "https://eworkpermit.doe.go.th/RenewMOU/DetailFormRenewMOU?user_id=303816&status=APSS&group_id=69123000059294&form_type=MT_59_MOU_RENEWAL",
+  "panes": [
+    {
+      "id": "tab_default_1",
+      "cls": "tab-pane mt-1",
+      "active": false,
+      "htmlLen": 7362,
+      "textLen": 393,
+      "textFirst200": "สถานะคำขอ 16 ก.ค. 2026 , 10:06นัดหมายนัดหมายแล้ว16 ก.ค. 2026 , 8:53ชำระเงินค่าธรรมเนียมชำระเงินสำเร็จ15 ก.ค. 2026 , 13:30อนุมัติคำขอผ่านการอนุมัติคำขอ14 ก.ค. 2026 , 15:40พิจารณาคำขอผ่านการพิจารณาคำขอของผู้ช่วยนายทะเบียน (สำนักงานจัดหางาน)14 ก.ค. 2026 , 13:33ตรวจสอบเอกสารเบื้องต้นผ่านการตรวจสอบเอกสารเบื้องต้นของบริษัท OS13 ก.ค. 2026 , 17:00ยื่นคำขอต่ออายุใบอนุญาตยื่นคำขอต่ออายุใบอนุญาตสำเร็จ",
+      "items": []
+    },
+    {
+      "id": "tab_default_2",
+      "cls": "tab-pane",
+      "active": false,
+      "htmlLen": 45055,
+      "textLen": 3021,
+      "textFirst200": "ใบอนุญาตทำงาน เลขที่ 1100670031198 ออกให้ที่ (จังหวัด) ฉะเชิงเทรา วันที่ออกเอกสาร 27 ส.ค. 2024 วันที่เอกสารหมดอายุ 26 ส.ค. 2026 ข้อมูลผู้ยื่นคำขอ ชื่อคนต่างด้าว(Eng) Miss KYI KYI NAING ชื่อคนต่างด้าว(ไทย) นางสาว KYI KYI NAING สัญชาติ เมียนมา เกิดวันที่ 16 พ.ค. 2000 อายุ 26ปี ข้อมูลสำหรับติดต่อ โทรศัพท์ - อีเมล kyikyinaing11374@mailforeign.com ที่อยู่ในประเทศไทย ที่อยู่ 71 หมู่ที่/อาคาร 5 นิคมอุตสา",
+      "items": [
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7R1ATD5MHQZBGQQEHV\",\"5909042\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_33",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7RT66A7B90DFGTKFR8\",\"5909044\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_36",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7RV63PR585ZV5RCK0J\",\"5909048\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_59",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7R6CFQ0QKN1GXSZTHD\",\"5909049\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_41",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7RGPTFW4C5K0SSNZEV\",\"5909050\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_42",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7RHSX916TVKWQ20MJH\",\"5909052\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_71",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7VV0WV4P1RMPK4RY7N\",\"59200087\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_134",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7RQQJE1ERC4PTZBY1Y\",\"59200088\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_135",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7V4G1ASZZ2P87BEGXX\",\"59200089\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_136",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7VK24FMWM7Q8S159JF\",\"59200090\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_137",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7W6R23J8775X9XGPWP\",\"5909053\",\"69123000059294-0001\")",
+          "id": "FileDetailOpen_106",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7RTX0G4Y2CDZMVCF85\",\"5909051\",\"69123000059294-0001\")",
+          "id": "",
+          "cls": "",
+          "vis": false
+        },
+        {
+          "tag": "A",
+          "text": "",
+          "href": "",
+          "onclick": "GetDocFilePathByDocumentID(\"01KX5TXN7VPA5HQX3ES9YDRP7M\",\"5909051\",\"69123000059294-0001\")",
+          "id": "",
+          "cls": "",
+          "vis": false
+        }
+      ]
+    },
+    {
+      "id": "tab_default_3",
+      "cls": "tab-pane",
+      "active": false,
+      "htmlLen": 35643,
+      "textLen": 2481,
+      "textFirst200": "ข้อมูลผู้รับอนุญาตให้นำคนต่างด้าวมาทำงาน ประเภทผู้ใช้งาน - เลขทะเบียนนิติบุคคล ชื่อสถานประกอบการ (ไทย) ชื่อสถานประกอบการ (Eng) ประเภทนิติบุคคล - วันที่จดทะเบียน สถานะนิติบุคคล - ทุนจดทะเบียน รหัสธุรกิจ 5 หลัก (tsic) - วัตถุประสงค์ ที่อยู่สถานที่ทำงาน/สาขา ชื่อผู้จัดการผู้มีอำนาจกระทำการแทนนิติบุคคล - ใบอนุญาตเลขที่ ออกให้วันที่ ใช้ได้ถึงวันที่ ข้อมูลสำหรับติดต่อ อีเมล โทรศัพท์ โทรสาร - ข้อมูลผู้ดำ",
+      "items": [
+        {
+          "tag": "BUTTON",
+          "text": "LEEDARSON IOT TECHNOLOGY (THAILAND) CO., LTD.ต่างชาตินิติบุคคลจดทะเบียนในไทย : 0105564075471",
+          "href": "",
+          "onclick": "",
+          "id": "",
+          "cls": "btn btn-link btn-block text-left p-0 btn-collapse",
+          "vis": false
+        }
+      ]
+    },
+    {
+      "id": "tab_default_4",
+      "cls": "tab-pane",
+      "active": false,
+      "htmlLen": 5923,
+      "textLen": 428,
+      "textFirst200": "หากพบปัญหาการชำระเงิน ท่านสามารถส่งเรื่องเพื่อตรวจสอบการชำระเงินอีกครั้งได้ โดยกดปุ่ม \"ตรวจสอบข้อมูลการชำระเงิน\" ไม่มีรายการชำระเงิน การชำระเงิน รายการ ค่ายื่นคำขอ กำหนดการชำระเงิน 17 ก.ค. 2026 , 17:59 สถานะ ชำระเงินสำเร็จ หลักฐานการชำระเงิน รายการ ค่าธรรมเนียมขออนุญาตทำงาน กำหนดการชำระเงิน 22 ก.ค. 2026 , 13:30 สถานะ ชำระเงินสำเร็จ หลักฐานการชำระเงิน กรุณาชำระค่าคำขอเเละค่าธรรมเนียมก่อน จึงจะสามาร",
+      "items": [
+        {
+          "tag": "SPAN",
+          "text": "\"ตรวจสอบข้อมูลการชำระเงิน\"",
+          "href": "",
+          "onclick": "GetPaymentByGroupId(\"69123000059294\", this)",
+          "id": "",
+          "cls": "payment_check_button btncheckpayment",
+          "vis": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "หลักฐานการชำระเงิน",
+          "href": "",
+          "onclick": "Openproofpayment(\"20260003310499\")",
+          "id": "",
+          "cls": "btn btn-dark m-0 next action-button float-right w-100-bt lang_proof_payment",
+          "vis": false
+        },
+        {
+          "tag": "BUTTON",
+          "text": "หลักฐานการชำระเงิน",
+          "href": "",
+          "onclick": "Openproofpayment(\"20260003331916\")",
+          "id": "",
+          "cls": "btn btn-dark m-0 next action-button float-right w-100-bt lang_proof_payment",
+          "vis": false
+        }
+      ]
+    },
+    {
+      "id": "tab_default_5",
+      "cls": "tab-pane active",
+      "active": true,
+      "htmlLen": 1879,
+      "textLen": 15,
+      "textFirst200": "ไม่มีการนัดหมาย",
+      "items": []
+    },
+    {
+      "id": "tab_default_6",
+      "cls": "tab-pane",
+      "active": false,
+      "htmlLen": 873,
+      "textLen": 20,
+      "textFirst200": "ไม่มีเอกสารการตอบรับ",
+      "items": []
+    },
+    {
+      "id": "tab_default_7",
+      "cls": "tab-pane",
+      "active": false,
+      "htmlLen": 107,
+      "textLen": 0,
+      "textFirst200": "",
+      "items": []
+    }
+  ],
+  "network_captured": []
+}

@@ -1,0 +1,72 @@
+{
+  "domHits": [],
+  "scriptSnippets": [],
+  "ajaxRequests": [
+    {
+      "url": "https://eworkpermit.doe.go.th/Permit/Tracking",
+      "method": "GET",
+      "post_data": ""
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-CVQZ9DPHC0&gtm=45je67d0v9227416324za200zd9227416324&_p=1784109385703&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AAAAAAQ&are=1&cid=371387070.1784109382&frm=0&pscdl=noapi&rcb=4&sr=1600x1000&uaa=x86&uab=64&uafvl=Not%252FA)Brand%3B99.0.0.0%7CChromium%3B148.0.7778.96&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=th-th&_s=1&tag_exp=115938465~115938468~118395334~118826209~118897920~118897930~119027224~119724322&sid=1784109381&sct=1&seg=1&dl=https%3A%2F%2Feworkpermit.doe.go.th%2FPermit%2FTracking&dr=https%3A%2F%2Feworkpermit.doe.go.th%2F&dt=e-WorkPermit%20%3A%20%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B8%AD%E0%B8%99%E0%B8%B8%E0%B8%8D%E0%B8%B2%E0%B8%95%E0%B8%97%E0%B8%B3%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%82%E0%B8%AD%E0%B8%87%E0%B8%84%E0%B8%99%E0%B8%95%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%94%E0%B9%89%E0%B8%B2%E0%B8%A7%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AD%E0%B8%B4%E0%B9%80%E0%B8%A5%E0%B9%87%E0%B8%81%E0%B8%97%E0%B8%A3%E0%B8%AD%E0%B8%99%E0%B8%B4%E0%B8%81%E0%B8%AA%E0%B9%8C&en=page_view&_ee=1&tfd=566",
+      "method": "POST",
+      "post_data": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/manage/ETracking.js",
+      "method": "GET",
+      "post_data": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/manage/Revoke/revoke-tracking.js",
+      "method": "GET",
+      "post_data": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/ETracking/GetTracking",
+      "method": "POST",
+      "post_data": "keyword=&request_user_id=1403345&employer_id=&form_status_id=&start_date=&end_date=&employer_addr_id="
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/ETracking/GetDataFormStatusInfo",
+      "method": "POST",
+      "post_data": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/ETracking/GetDataRequestFormEtrackingForAlien",
+      "method": "POST",
+      "post_data": "draw=1&columns%5B0%5D%5Bdata%5D=group_id&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=true&columns%5B0%5D%5Borderable%5D=false&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=group_id&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=true&columns%5B1%5D%5Borderable%5D=false&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=form_type_name_th&columns%5B2%5D%5Bnam"
+    },
+    {
+      "url": "https://doe-collateral-system-client.doe.go.th/th/e-tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNDAzMzQ1IiwianRpIjoiMTE4MWUzMzQtMWU3Ni00ZTc2LTk0ZjYtNWQ5ODNmMTNjNWRlIiwiVXNlcklkIjoiMTQwMzM0NSIsIklkIjoiUFgxNzc2OTEzNTQ4NTcwNjA4OCIsIlVzZXJUeXBlIjoiNSIsIlN1YlR5cGUiOiIiLCJVbWFwSWQiOiIiLCJoYWRfcGluY29kZSI6Ik4iLCJJcEFkZHJlc3MiOiIxMC40Mi4yLjE1OCIsImV4cCI6MTc4NDEyMDE4MywiaXNzIjoibW9sLmFwaS5jby50aCIsImF1ZCI6Im1vbC5hcGkuY28udGgifQ.yBTkmLuZH9x3FSdSQZLuwG8y3mc3PDyREgkBeTs9gc4",
+      "method": "GET",
+      "post_data": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/ETracking/GetDataMasterFormTypeForFilter",
+      "method": "POST",
+      "post_data": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/ETracking/GetDataFilterRelateForOwner",
+      "method": "POST",
+      "post_data": "user_id=1403345"
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/ETracking/GetDataFilterRelateForOwner",
+      "method": "POST",
+      "post_data": "user_id=1403345"
+    },
+    {
+      "url": "https://doe-collateral-system-client.doe.go.th/_next/static/chunks/app/%5Blocale%5D/e-tracking/page-936349f1672ec82d.js",
+      "method": "GET",
+      "post_data": ""
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-CVQZ9DPHC0&gtm=45je67d0v9227416324za200zd9227416324&_p=1784109385703&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&are=1&cid=371387070.1784109382&frm=0&pscdl=noapi&rcb=4&sr=1600x1000&uaa=x86&uab=64&uafvl=Not%252FA)Brand%3B99.0.0.0%7CChromium%3B148.0.7778.96&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=th-th&_s=2&tag_exp=115938465~115938468~118395334~118826209~118897920~118897930~119027224~119724322&sid=1784109381&sct=1&seg=1&dl=https%3A%2F%2Feworkpermit.doe.go.th%2FPermit%2FTracking&dr=https%3A%2F%2Feworkpermit.doe.go.th%2F&dt=e-WorkPermit%20%3A%20%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B8%AD%E0%B8%99%E0%B8%B8%E0%B8%8D%E0%B8%B2%E0%B8%95%E0%B8%97%E0%B8%B3%E0%B8%87%E0%B8%B2%E0%B8%99%E0%B8%82%E0%B8%AD%E0%B8%87%E0%B8%84%E0%B8%99%E0%B8%95%E0%B9%88%E0%B8%B2%E0%B8%87%E0%B8%94%E0%B9%89%E0%B8%B2%E0%B8%A7%E0%B8%97%E0%B8%B2%E0%B8%87%E0%B8%AD%E0%B8%B4%E0%B9%80%E0%B8%A5%E0%B9%87%E0%B8%81%E0%B8%97%E0%B8%A3%E0%B8%AD%E0%B8%99%E0%B8%B4%E0%B8%81%E0%B8%AA%E0%B9%8C&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5580",
+      "method": "POST",
+      "post_data": ""
+    }
+  ],
+  "GetDataFn": "async function GetDataRequestFormEtrackingForAlien() {\n    table = $(\"#datatableE_Tracking\").DataTable({\n        destroy: true,\n        paging: true,\n        ordering: false,\n        searching: false,\n        processing: true,\n        serverSide: true,\n        info: true,\n        lengthChange: true,\n        lengthMenu: [10, 25, 50, 100],\n        drawCallback: function (settings) {\n            console.log(settings);\n            console.log(settings?.json?.statusAmont);\n       \n            function checkNumber(element, value) {\n                element.text(value);\n                //if (value && value != 0) {\n                //    element.text(value);\n                //} \n            }\n            checkNumber($(\"#numberform\"), settings?.json?.recordsTotal);\n            checkNumber($(\"#number_WP\"), settings?.json?.statusAmont?.wp || 0);\n            checkNumber($(\"#number_WCOSNA\"), settings?.json?.statusAmont?.wcosna || 0);\n            checkNumber($(\"#number_NCOS\"), settings?.json?.statusAmont?.ncos || 0);\n            checkNumber($(\"#number_APSS\"), settings?.json?.statusAmont?.apss || 0);\n            checkNumber($(\"#number_CCOS\"), settings?.json?.statusAmont?.ccos || 0);\n            checkNumber($(\"#number_AP\"), settings?.json?.statusAmont?.ap || 0);\n            checkNumber($(\"#number_WA\"), settings?.json?.statusAmont?.wa || 0);\n            checkNumber($(\"#number_SS\"), settings?.json?.statusAmont?.ss || 0);\n            changeDatalang();\n        },\n        columns: [\n            { data: \"group_id\" },\n            { data: \"group_id\" },\n            { data: \"form_type_name_th\", className: \"text-left\" },\n            { data: \"alien_first_name\", className: \"text-left\" },\n            { data: \"createdtimestamp\" },\n            { data: \"group_status_id\" },\n            { data: \"group_id\" },\n        ],\n        columnDefs: [\n            \n            {\n                targets: 0,\n                render: function (data, type, row, meta) {\n                    return `${meta.row + meta.settings._iDisplayStart + 1}`;\n                },\n            },\n            {\n                targets: 1,\n                render: function (data, type, row, meta) {\n\n                    let html = \"\";\n                    html += `<span>${row.group_id}</span><br><span style=\"color:#6F6F85;font-size:14px;\"><span data_th='${row.request_by_full_name_th}' data_en='${row.request_by_full_name_en}'></span></span><br>`;\n\n                    if (row.id) {\n                        html += `<a href='javascript:void(0)' onclick='openDetail(${row.request_by_user_id},&quot;${row.group_id}&quot;,&quot;${row.group_status_id}&quot;,&quot;${row.form_type_id}&quot;,&quot;${row.institution_id}&quot;,&quot;${row.id}&quot;)'><span class=\"btndetail\">ดูรายละเอียด <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\"><path d=\"M8.3332 5L7.1582 6.175L10.9749 10L7.1582 13.825L8.3332 15L13.3332 10L8.3332 5Z\" fill=\"#fff\"></path></svg></span></a >`;\n\n                    } else {\n                        html += `<a href='javascript:void(0)' onclick='openDetail(${row.request_by_user_id},&quot;${row.group_id}&quot;,&quot;${row.group_status_id}&quot;,&quot;${row.form_type_id}&quot;,&quot;${row.institution_id}&quot;)'> <span class=\"btndetail\">ดูรายละเอียด <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\"><path d=\"M8.3332 5L7.1582 6.175L10.9749 10L7.1582 13.825L8.3332 15L13.3332 10L8.3332 5Z\" fill=\"#fff\"></path></svg></span></a >`;\n\n                    }\n\n                    return html;\n                },\n            },\n\n            {\n                targets: 2,\n                render: function (data, type, row, meta) {\n\n                    let html = \"\";\n\n                    if (row.form_type_id == \"MT_63_2\" || row.form_type_id == \"MT_63_2_AGN_RENEWAL\") {\n                        html = `\n                                <span data_th=\"${row.form_type_name_th?.toSafeJsonHtml()}\" data_en=\"${row.form_type_name_en}\"></span>\n                                <br>\n                                <span style=\"color:#6F6F85;font-size:14px;\" data_th=\"${row.form_desc_th?.toSafeJsonHtml()}\" data_en=\"${row.form_desc_en}\"></span>\n                                <br>\n                                <span style=\"color:#6F6F85;font-size:14px;\" \n                                    data_th=\"${row.alien_full_name_th?.toSafeJsonHtml() || row.alien_full_name_en}\" \n                                    data_en=\"${row.alien_full_name_en || row.alien_full_name_th}\"></span>\n                            `;\n                    }\n                    else if (row.form_type_id == \"NAMELIST_SURVEY_19\") {\n                        html = `\n                            <span data_th=\"${row.form_type_name_th?.toSafeJsonHtml()}\" data_en=\"${row.form_type_name_en}\"></span>\n                            <br>\n                            <span style=\"color:#6F6F85;font-size:14px;\">\n                                <span class=\"lang_submission_period_from\">ระยะเวลายื่นตั้งเเต่</span> \n                                <span data_th=\"${convert_to_thai_date(row.submit_start_dt)}\" data_en=\"${convert_to_eng_date(row.submit_start_dt)}\"></span>\n                                <span class=\"lang_lbl_to\"></span> \n                                <span data_th=\"${convert_to_thai_date(row.submit_end_dt)}\" data_en=\"${convert_to_eng_date(row.submit_end_dt)}\"></span>\n                            </span>\n                            <br>\n                            <span class=\"badgestatus\" style=\"color:#DCB745;background-color:#FEFAED\">\n                                <span class=\"lang_alien_documents_submit\">ยื่นเอกสารต่างด้าวเเล้ว</span> \n                                ${row.num_namelist_pay_success}/${row.num_namelist_all}\n                            </span>\n    `;\n                    } else if (row.form_type_id == \"MT_63_2_AGN_CHANGE\") {\n                        html = `\n                                <span data_th=\"${row.form_type_name_th?.toSafe"
+}

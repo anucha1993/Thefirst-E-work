@@ -1,0 +1,96 @@
+{
+  "info": {
+    "tables": [
+      {
+        "id": "AlienRenewFormCrList_table",
+        "cls": "table dataTable no-footer",
+        "w": 1270,
+        "h": 1492.6875,
+        "rows": 10,
+        "heads": [
+          "ลำดับ",
+          "หมายเลขอ้างอิง",
+          "ชื่อคนต่างด้าว",
+          "ผลตรวจ และประกันสุขภาพ",
+          "สัญชาติ",
+          "สถานะคำขอ",
+          "ผู้ยื่นคำขอ",
+          ""
+        ],
+        "isDT": true,
+        "dtInfo": {
+          "recordsTotal": 11445,
+          "recordsDisplay": 11445,
+          "page": 0,
+          "pages": 1145,
+          "length": 10,
+          "serverSide": true,
+          "ajaxUrl": "/Requtst63_2/GetDataAlienRenewFormCrList"
+        },
+        "sample": [
+          [
+            "1",
+            "RA17040820672230000 เลขประจำตัวคนต่างด้าว : 6681090164328 เลขที่ใบอนุญาตทำงาน : 6681090164328",
+            "Mr. ZAW LIN TUN นาย ซอ ลิน ทุน เพศ : ชาย",
+            "ยังไม่ซื้อประกัน ยังไม่ตรวจสุขภาพ *กรณีประกันสังคม หรือรัฐบาล หากไม่มีการเชื่อมข้อมูล สามารถแนบเอกสารได้",
+            "เมียนมา",
+            "รอยื่นคำขอ อยู่ในขั้นเตรียมการยื่นคำขอใบอนุญาตทำงาน แต่ยังไม่ได้ส่งคำขอเข้าระบบ",
+            "-",
+            "ยื่นคำขอ"
+          ],
+          [
+            "2",
+            "RA17690531055738412 เลขประจำตัวคนต่างด้าว : 6686190000273 เลขที่ใบอนุญาตทำงาน : 6686190000273",
+            "Mr. MG AYE LWIN นาย หม่อง เอ ละวิน เพศ : ชาย",
+            "ยังไม่ซื้อประกัน ตรวจสุขภาพแล้ว *กรณีประกันสังคม หรือรัฐบาล หากไม่มีการเชื่อมข้อมูล สามารถแนบเอกสารได้",
+            "เมียนมา",
+            "ยื่นคำขอแล้ว เลขที่คำขอ : 69125200710969",
+            "นาย ปฏิภาณ มูลเค้า",
+            ""
+          ]
+        ]
+      }
+    ],
+    "pageLenSelects": [
+      {
+        "id": "",
+        "name": "AlienRenewFormCrList_table_length",
+        "opts": [
+          "10",
+          "25",
+          "50",
+          "100"
+        ],
+        "current": "10"
+      }
+    ],
+    "paginators": [
+      {
+        "cls": "dataTables_paginate paging_simple_numbers",
+        "text": "Previous12345…1145Next"
+      }
+    ],
+    "headings": [
+      "การยื่นคำขอต่ออายุใบอนุญาตทำงานให้กับคนต่างด้าวสัญชาติลาว เมียนมา และเวียดนาม ตามมติคณะรัฐมนตรีเมื่อวันที่ 2 ธ.ค. 2568",
+      "รายชื่อคนต่างด้าวที่ทำการยื่นคำขอต่ออายุใบอนุญาตทำงานแล้ว 11445 รายการ",
+      "ค้นหาข้อมูลคนต่างด้าว"
+    ]
+  },
+  "ajax": [
+    {
+      "url": "https://eworkpermit.doe.go.th/Requtst63_2/NameListAlien?form_type=MT_63_2_3103_RENEWAL",
+      "method": "GET",
+      "post": ""
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/Requtst63_2/GetDataRenewFormCrMT",
+      "method": "POST",
+      "post": "form_type_id=MT_63_2_3103_RENEWAL"
+    },
+    {
+      "url": "https://eworkpermit.doe.go.th/Requtst63_2/GetDataAlienRenewFormCrList",
+      "method": "POST",
+      "post": "draw=1&columns%5B0%5D%5Bdata%5D=alien-id&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=true&columns%5B0%5D%5Borderable%5D=false&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=alien-id&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=true&columns%5B1%5D%5Borderable%5D=false&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=alien-id&columns%5B2%5D%5Bname%5D=&columns%5B2%5D%5Bsearchable%5D=true&columns%5B2%5D%5Borderable%5D=false&columns%5B2%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B2%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B3%5D%5Bdata%5D=alien-id&columns%5B3%5D%5Bname%5D=&columns%5B3%5D%5Bsearchable%5D=true&columns%5B3%5D%5Borderable%5D=false&columns%5B3%5D%5"
+    }
+  ]
+}

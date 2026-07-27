@@ -1,0 +1,57 @@
+{
+  "target_url": "https://eworkpermit.doe.go.th/RenewMOU/DetailFormRenewMOU?user_id=303816&status=APSS&group_id=69123000038421&form_type=MT_59_MOU_RENEWAL",
+  "login_user": "Vararat@mailforeign.com",
+  "tabs_on_page": {
+    "url": "https://eworkpermit.doe.go.th/RenewMOU/DetailFormRenewMOU?user_id=303816&status=APSS&group_id=69123000038421&form_type=MT_59_MOU_RENEWAL",
+    "tabs": [
+      {
+        "text": "สถานะคำขอ",
+        "href": "#tab_default_1",
+        "id": "div_tab1",
+        "cls": "",
+        "onclick": ""
+      },
+      {
+        "text": "ข้อมูลคนต่างด้าว",
+        "href": "#tab_default_2",
+        "id": "div_tab2",
+        "cls": "",
+        "onclick": ""
+      },
+      {
+        "text": "คำขออนุญาต",
+        "href": "#tab_default_3",
+        "id": "div_tab3",
+        "cls": "",
+        "onclick": ""
+      },
+      {
+        "text": "การชำระเงิน",
+        "href": "#tab_default_4",
+        "id": "div_tab4",
+        "cls": "",
+        "onclick": ""
+      },
+      {
+        "text": "การนัดหมาย",
+        "href": "#tab_default_5",
+        "id": "div_tab5",
+        "cls": "active",
+        "onclick": ""
+      },
+      {
+        "text": "เอกสารตอบรับจากระบบ",
+        "href": "#tab_default_6",
+        "id": "div_tab6",
+        "cls": "",
+        "onclick": ""
+      }
+    ]
+  },
+  "appt_tab": {
+    "paneFound": true,
+    "headings": [],
+    "downloadables": [],
+    "paneText": "ไม่มีการนัดหมาย"
+  }
+}

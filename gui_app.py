@@ -23,6 +23,8 @@ from scrape_wa import (
     run_bill_payment,
     run_payment_receipts,
     run_appointment,
+    run_bt30_ctn,
+    run_namelist_alien,
     _read_bt30_excel,
     _bt30_preflight_doc_sizes,
     _parse_row_range,
@@ -138,8 +140,53 @@ class App(tk.Tk):
     def _build_ui(self) -> None:
         pad = {"padx": 10, "pady": 6}
 
+        # ---- Scrollable outer container ----
+        # ห่อ content ทั้งหมดด้วย Canvas + Scrollbar เพื่อให้ผู้ใช้ scroll
+        # ลงไปเห็นปุ่ม/log ได้ เมื่อจอไม่พอ (ตัวเลือกเยอะ)
+        outer = ttk.Frame(self)
+        outer.pack(fill="both", expand=True)
+        self._scroll_canvas = tk.Canvas(outer, borderwidth=0, highlightthickness=0)
+        _vsb = ttk.Scrollbar(outer, orient="vertical", command=self._scroll_canvas.yview)
+        self._scroll_canvas.configure(yscrollcommand=_vsb.set)
+        _vsb.pack(side="right", fill="y")
+        self._scroll_canvas.pack(side="left", fill="both", expand=True)
+        self._body = ttk.Frame(self._scroll_canvas)
+        self._body_window = self._scroll_canvas.create_window(
+            (0, 0), window=self._body, anchor="nw",
+        )
+
+        def _on_body_configure(_evt=None):
+            self._scroll_canvas.configure(scrollregion=self._scroll_canvas.bbox("all"))
+
+        def _on_canvas_configure(evt):
+            # ให้ inner frame มีความกว้างเท่า canvas เสมอ (fill x)
+            self._scroll_canvas.itemconfig(self._body_window, width=evt.width)
+
+        self._body.bind("<Configure>", _on_body_configure)
+        self._scroll_canvas.bind("<Configure>", _on_canvas_configure)
+
+        def _on_mousewheel(evt):
+            # Windows/macOS: evt.delta คูณ 120; Linux: ใช้ Button-4/5 (ไม่ครอบคลุมที่นี่)
+            # ถ้าเมาส์อยู่บน widget ที่ scroll เองได้ (Listbox / Text) → ปล่อยให้มัน scroll เอง
+            try:
+                w = evt.widget
+                p = w
+                while p is not None:
+                    if isinstance(p, (tk.Listbox, tk.Text)):
+                        return
+                    p = getattr(p, "master", None)
+            except Exception:
+                pass
+            try:
+                self._scroll_canvas.yview_scroll(int(-1 * (evt.delta / 120)), "units")
+            except Exception:
+                pass
+
+        # bind mouse wheel ให้ทำงานทั่วหน้าต่าง (เฉพาะตอน hover บน canvas/inner)
+        self._scroll_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
         # ---- โหมดการทำงาน ----
-        mode_frm = ttk.LabelFrame(self, text="โหมดการทำงาน", padding=10)
+        mode_frm = ttk.LabelFrame(self._body, text="โหมดการทำงาน", padding=10)
         mode_frm.pack(fill="x", **pad)
         self.source_mode = tk.StringVar(value="etracking")
         ttk.Radiobutton(
@@ -197,8 +244,18 @@ class App(tk.Tk):
             variable=self.source_mode, value="appointment",
             command=self._on_mode_changed,
         ).pack(anchor="w")
+        ttk.Radiobutton(
+            mode_frm, text="ดาวน์โหลด (ใบตอบรับ / ใบนัดหมาย)",
+            variable=self.source_mode, value="bt30_ctn",
+            command=self._on_mode_changed,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            mode_frm, text="ดึงรายชื่อคนต่างด้าวที่ยื่นคำขอต่ออายุแล้ว (NameListAlien — ทุก pagination)",
+            variable=self.source_mode, value="namelist_alien",
+            command=self._on_mode_changed,
+        ).pack(anchor="w")
 
-        frm = ttk.LabelFrame(self, text="ข้อมูลเข้าสู่ระบบ", padding=10)
+        frm = ttk.LabelFrame(self._body, text="ข้อมูลเข้าสู่ระบบ", padding=10)
         frm.pack(fill="x", **pad)
 
         ttk.Label(frm, text="Username (อีเมล):").grid(row=0, column=0, sticky="w", pady=4)
@@ -250,75 +307,128 @@ class App(tk.Tk):
         frm.columnconfigure(1, weight=1)
 
         # ---- ตัวเลือก (e-Tracking) ----
-        opt = ttk.LabelFrame(self, text="ตัวเลือก", padding=10)
+        opt = ttk.LabelFrame(self._body, text="ตัวเลือก", padding=10)
         opt.pack(fill="x", **pad)
         self._etracking_frames: list[ttk.LabelFrame] = [opt]
 
-        ttk.Label(opt, text="รายการคำขอ:").grid(row=0, column=0, sticky="w", pady=4)
+        # รายการคำขอ (เลือกได้หลายรายการ)
         # default = MT_59_MOU_RENEWAL (รายการที่ใช้บ่อยที่สุด)
         _default_code = "MT_59_MOU_RENEWAL"
-        _default_label = next(
-            (lbl for code, lbl in REQUEST_TYPES if code == _default_code),
-            REQUEST_TYPES[0][1],
-        )
+        # เก็บ StringVar สำหรับ backward compat (ยังใช้กับ mode อื่นเช่น appointment ที่รับ request_type เดียว)
         self.request_type = tk.StringVar(value=_default_code)
-        self.request_label = tk.StringVar(value=_default_label)
-        rt_combo = ttk.Combobox(
-            opt, textvariable=self.request_label, state="readonly",
-            values=[lbl for _, lbl in REQUEST_TYPES],
-        )
-        rt_combo.grid(row=0, column=1, columnspan=2, sticky="we", padx=8)
-        rt_combo.bind("<<ComboboxSelected>>", self._on_request_changed)
+        self.request_label = tk.StringVar(value="")
 
-        ttk.Label(opt, text="หรือใส่ code เอง:").grid(row=1, column=0, sticky="w", pady=4)
-        ttk.Entry(opt, textvariable=self.request_type).grid(
-            row=1, column=1, sticky="we", padx=8,
+        # header row: label + ปุ่มเลือกทั้งหมด/ล้าง
+        rt_head = ttk.Frame(opt)
+        rt_head.grid(row=0, column=0, columnspan=3, sticky="we", pady=(0, 2))
+        ttk.Label(
+            rt_head, text="รายการคำขอ (เลือกได้หลายรายการ — Ctrl/Shift + คลิก):",
+        ).pack(side="left")
+        ttk.Button(
+            rt_head, text="เลือกทั้งหมด", command=self._req_select_all, width=12,
+        ).pack(side="right", padx=(4, 0))
+        ttk.Button(
+            rt_head, text="ล้าง", command=self._req_clear, width=8,
+        ).pack(side="right")
+
+        # Listbox + scrollbars — ข้าม entry แรกที่ code=="" (ทั้งหมด/ไม่กรอง)
+        self._req_codes: list[str] = [c for c, _ in REQUEST_TYPES if c]
+        self._req_labels: list[str] = [l for c, l in REQUEST_TYPES if c]
+        rt_box = ttk.Frame(opt)
+        rt_box.grid(row=1, column=0, columnspan=3, sticky="we", pady=(0, 4))
+        rt_box.columnconfigure(0, weight=1)
+        vsb = ttk.Scrollbar(rt_box, orient="vertical")
+        hsb = ttk.Scrollbar(rt_box, orient="horizontal")
+        self.request_listbox = tk.Listbox(
+            rt_box, selectmode=tk.EXTENDED, height=8, exportselection=False,
+            yscrollcommand=vsb.set, xscrollcommand=hsb.set,
+            activestyle="dotbox",
         )
-        ttk.Label(opt, text="(เว้นว่าง = ทั้งหมด)", foreground="gray").grid(
-            row=1, column=2, sticky="w",
+        vsb.config(command=self.request_listbox.yview)
+        hsb.config(command=self.request_listbox.xview)
+        for lbl in self._req_labels:
+            self.request_listbox.insert("end", lbl)
+        # pre-select default
+        try:
+            _idx = self._req_codes.index(_default_code)
+            self.request_listbox.selection_set(_idx)
+            self.request_listbox.see(_idx)
+        except ValueError:
+            pass
+        self.request_listbox.grid(row=0, column=0, sticky="we")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="we")
+        self.request_listbox.bind("<<ListboxSelect>>", self._on_request_changed)
+
+        # แสดงจำนวนที่เลือก + hint
+        self.request_summary = tk.StringVar(value="")
+        ttk.Label(opt, textvariable=self.request_summary, foreground="#1a7000").grid(
+            row=2, column=0, columnspan=3, sticky="w",
         )
+        ttk.Label(
+            opt, text="(ไม่เลือกอะไรเลย = ดึงทุกรายการคำขอ)", foreground="gray",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(0, 4))
+
+        # ---- ตัวกรองวันที่ยื่นคำขอ (จาก → ถึง) ----
+        date_row = ttk.Frame(opt)
+        date_row.grid(row=4, column=0, columnspan=3, sticky="we", pady=(4, 0))
+        ttk.Label(date_row, text="วันที่ยื่นคำขอ (จาก):").pack(side="left")
+        self.date_from = tk.StringVar(value="")
+        ttk.Entry(date_row, textvariable=self.date_from, width=14).pack(
+            side="left", padx=(4, 12),
+        )
+        ttk.Label(date_row, text="ถึง:").pack(side="left")
+        self.date_to = tk.StringVar(value="")
+        ttk.Entry(date_row, textvariable=self.date_to, width=14).pack(
+            side="left", padx=(4, 12),
+        )
+        ttk.Label(
+            date_row,
+            text="รูปแบบ วว/ดด/ปปปป (เช่น 01/07/2026) — เว้นว่างทั้งสองช่อง = ทุกวันที่",
+            foreground="gray",
+        ).pack(side="left")
 
         # ---- หลายบัญชี (multi-user) ----
         self.etk_multi = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             opt, text="ดึงหลายบัญชีจากไฟล์ UsernameLogin.xlsx (ไม่ต้องกรอก Username/Password ด้านบน)",
             variable=self.etk_multi, command=self._on_etk_multi_changed,
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
         self.etk_login_lbl = ttk.Label(opt, text="ไฟล์ UsernameLogin.xlsx:")
-        self.etk_login_lbl.grid(row=4, column=0, sticky="w", pady=4)
+        self.etk_login_lbl.grid(row=6, column=0, sticky="w", pady=4)
         self.etk_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
         self.etk_login_entry = ttk.Entry(opt, textvariable=self.etk_login_input)
-        self.etk_login_entry.grid(row=4, column=1, sticky="we", padx=8)
+        self.etk_login_entry.grid(row=6, column=1, sticky="we", padx=8)
         self.etk_login_btn = ttk.Button(
             opt, text="เลือก...",
             command=lambda: self._choose_into(self.etk_login_input),
         )
-        self.etk_login_btn.grid(row=4, column=2, padx=4)
+        self.etk_login_btn.grid(row=6, column=2, padx=4)
 
-        ttk.Label(opt, text="Login ใหม่ทุก (รายการ):").grid(row=5, column=0, sticky="w", pady=4)
+        ttk.Label(opt, text="Login ใหม่ทุก (รายการ):").grid(row=7, column=0, sticky="w", pady=4)
         self.relogin_every = tk.StringVar(value="500")
         ttk.Combobox(
             opt, textvariable=self.relogin_every, width=10, state="readonly",
             values=["ปิด (ไม่ login ใหม่)", "500", "1000", "2000"],
-        ).grid(row=5, column=1, sticky="w", padx=8)
+        ).grid(row=7, column=1, sticky="w", padx=8)
         ttk.Label(opt, text="กัน session timeout ในงานยาว", foreground="gray").grid(
-            row=5, column=2, sticky="w",
+            row=7, column=2, sticky="w",
         )
 
-        ttk.Label(opt, text="จำกัดจำนวน (0 = ทั้งหมด):").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Label(opt, text="จำกัดจำนวน (0 = ทั้งหมด):").grid(row=8, column=0, sticky="w", pady=4)
         self.limit = tk.IntVar(value=0)
         ttk.Spinbox(opt, from_=0, to=10000, textvariable=self.limit, width=10).grid(
-            row=6, column=1, sticky="w", padx=8,
+            row=8, column=1, sticky="w", padx=8,
         )
 
-        ttk.Label(opt, text="ไฟล์ที่บันทึก:").grid(row=7, column=0, sticky="w", pady=4)
+        ttk.Label(opt, text="ไฟล์ที่บันทึก:").grid(row=9, column=0, sticky="w", pady=4)
         self.out_path = tk.StringVar(value=str(REPORTS_DIR / "WA_report.xlsx"))
-        ttk.Entry(opt, textvariable=self.out_path).grid(row=7, column=1, sticky="we", padx=8)
-        ttk.Button(opt, text="เลือก...", command=self._choose_out).grid(row=7, column=2, padx=4)
+        ttk.Entry(opt, textvariable=self.out_path).grid(row=9, column=1, sticky="we", padx=8)
+        ttk.Button(opt, text="เลือก...", command=self._choose_out).grid(row=9, column=2, padx=4)
         opt.columnconfigure(1, weight=1)
 
         # ---- ตัวกรองสถานะ (advanced) ----
-        adv = ttk.LabelFrame(self, text="ตัวกรองสถานะ (ตามที่เห็นในเว็บ)", padding=10)
+        adv = ttk.LabelFrame(self._body, text="ตัวกรองสถานะ (ตามที่เห็นในเว็บ)", padding=10)
         adv.pack(fill="x", **pad)
         self._etracking_frames.append(adv)
 
@@ -366,10 +476,11 @@ class App(tk.Tk):
 
         # โหลด default ตาม request_type แรก
         self._apply_profile_defaults(self.request_type.get())
+        self._update_request_summary()
 
         # ---- ตัวเลือก (โหมด aliens) ----
         self.aliens_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ข้อมูลคนต่างด้าว", padding=10,
+            self._body, text="ตัวเลือก — ข้อมูลคนต่างด้าว", padding=10,
         )
         ttk.Label(
             self.aliens_frame, text="เลือกหมวดข้อมูลที่จะดึง:", foreground="#444",
@@ -389,7 +500,7 @@ class App(tk.Tk):
 
         # ---- ตัวเลือก (โหมด register) ----
         self.register_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ลงทะเบียนคนต่างด้าว", padding=10,
+            self._body, text="ตัวเลือก — ลงทะเบียนคนต่างด้าว", padding=10,
         )
         ttk.Label(
             self.register_frame,
@@ -430,7 +541,7 @@ class App(tk.Tk):
 
         # ---- ตัวเลือก (โหมด receipts) ----
         self.receipt_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ดาวน์โหลดเอกสาร (ใบเสร็จทุกราคา / บต.44 / บต.22 / บต.53 / บต.56)", padding=10,
+            self._body, text="ตัวเลือก — ดาวน์โหลดเอกสาร (ใบเสร็จทุกราคา / บต.44 / บต.22 / บต.53 / บต.56)", padding=10,
         )
         ttk.Label(
             self.receipt_frame,
@@ -508,26 +619,46 @@ class App(tk.Tk):
             doc_box, text="แบบ บต.56", variable=self.doc_bt56,
         ).pack(side="left")
 
+        # ต่อท้ายชื่อไฟล์เอง (optional) + สร้างโฟลเดอร์แยกตาม PASSPORT
+        self.receipt_name_suffix = tk.StringVar(value="")
+        self.receipt_make_folder = tk.BooleanVar(value=False)
+        ttk.Label(self.receipt_frame, text="ต่อท้ายชื่อไฟล์ (ถ้าต้องการ):").grid(
+            row=6, column=0, sticky="w", pady=(6, 2),
+        )
+        ttk.Entry(self.receipt_frame, textvariable=self.receipt_name_suffix, width=18).grid(
+            row=6, column=1, sticky="w", padx=8, pady=(6, 2),
+        )
+        ttk.Label(
+            self.receipt_frame,
+            text='เว้นว่าง = ไม่ต่อท้าย | ใส่ "_IO" → {PASSPORT}_BT22_IO.pdf',
+            foreground="gray",
+        ).grid(row=6, column=2, sticky="w")
+        ttk.Checkbutton(
+            self.receipt_frame,
+            text="สร้างโฟลเดอร์แยกตาม PASSPORT (เช่น receipts/MD1524123/MD1524123_BT44.pdf)",
+            variable=self.receipt_make_folder,
+        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 4))
+
         ttk.Label(
             self.receipt_frame,
             text="ไฟล์ PDF เก็บในโฟลเดอร์ receipts — ใบเสร็จดาวน์ทุกใบ ตั้งชื่อตามราคา: {PASSPORT}_RECEIPT100.pdf / _RECEIPT1800.pdf / _BT44.pdf / _BT22.pdf / _BT53.pdf / _BT55.pdf / _BT52.pdf / _BT56.pdf",
             foreground="gray",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(2, 0))
         ttk.Label(
             self.receipt_frame,
             text="(จัดกลุ่มตาม Username → login ตาม Type ในไฟล์ — ไม่ต้องกรอก Username/Password ด้านบน)",
             foreground="gray",
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(2, 0))
         ttk.Label(
             self.receipt_frame,
             text="ทำซ้ำได้: เอกสารที่มีไฟล์ PDF อยู่แล้วจะถูกข้าม / รองรับ session หมดอายุ",
             foreground="gray",
-        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        ).grid(row=10, column=0, columnspan=3, sticky="w", pady=(2, 0))
         self.receipt_frame.columnconfigure(1, weight=1)
 
         # ---- ตัวเลือก (โหมด results: ใบแจ้งผล / ใบรับคำขอ) ----
         self.result_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ดาวน์โหลดเอกสารผลอนุญาต (ใบแจ้งผล / ใบรับคำขอ)", padding=10,
+            self._body, text="ตัวเลือก — ดาวน์โหลดเอกสารผลอนุญาต (ใบแจ้งผล / ใบรับคำขอ)", padding=10,
         )
         ttk.Label(
             self.result_frame,
@@ -626,7 +757,7 @@ class App(tk.Tk):
 
         # ---- ตัวเลือก (โหมด inform: แจ้งเข้านายจ้าง บต.52) ----
         self.inform_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — แจ้งเข้านายจ้าง (แบบ บต.52)", padding=10,
+            self._body, text="ตัวเลือก — แจ้งเข้านายจ้าง (แบบ บต.52)", padding=10,
         )
         ttk.Label(
             self.inform_frame,
@@ -696,7 +827,7 @@ class App(tk.Tk):
 
         # ---- ตัวเลือก (โหมด bt30: ยื่นต่อใบอนุญาตทำงานตาม MoU แบบ บต.30) ----
         self.bt30_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ยื่นต่อใบอนุญาตทำงาน (แบบ บต.30 / MoU)", padding=10,
+            self._body, text="ตัวเลือก — ยื่นต่อใบอนุญาตทำงาน (แบบ บต.30 / MoU)", padding=10,
         )
         ttk.Label(
             self.bt30_frame,
@@ -784,7 +915,7 @@ class App(tk.Tk):
 
         # ---- ตัวเลือก (โหมด bt44: แจ้งการทำงาน/เปลี่ยนรายการในใบอนุญาต ซึ่งไม่กระทบ แบบ บต.44) ----
         self.bt44_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — เปลี่ยนย้ายนายจ้างในระบบ (บต.44)", padding=10,
+            self._body, text="ตัวเลือก — เปลี่ยนย้ายนายจ้างในระบบ (บต.44)", padding=10,
         )
         ttk.Label(
             self.bt44_frame,
@@ -896,7 +1027,7 @@ class App(tk.Tk):
 
         # ----- โหมด: ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม) -----
         self.billpay_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม)", padding=10,
+            self._body, text="ตัวเลือก — ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม)", padding=10,
         )
         ttk.Label(
             self.billpay_frame,
@@ -974,7 +1105,7 @@ class App(tk.Tk):
 
         # ----- โหมด: ดาวน์โหลดใบเสร็จรับเงินทั้งชุด -----
         self.payrcpt_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — ดาวน์โหลดใบเสร็จรับเงินทั้งชุด (900 + 100 + อื่นๆ)",
+            self._body, text="ตัวเลือก — ดาวน์โหลดใบเสร็จรับเงินทั้งชุด (900 + 100 + อื่นๆ)",
             padding=10,
         )
         ttk.Label(
@@ -1039,7 +1170,7 @@ class App(tk.Tk):
 
         # ----- โหมด: นัดหมายถ่ายบัตร -----
         self.appt_frame = ttk.LabelFrame(
-            self, text="ตัวเลือก — นัดหมายถ่ายบัตร (เก็บที่อยู่จากใบเสร็จค่าธรรมเนียม)",
+            self._body, text="ตัวเลือก — นัดหมายถ่ายบัตร (เก็บที่อยู่จากใบเสร็จค่าธรรมเนียม)",
             padding=10,
         )
         ttk.Label(
@@ -1087,12 +1218,144 @@ class App(tk.Tk):
         ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(2, 0))
         self.appt_frame.columnconfigure(1, weight=1)
 
+        # ---- ตัวเลือก (โหมด bt30_ctn) ----
+        self.bt30ctn_frame = ttk.LabelFrame(
+            self._body,
+            text="ตัวเลือก — ดาวน์โหลด (ใบตอบรับ / ใบนัดหมาย)",
+            padding=10,
+        )
+        ttk.Label(
+            self.bt30ctn_frame,
+            text="ขั้นตอน: วน Login ทุกบัญชีใน UsernameLogin.xlsx (หรือใช้ Username/Password จาก 'ข้อมูลเข้าสู่ระบบ' ด้านบน) → "
+                 "Tracking → กรอง Status ตาม checkbox ด้านบน → ทุกคำขอ: เปิด detail → \n"
+                 "  • ใบตอบรับ (บต.30) — tab 'เอกสารตอบรับจากระบบ' → PDF → ตั้งชื่อ {PASSPORT}_BT{XX}_CTN.pdf (สถานะ WP2)\n"
+                 "  • ใบนัดหมาย — tab 'การนัดหมาย' → iframe queue → PDF → ตั้งชื่อ {PASSPORT}_APPOINTMENT.pdf (สถานะ AP/APSS)",
+            foreground="#444", wraplength=900, justify="left",
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+
+        ttk.Label(self.bt30ctn_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
+            row=1, column=0, sticky="w", pady=4,
+        )
+        self.bt30ctn_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
+        ttk.Entry(self.bt30ctn_frame, textvariable=self.bt30ctn_login_input).grid(
+            row=1, column=1, sticky="we", padx=8,
+        )
+        ttk.Button(
+            self.bt30ctn_frame, text="เลือก...",
+            command=lambda: self._choose_into(self.bt30ctn_login_input),
+        ).grid(row=1, column=2, padx=4)
+
+        ttk.Label(self.bt30ctn_frame, text="เลือกแถวที่จะทำ (ต่อบัญชี):").grid(
+            row=2, column=0, sticky="w", pady=4,
+        )
+        self.bt30ctn_row_range = tk.StringVar(value="")
+        ttk.Entry(self.bt30ctn_frame, textvariable=self.bt30ctn_row_range).grid(
+            row=2, column=1, sticky="we", padx=8,
+        )
+        ttk.Label(
+            self.bt30ctn_frame,
+            text='เช่น "1-10,15" (เว้นว่าง = ทั้งหมด)',
+            foreground="gray",
+        ).grid(row=2, column=2, sticky="w")
+
+        # date filter (ใช้ตัวแปรร่วมกับโหมด e-Tracking — self.date_from / self.date_to)
+        # แสดง label เพื่อบอกว่าจะใช้ค่าจากด้านบน (ถ้ามี)
+        ttk.Label(
+            self.bt30ctn_frame,
+            text="💡 ค่ากรอง 'วันที่ยื่นคำขอ (จาก → ถึง)' + 'รายการคำขอ' + 'สถานะ (checkbox)' ในกล่อง e-Tracking ด้านบนจะถูกใช้ร่วมกัน",
+            foreground="#0056b3", wraplength=900, justify="left",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 2))
+
+        # เลือกประเภทเอกสารที่จะดาวน์โหลด
+        ttk.Label(self.bt30ctn_frame, text="เอกสารที่จะดาวน์โหลด:").grid(
+            row=4, column=0, sticky="w", pady=(6, 2),
+        )
+        _doc_box = ttk.Frame(self.bt30ctn_frame)
+        _doc_box.grid(row=4, column=1, columnspan=2, sticky="w", pady=(6, 2))
+        self.bt30ctn_do_ctn = tk.BooleanVar(value=True)
+        self.bt30ctn_do_appointment = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            _doc_box, text="ใบตอบรับ บต.30 (CTN) — สถานะ WP2",
+            variable=self.bt30ctn_do_ctn,
+        ).pack(side="left", padx=(0, 20))
+        ttk.Checkbutton(
+            _doc_box, text="ใบนัดหมาย (APPOINTMENT) — สถานะ AP/APSS",
+            variable=self.bt30ctn_do_appointment,
+        ).pack(side="left")
+
+        self.bt30ctn_make_subfolder = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            self.bt30ctn_frame,
+            text="สร้างโฟลเดอร์แยกตาม PASSPORT (เช่น bt30_ctn/MH788309/MH788309_BT30_CTN.pdf)",
+            variable=self.bt30ctn_make_subfolder,
+        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 2))
+
+        ttk.Label(
+            self.bt30ctn_frame,
+            text="เซฟ PDF → reports/bt30_ctn/  |  รายงาน Excel มี hyperlink ไปที่ไฟล์ PDF (CTN + APPOINTMENT)",
+            foreground="#444",
+        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        ttk.Label(
+            self.bt30ctn_frame,
+            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ดาวน์โหลด PDF ที่ระบบสร้างแล้ว ไม่มีการส่งคำขอ/ตัดเงิน",
+            foreground="#1a7000",
+        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        self.bt30ctn_frame.columnconfigure(1, weight=1)
+
+        # ---- ตัวเลือก (โหมด namelist_alien) ----
+        self.namelist_frame = ttk.LabelFrame(
+            self._body,
+            text="ตัวเลือก — ดึงรายชื่อคนต่างด้าว (NameListAlien)",
+            padding=10,
+        )
+        ttk.Label(
+            self.namelist_frame,
+            text="ขั้นตอน: Login ผ่านช่อง 'ข้อมูลเข้าสู่ระบบ' ด้านบน (บัญชีเดียว) → "
+                 "เปิด /Requtst63_2/NameListAlien?form_type=<code> → "
+                 "วน DataTable ทุกหน้า (100 แถว/หน้า) → บันทึกลง Excel",
+            foreground="#444", wraplength=900, justify="left",
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+
+        ttk.Label(self.namelist_frame, text="Form Type:").grid(
+            row=1, column=0, sticky="w", pady=4,
+        )
+        self.namelist_form_type = tk.StringVar(value="MT_63_2_3103_RENEWAL")
+        ttk.Entry(self.namelist_frame, textvariable=self.namelist_form_type).grid(
+            row=1, column=1, sticky="we", padx=8,
+        )
+        ttk.Label(
+            self.namelist_frame,
+            text="เช่น MT_63_2_3103_RENEWAL, MT_63_2_1302_RENEWAL, MT_63_2_AGN_RENEWAL",
+            foreground="gray",
+        ).grid(row=1, column=2, sticky="w")
+
+        ttk.Label(self.namelist_frame, text="จำกัดจำนวน (0 = ทั้งหมด):").grid(
+            row=2, column=0, sticky="w", pady=4,
+        )
+        self.namelist_limit = tk.IntVar(value=0)
+        ttk.Spinbox(
+            self.namelist_frame, from_=0, to=99999,
+            textvariable=self.namelist_limit, width=10,
+        ).grid(row=2, column=1, sticky="w", padx=8)
+        ttk.Label(
+            self.namelist_frame,
+            text="ใส่ 100 เพื่อทดสอบเร็ว (แต่ละหน้ามี 100 แถว)",
+            foreground="gray",
+        ).grid(row=2, column=2, sticky="w")
+
+        ttk.Label(
+            self.namelist_frame,
+            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ไม่มีการส่งคำขอ/แก้ข้อมูลใดๆ",
+            foreground="#1a7000",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
+        self.namelist_frame.columnconfigure(1, weight=1)
+
         # ปกติซ่อนไว้ — แสดงเมื่อเลือกโหมดอื่น
         self._on_etk_multi_changed()
         self._on_mode_changed()
 
         # ---- ปุ่ม ----
-        btns = ttk.Frame(self)
+        btns = ttk.Frame(self._body)
         btns.pack(fill="x", **pad)
         self._btns_frame = btns
         self.btn_start = ttk.Button(
@@ -1118,7 +1381,7 @@ class App(tk.Tk):
         self.btn_open.pack(side="right", padx=4, ipady=4)
 
         # ---- Progress ----
-        prog_frame = ttk.Frame(self)
+        prog_frame = ttk.Frame(self._body)
         prog_frame.pack(fill="x", **pad)
         self._prog_frame = prog_frame
         self.progress = ttk.Progressbar(prog_frame, mode="determinate")
@@ -1127,7 +1390,7 @@ class App(tk.Tk):
         self.progress_lbl.pack(side="left", padx=8)
 
         # ---- Log ----
-        logf = ttk.LabelFrame(self, text="บันทึกการทำงาน", padding=6)
+        logf = ttk.LabelFrame(self._body, text="บันทึกการทำงาน", padding=6)
         logf.pack(fill="both", expand=True, **pad)
         self._log_frame = logf
         self.log_text = tk.Text(logf, height=14, wrap="word", state="disabled", font=("Consolas", 10))
@@ -1165,6 +1428,8 @@ class App(tk.Tk):
         self.billpay_frame.pack_forget()
         self.payrcpt_frame.pack_forget()
         self.appt_frame.pack_forget()
+        self.bt30ctn_frame.pack_forget()
+        self.namelist_frame.pack_forget()
         # default output path ตามโหมด
         cur = self.out_path.get()
         defaults = {
@@ -1175,6 +1440,8 @@ class App(tk.Tk):
             "WA_bill_payment_report.xlsx",
             "WA_payment_receipts_report.xlsx",
             "WA_appointment_report.xlsx",
+            "WA_bt30_ctn_report.xlsx",
+            "WA_namelist_alien_report.xlsx",
         }
         cur_basename = Path(cur).name if cur else ""
         if mode == "aliens":
@@ -1217,6 +1484,17 @@ class App(tk.Tk):
             self.appt_frame.pack(fill="x", padx=10, pady=6)
             if cur_basename in defaults:
                 self.out_path.set(str(REPORTS_DIR / "WA_appointment_report.xlsx"))
+        elif mode == "bt30_ctn":
+            # โหมดนี้แชร์ตัวเลือก e-Tracking (request_types + date filter) → แสดงร่วมกัน
+            for f in self._etracking_frames:
+                f.pack(fill="x", padx=10, pady=6)
+            self.bt30ctn_frame.pack(fill="x", padx=10, pady=6)
+            if cur_basename in defaults:
+                self.out_path.set(str(REPORTS_DIR / "WA_bt30_ctn_report.xlsx"))
+        elif mode == "namelist_alien":
+            self.namelist_frame.pack(fill="x", padx=10, pady=6)
+            if cur_basename in defaults:
+                self.out_path.set(str(REPORTS_DIR / "WA_namelist_alien_report.xlsx"))
         else:
             for f in self._etracking_frames:
                 f.pack(fill="x", padx=10, pady=6)
@@ -1238,13 +1516,48 @@ class App(tk.Tk):
                 else:
                     child.pack(fill="x", padx=10, pady=6)
 
+    def _get_selected_request_codes(self) -> list[str]:
+        """คืน list ของ code ที่ผู้ใช้เลือกใน Listbox ตามลำดับ"""
+        try:
+            idxs = self.request_listbox.curselection()
+        except Exception:
+            return []
+        return [self._req_codes[i] for i in idxs if 0 <= i < len(self._req_codes)]
+
+    def _update_request_summary(self) -> None:
+        codes = self._get_selected_request_codes()
+        n = len(codes)
+        if n == 0:
+            self.request_summary.set("[เลือก 0 รายการ] → จะดึงทุกรายการคำขอ")
+        elif n == 1:
+            self.request_summary.set(f"[เลือก 1 รายการ] code: {codes[0]}")
+        else:
+            preview = ", ".join(codes[:3])
+            more = f" (+{n - 3} อื่น)" if n > 3 else ""
+            self.request_summary.set(f"[เลือก {n} รายการ] {preview}{more}")
+
+    def _req_select_all(self) -> None:
+        try:
+            self.request_listbox.selection_set(0, "end")
+            self._on_request_changed()
+        except Exception:
+            pass
+
+    def _req_clear(self) -> None:
+        try:
+            self.request_listbox.selection_clear(0, "end")
+            self._on_request_changed()
+        except Exception:
+            pass
+
     def _on_request_changed(self, _evt=None) -> None:
-        lbl = self.request_label.get()
-        for code, label in REQUEST_TYPES:
-            if label == lbl:
-                self.request_type.set(code)
-                self._apply_profile_defaults(code)
-                return
+        codes = self._get_selected_request_codes()
+        # เก็บ code แรก (หรือว่าง) ไว้ที่ self.request_type สำหรับ backward compat
+        first = codes[0] if codes else ""
+        self.request_type.set(first)
+        # อัปเดต profile defaults ตาม code แรกที่เลือก
+        self._apply_profile_defaults(first)
+        self._update_request_summary()
 
     def _on_result_request_changed(self, _evt=None) -> None:
         lbl = self.result_request_label.get()
@@ -1337,7 +1650,7 @@ class App(tk.Tk):
     def _on_start(self) -> None:
         mode = self.source_mode.get()
         etk_multi = (mode == "etracking" and self.etk_multi.get())
-        if mode not in ("register", "receipts", "results", "inform", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment") and not etk_multi:
+        if mode not in ("register", "receipts", "results", "inform", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment", "bt30_ctn") and not etk_multi:
             if not self.username.get().strip() or not self.password.get():
                 messagebox.showwarning("ข้อมูลไม่ครบ", "กรุณากรอก Username และ Password")
                 return
@@ -1358,6 +1671,9 @@ class App(tk.Tk):
             "headless": self.headless.get(),
             "hide_window": self.hide_window.get(),
             "request_type": self.request_type.get().strip(),
+            "request_types": self._get_selected_request_codes(),
+            "date_from": self.date_from.get().strip(),
+            "date_to": self.date_to.get().strip(),
             "filter_status_ids": [c for c, v in self.filter_vars.items() if v.get()],
             "status_whitelist": [s for s, v in self.whitelist_vars.items() if v.get()],
             "capture_extra_notes": self.capture_extra_notes.get(),
@@ -1384,6 +1700,8 @@ class App(tk.Tk):
         receipt_request = Path(self.receipt_request_input.get()) if mode == "receipts" else None
         receipt_login = Path(self.receipt_login_input.get()) if mode == "receipts" else None
         receipt_row_range = self.receipt_row_range.get().strip() or None
+        receipt_name_suffix = self.receipt_name_suffix.get().strip() if mode == "receipts" else ""
+        receipt_make_folder = bool(self.receipt_make_folder.get()) if mode == "receipts" else False
         receipt_doc_types: list[str] | None = None
         if mode == "receipts":
             if not receipt_request or not receipt_request.exists():
@@ -1609,17 +1927,66 @@ class App(tk.Tk):
                 self.btn_cancel.config(state="disabled")
                 return
 
+        bt30ctn_login = Path(self.bt30ctn_login_input.get()) if mode == "bt30_ctn" else None
+        bt30ctn_row_range = self.bt30ctn_row_range.get().strip() or None
+        bt30ctn_subfolder = bool(self.bt30ctn_make_subfolder.get()) if mode == "bt30_ctn" else False
+        bt30ctn_do_ctn = bool(self.bt30ctn_do_ctn.get()) if mode == "bt30_ctn" else True
+        bt30ctn_do_appt = bool(self.bt30ctn_do_appointment.get()) if mode == "bt30_ctn" else False
+        if mode == "bt30_ctn":
+            if not (bt30ctn_do_ctn or bt30ctn_do_appt):
+                messagebox.showwarning(
+                    "ข้อมูลไม่ครบ",
+                    "กรุณาเลือกอย่างน้อย 1 เอกสาร (ใบตอบรับ หรือ ใบนัดหมาย)",
+                )
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
+            # ยืดหยุ่น: ถ้าไม่มี UsernameLogin.xlsx ต้องมี Username/Password ด้านบน
+            _has_file = bool(bt30ctn_login and bt30ctn_login.exists())
+            _has_creds = bool(self.username.get().strip() and self.password.get())
+            if not _has_file and not _has_creds:
+                messagebox.showwarning(
+                    "ข้อมูลไม่ครบ",
+                    "โหมดนี้ต้องมีอย่างใดอย่างหนึ่ง:\n"
+                    "  1) ไฟล์ UsernameLogin.xlsx ที่มีข้อมูลบัญชี\n"
+                    "  2) กรอก Username/Password ในช่อง 'ข้อมูลเข้าสู่ระบบ' ด้านบน",
+                )
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
+            # ถ้าไม่มีไฟล์ → ส่ง None ให้ backend fallback ไปใช้ cfg
+            if not _has_file:
+                bt30ctn_login = None
+
+        # ---- โหมด namelist_alien: อ่าน options ----
+        namelist_form_type = (
+            self.namelist_form_type.get().strip() if mode == "namelist_alien" else ""
+        )
+        namelist_limit = int(self.namelist_limit.get() or 0) if mode == "namelist_alien" else 0
+        if mode == "namelist_alien":
+            if not namelist_form_type:
+                messagebox.showwarning(
+                    "ข้อมูลไม่ครบ", "กรุณาระบุ Form Type (เช่น MT_63_2_3103_RENEWAL)",
+                )
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
+
         self._worker = threading.Thread(
             target=self._run,
             args=(mode, cfg, out, limit, sub_tabs, register_input, register_row_range,
                   receipt_request, receipt_login, receipt_row_range, receipt_doc_types,
+                  receipt_name_suffix, receipt_make_folder,
                   result_login, result_doc_keys, result_ref, etk_multi, etk_login,
                   inform_excel, inform_login, inform_row_range, inform_commit,
                   bt30_excel, bt30_login, bt30_row_range, bt30_do_step2, bt30_submit,
                   bt44_excel, bt44_login, bt44_row_range, bt44_dry_run, bt44_dry_stop, bt44_check_docs,
                   billpay_login, billpay_row_range, billpay_request_types,
                   payrcpt_request, payrcpt_login, payrcpt_row_range,
-                  appt_login, appt_row_range),
+                  appt_login, appt_row_range,
+                  bt30ctn_login, bt30ctn_row_range, bt30ctn_subfolder,
+                  bt30ctn_do_ctn, bt30ctn_do_appt,
+                  namelist_form_type, namelist_limit),
             daemon=True,
         )
         self.btn_pause.config(state="normal")
@@ -1661,6 +2028,7 @@ class App(tk.Tk):
         register_input: Path | None = None, register_row_range: str | None = None,
         receipt_request: Path | None = None, receipt_login: Path | None = None,
         receipt_row_range: str | None = None, receipt_doc_types: list[str] | None = None,
+        receipt_name_suffix: str = "", receipt_make_folder: bool = False,
         result_login: Path | None = None, result_doc_keys: list[str] | None = None,
         result_ref: Path | None = None,
         etk_multi: bool = False, etk_login: Path | None = None,
@@ -1678,6 +2046,10 @@ class App(tk.Tk):
         payrcpt_request: Path | None = None, payrcpt_login: Path | None = None,
         payrcpt_row_range: str | None = None,
         appt_login: Path | None = None, appt_row_range: str | None = None,
+        bt30ctn_login: Path | None = None, bt30ctn_row_range: str | None = None,
+        bt30ctn_subfolder: bool = False,
+        bt30ctn_do_ctn: bool = True, bt30ctn_do_appt: bool = False,
+        namelist_form_type: str = "", namelist_limit: int = 0,
     ) -> None:
         try:
             if mode == "aliens":
@@ -1700,6 +2072,8 @@ class App(tk.Tk):
                     cfg, receipt_request, receipt_login, out,
                     row_range=receipt_row_range,
                     doc_types=receipt_doc_types,
+                    name_suffix=receipt_name_suffix,
+                    make_subfolder=receipt_make_folder,
                     log=self._log,
                     progress=self._set_progress,
                     is_cancelled=self._wait_if_paused_or_cancelled,
@@ -1778,6 +2152,26 @@ class App(tk.Tk):
                     progress=self._set_progress,
                     is_cancelled=self._wait_if_paused_or_cancelled,
                 )
+            elif mode == "bt30_ctn":
+                count, path = run_bt30_ctn(
+                    cfg, bt30ctn_login, out,
+                    row_range=bt30ctn_row_range,
+                    make_subfolder=bt30ctn_subfolder,
+                    do_ctn=bt30ctn_do_ctn,
+                    do_appointment=bt30ctn_do_appt,
+                    log=self._log,
+                    progress=self._set_progress,
+                    is_cancelled=self._wait_if_paused_or_cancelled,
+                )
+            elif mode == "namelist_alien":
+                count, path = run_namelist_alien(
+                    cfg, out,
+                    form_type=namelist_form_type,
+                    limit=namelist_limit,
+                    log=self._log,
+                    progress=self._set_progress,
+                    is_cancelled=self._wait_if_paused_or_cancelled,
+                )
             else:
                 if etk_multi and etk_login is not None:
                     count, path = run_scrape_multi(
@@ -1795,8 +2189,13 @@ class App(tk.Tk):
                     )
             self.after(0, lambda: self._done_ok(count, path))
         except Exception as e:
-            self._log(f"[ผิดพลาด] {e}")
-            self.after(0, lambda: self._done_err(str(e)))
+            # PEP 3110: `e` ถูกลบทิ้งหลังออกจาก except block → capture เป็น local ก่อน
+            import traceback
+            err_msg = str(e) or e.__class__.__name__
+            tb_txt = traceback.format_exc()
+            self._log(f"[ผิดพลาด] {err_msg}")
+            self._log(tb_txt)
+            self.after(0, lambda em=err_msg: self._done_err(em))
 
     def _done_ok(self, count: int, path: Path) -> None:
         self.btn_start.config(state="normal")

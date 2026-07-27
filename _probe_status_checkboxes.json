@@ -1,0 +1,85 @@
+{
+  "checkboxes": [
+    {
+      "id": "WP",
+      "name": "checkbox_formstatus_alien",
+      "value": "WP",
+      "checked": false,
+      "visible": true,
+      "labelText": "รอชำระเงิน0",
+      "parentText": "รอชำระเงิน0"
+    },
+    {
+      "id": "WCOSNA",
+      "name": "checkbox_formstatus_alien",
+      "value": "WCOSNA",
+      "checked": false,
+      "visible": true,
+      "labelText": "รอตรวจสอบเอกสารของบริษัท OS41",
+      "parentText": "รอตรวจสอบเอกสารของบริษัท OS41"
+    },
+    {
+      "id": "WA",
+      "name": "checkbox_formstatus_alien",
+      "value": "WA",
+      "checked": false,
+      "visible": true,
+      "labelText": "รอยื่นเอกสารเพิ่มเติม99+",
+      "parentText": "รอยื่นเอกสารเพิ่มเติม99+"
+    },
+    {
+      "id": "AP",
+      "name": "checkbox_formstatus_alien",
+      "value": "AP",
+      "checked": false,
+      "visible": true,
+      "labelText": "รอนัดหมาย58",
+      "parentText": "รอนัดหมาย58"
+    },
+    {
+      "id": "SS",
+      "name": "checkbox_formstatus_alien",
+      "value": "SS",
+      "checked": false,
+      "visible": true,
+      "labelText": "ดำเนินการเสร็จสิ้น99+",
+      "parentText": "ดำเนินการเสร็จสิ้น99+"
+    },
+    {
+      "id": "allSelect",
+      "name": "",
+      "value": "",
+      "checked": false,
+      "visible": false,
+      "labelText": "",
+      "parentText": ""
+    }
+  ],
+  "numberCounters": [
+    {
+      "id": "number_WP",
+      "text": "0",
+      "parentText": "0"
+    },
+    {
+      "id": "number_WCOSNA",
+      "text": "41",
+      "parentText": "41"
+    },
+    {
+      "id": "number_WA",
+      "text": "99+",
+      "parentText": "99+"
+    },
+    {
+      "id": "number_AP",
+      "text": "58",
+      "parentText": "58"
+    },
+    {
+      "id": "number_SS",
+      "text": "99+",
+      "parentText": "99+"
+    }
+  ]
+}

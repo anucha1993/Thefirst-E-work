@@ -385,7 +385,11 @@ def ensure_tracking_ready(page: Page, cfg: dict, request_type: str = "", log=pri
             or get_profile(request_type).get("filter_status_ids")
             or ["WA"]
         )
-        apply_wa_filter(page, request_type or "", status_ids=status_ids)
+        apply_wa_filter(
+            page, request_type or "", status_ids=status_ids,
+            date_from=(cfg.get("date_from") or ""),
+            date_to=(cfg.get("date_to") or ""),
+        )
         page.wait_for_timeout(1500)
         return "/Permit/Tracking" in (page.url or "")
     except Exception as e:
@@ -404,8 +408,11 @@ def _is_logged_out(page: Page) -> bool:
         url = page.url or ""
     except Exception:
         return False
-    if ("/Login" in url) or url.rstrip("/").endswith("doe.go.th"):
+    # เจอ /Login ใน URL = ถูก redirect ไปหน้า login แน่นอน
+    if "/Login" in url:
         return True
+    # NOTE: อย่าใช้เงื่อนไข "URL ลงท้าย doe.go.th" — root URL (https://eworkpermit.doe.go.th/)
+    # คือหน้า home ของผู้ใช้ที่ login แล้ว ไม่ใช่ logout — เคย false-positive ทุก record
     # ตรวจ content: เซิร์ฟเวอร์บางครั้ง silent-expire โดยไม่ redirect
     # - มี input password → หน้า login แทรกมา
     # - มี modal/ข้อความ "Session Timeout / หมดอายุ / เข้าสู่ระบบใหม่" (popup ค้างหน้า detail)
@@ -444,20 +451,29 @@ def ensure_session(page: Page, cfg: dict, target_url: str | None = None, log=pri
         return False
 
 
-def apply_wa_filter(page: Page, request_type: str = "", status_ids: list[str] | None = None) -> None:
-    """ติ๊ก checkbox สถานะ (อาจหลายตัว) + ตั้งค่ารายการคำขอ แล้ว trigger รีเฟรช
+def apply_wa_filter(
+    page: Page,
+    request_type: str = "",
+    status_ids: list[str] | None = None,
+    date_from: str = "",
+    date_to: str = "",
+) -> None:
+    """ติ๊ก checkbox สถานะ (อาจหลายตัว) + ตั้งค่ารายการคำขอ + วันที่ยื่นคำขอ แล้ว trigger รีเฟรช
 
     Args:
         request_type: รหัสรายการคำขอ (เช่น MT_13_EXIT, MT_59_MOU_RENEWAL)
+                      "" = ไม่กรอง (ทั้งหมด)
         status_ids: list ของ checkbox id ที่ต้องติ๊ก (เช่น ["WA"], ["WCOSNA","WA"])
                     ถ้า None → ใช้ profile ของ request_type
+        date_from: วันที่เริ่ม (รูปแบบ วว/ดด/ปปปป) — "" = ไม่กรอง
+        date_to:   วันที่สิ้นสุด (รูปแบบ วว/ดด/ปปปป) — "" = ไม่กรอง
     """
     if status_ids is None:
         status_ids = list(get_profile(request_type).get("filter_status_ids") or ["WA"])
 
-    # ขั้นที่ 1: ติ๊ก status + เซ็ต dropdown แล้วยิง GetData ครั้งแรก
+    # ขั้นที่ 1: ติ๊ก status + เซ็ต dropdown + วันที่ แล้วยิง GetData ครั้งแรก
     page.evaluate(
-        """({rt, ids}) => {
+        """({rt, ids, df, dt}) => {
             // เคลียร์ checkbox ทุกตัวก่อน เพื่อไม่ให้ค้างจากครั้งก่อน
             ['WP','WCOSNA','WA','AP','SS'].forEach(id => {
                 const cb = document.getElementById(id);
@@ -468,38 +484,103 @@ def apply_wa_filter(page: Page, request_type: str = "", status_ids: list[str] | 
                 const cb = document.getElementById(id);
                 if (cb) cb.checked = true;
             });
-            if (rt) {
-                const sel = document.getElementById('Filter_request_list');
-                if (sel) {
-                    sel.value = rt;
-                    if (window.jQuery) window.jQuery(sel).val(rt).trigger('change');
-                }
+            const sel = document.getElementById('Filter_request_list');
+            if (sel) {
+                sel.value = rt || '';
+                if (window.jQuery) window.jQuery(sel).val(rt || '').trigger('change');
             }
+            // ---- ตั้งค่าวันที่ยื่นคำขอ (จาก → ถึง) ----
+            // ID จริงบนเว็บ: search_start_date, search_end_date
+            // ใช้ bootstrap-datepicker → เรียก 'update' ให้ picker sync internal state
+            function setDateById(id, val) {
+                const inp = document.getElementById(id);
+                if (!inp) return;
+                const $ = window.jQuery;
+                if ($ && $(inp).data('datepicker')) {
+                    try {
+                        if (val) {
+                            $(inp).datepicker('update', val);
+                        } else {
+                            // เคลียร์ค่า: setDate(null) + clear input value
+                            $(inp).datepicker('setDate', null);
+                            inp.value = '';
+                            $(inp).datepicker('update', '');
+                        }
+                        // trigger changeDate เพื่อให้ event handler ที่ผูกไว้ทำงาน
+                        $(inp).trigger('changeDate');
+                    } catch(e) { /* fallback ด้านล่าง */ }
+                }
+                // fallback: set .value ตรงๆ (เผื่อไม่มี datepicker plugin)
+                if (inp.value !== (val || '')) inp.value = val || '';
+                inp.dispatchEvent(new Event('input',  {bubbles: true}));
+                inp.dispatchEvent(new Event('change', {bubbles: true}));
+                inp.dispatchEvent(new Event('blur',   {bubbles: true}));
+            }
+            setDateById('search_start_date', df || '');
+            setDateById('search_end_date',   dt || '');
             if (typeof GetDataRequestFormEtrackingForAlien === 'function') {
                 GetDataRequestFormEtrackingForAlien();
             }
         }""",
-        {"rt": request_type or "", "ids": status_ids},
+        {"rt": request_type or "", "ids": status_ids,
+         "df": date_from or "", "dt": date_to or ""},
     )
     page.wait_for_timeout(3500)
-    # ขั้นที่ 2: ยิงอีกรอบเพื่อกัน race กับ select2
+    # ขั้นที่ 2: ยิงอีกรอบเพื่อกัน race กับ select2/datepicker
     page.evaluate(
-        """({rt, ids}) => {
+        """({rt, ids, df, dt}) => {
             ids.forEach(id => {
                 const cb = document.getElementById(id);
                 if (cb) cb.checked = true;
             });
-            if (rt) {
-                const sel = document.getElementById('Filter_request_list');
-                if (sel && window.jQuery) window.jQuery(sel).val(rt).trigger('change');
+            const sel = document.getElementById('Filter_request_list');
+            if (sel && window.jQuery) window.jQuery(sel).val(rt || '').trigger('change');
+            // reset ค่าวันที่อีกรอบ (เผื่อ datepicker เขียนทับตอน init)
+            function _setDate(id, v) {
+                const inp = document.getElementById(id);
+                if (!inp) return;
+                const $ = window.jQuery;
+                if ($ && $(inp).data('datepicker')) {
+                    try {
+                        if (v) $(inp).datepicker('update', v);
+                        else { $(inp).datepicker('setDate', null); inp.value = ''; }
+                    } catch(e) {}
+                }
+                if (inp.value !== (v || '')) inp.value = v || '';
+                inp.dispatchEvent(new Event('change', {bubbles: true}));
             }
+            _setDate('search_start_date', df || '');
+            _setDate('search_end_date',   dt || '');
             if (typeof GetDataRequestFormEtrackingForAlien === 'function') {
                 GetDataRequestFormEtrackingForAlien();
             }
         }""",
-        {"rt": request_type or "", "ids": status_ids},
+        {"rt": request_type or "", "ids": status_ids,
+         "df": date_from or "", "dt": date_to or ""},
     )
     page.wait_for_timeout(3500)
+
+    # ขั้นที่ 3: รอให้ ajax GetDataRequestFormEtrackingForAlien ตอบกลับจริงๆ
+    # (สำคัญเมื่อบัญชีมีข้อมูลเยอะ — server response อาจใช้เวลามากกว่า 7s ที่ wait_for_timeout รวม)
+    # trigger GetData อีกครั้ง แล้วดัก response — กันกรณีที่ 2 ครั้งแรก request ค้างอยู่/ยังไม่ตอบ
+    try:
+        with page.expect_response(
+            lambda r: "GetDataRequestFormEtrackingForAlien" in (r.url or "")
+                      and r.request.method == "POST",
+            timeout=60_000,
+        ):
+            page.evaluate(
+                r"""() => {
+                  if (typeof GetDataRequestFormEtrackingForAlien === 'function') {
+                    GetDataRequestFormEtrackingForAlien();
+                  }
+                }"""
+            )
+        # ให้ DataTable วาดผลลัพธ์เสร็จ
+        page.wait_for_timeout(1500)
+    except Exception:
+        # ถ้าไม่มี ajax เกิดขึ้น (เช่น function ไม่มี) → ปล่อยผ่าน
+        pass
 
 
 def apply_request_type_filter(page: Page, request_type: str) -> None:
@@ -1290,11 +1371,28 @@ def run_scrape(
             if _is_logged_out(page):
                 ensure_session(page, cfg, log=log)
                 goto_tracking(page)
-            req_type = (cfg.get("request_type") or "").strip()
-            if req_type and req_type not in {"0", "ALL", "all"}:
-                log(f"      ฟิลเตอร์รายการคำขอ: {req_type}")
+            # ---- รวบรวมรายการ request_type ที่จะกรอง ----
+            # priority: cfg["request_types"] (list, จาก multi-select GUI)
+            #          > cfg["request_type"] (single string, backward compat)
+            req_types_list: list[str] = []
+            for c in (cfg.get("request_types") or []):
+                s = (c or "").strip()
+                if s and s not in {"0", "ALL", "all"} and s not in req_types_list:
+                    req_types_list.append(s)
+            if not req_types_list:
+                single = (cfg.get("request_type") or "").strip()
+                if single and single not in {"0", "ALL", "all"}:
+                    req_types_list = [single]
+            # log ให้เห็นชัด
+            if not req_types_list:
+                log("      ฟิลเตอร์รายการคำขอ: ทั้งหมด (ไม่กรอง)")
+            elif len(req_types_list) == 1:
+                log(f"      ฟิลเตอร์รายการคำขอ: {req_types_list[0]}")
             else:
-                req_type = ""
+                log(f"      ฟิลเตอร์รายการคำขอ ({len(req_types_list)} รายการ): "
+                    + ", ".join(req_types_list))
+            # req_type = code แรก (ใช้ต่อสำหรับ profile default + ensure_tracking_ready)
+            req_type = req_types_list[0] if req_types_list else ""
             profile = get_profile(req_type)
             # Override จาก cfg (GUI) ถ้ามี
             status_ids = cfg.get("filter_status_ids") or profile.get("filter_status_ids") or ["WA"]
@@ -1302,13 +1400,45 @@ def run_scrape(
             if capture_extra is None:
                 capture_extra = profile.get("capture_extra_notes", True)
             log(f"      ติ๊ก checkbox สถานะ: {', '.join(status_ids)}")
-            apply_wa_filter(page, req_type, status_ids=status_ids)
-            # เก็บ rows ทุกหน้าผ่าน DataTables pagination (server cap ~1000/req)
-            rows = collect_all_wa_rows(page, log=log)
-            # ถ้าเก็บไม่ได้ + session หลุด → ฟื้นแล้วลองอีกครั้ง
-            if not rows and _is_logged_out(page):
-                if ensure_tracking_ready(page, cfg, req_type, log=log):
-                    rows = collect_wa_rows(page)
+            # log ช่วงวันที่ (ถ้ามี)
+            date_from = (cfg.get("date_from") or "").strip()
+            date_to = (cfg.get("date_to") or "").strip()
+            if date_from or date_to:
+                log(f"      วันที่ยื่นคำขอ: {date_from or '(ต้นสุด)'} → {date_to or '(ล่าสุด)'}")
+            # ---- เก็บ rows ----
+            # ถ้าเลือกหลายรายการ → วน filter ทีละ code แล้ว merge (dedup โดย reqNo)
+            def _fetch_rows_for(rt_code: str) -> list[dict]:
+                apply_wa_filter(
+                    page, rt_code, status_ids=status_ids,
+                    date_from=date_from, date_to=date_to,
+                )
+                out_rows = collect_all_wa_rows(page, log=log)
+                if not out_rows and _is_logged_out(page):
+                    if ensure_tracking_ready(page, cfg, rt_code, log=log):
+                        out_rows = collect_wa_rows(page)
+                return out_rows
+
+            if len(req_types_list) <= 1:
+                rows = _fetch_rows_for(req_type)
+            else:
+                merged: list[dict] = []
+                seen: set = set()
+                for _i, _code in enumerate(req_types_list, 1):
+                    if _cancelled():
+                        break
+                    log(f"      [{_i}/{len(req_types_list)}] กำลังดึงรายการคำขอ: {_code}")
+                    chunk = _fetch_rows_for(_code)
+                    added = 0
+                    for r in chunk:
+                        k = str(r.get("reqNo") or "")
+                        if k and k in seen:
+                            continue
+                        if k:
+                            seen.add(k)
+                        merged.append(r)
+                        added += 1
+                    log(f"          ← ได้ {len(chunk)} แถว (ใหม่ {added}, รวม {len(merged)})")
+                rows = merged
             total_collected = len(rows)
 
             # กรองตาม status whitelist (global) — scrape detail เฉพาะ status ที่ระบุ
@@ -3064,6 +3194,21 @@ def _receipt_safe_name(s: Any) -> str:
     return s or "x"
 
 
+def _normalize_name_suffix(s: Any) -> str:
+    """normalize ส่วนต่อท้ายชื่อไฟล์ที่ผู้ใช้กำหนดเอง
+    - ว่าง → คืน "" (ไม่ต่อท้าย)
+    - ตัดอักขระต้องห้ามในชื่อไฟล์ออก
+    - ถ้าไม่ได้ขึ้นต้นด้วยตัวคั่น (_ หรือ -) → เติม "_" ให้อัตโนมัติ
+      เช่น "IO" → "_IO", "_IO" → "_IO"
+    """
+    s = re.sub(r'[\\/:*?"<>|\r\n\t]+', "", str(s or "").strip())
+    if not s:
+        return ""
+    if s[0] not in ("_", "-"):
+        s = "_" + s
+    return s
+
+
 def _strip_title(name: str) -> str:
     """ตัดคำนำหน้า (Miss/Mr/นางสาว ฯลฯ) ออกจากชื่อ"""
     return _TITLE_PREFIX_RE.sub("", (name or "").strip()).strip()
@@ -3073,7 +3218,22 @@ def _read_request_data(path: Path) -> list[dict[str, Any]]:
     """อ่าน RequestData.xlsx → [{seq, name_eng, req_no, username, passport, row_index}]
     คอลัมน์: ลำดับ, ชื่อคนต่างด้าว(Eng), เลขที่คำขอ, Username, PASSPORT NUMBER
     """
-    wb = load_workbook(path, data_only=True)
+    p = Path(path)
+    if not str(p).strip():
+        raise FileNotFoundError(
+            "ไม่ได้ระบุไฟล์ RequestData.xlsx — โหมด 'ดาวน์โหลดใบเสร็จ' ต้องมีไฟล์รายการคำขอ\n"
+            "กด 'เลือก...' เพื่อชี้ไปที่ไฟล์ Excel (คอลัมน์: ลำดับ, ชื่อคนต่างด้าว(Eng), เลขที่คำขอ, Username, PASSPORT NUMBER)"
+        )
+    if not p.exists():
+        raise FileNotFoundError(
+            f"ไม่พบไฟล์ '{p}' — โหมด 'ดาวน์โหลดใบเสร็จ' ต้องการไฟล์ RequestData.xlsx\n"
+            "ตรวจสอบ path ให้ถูก หรือกด 'เลือก...' เพื่อชี้ไปที่ไฟล์ Excel"
+        )
+    if p.suffix.lower() not in (".xlsx", ".xlsm", ".xltx", ".xltm"):
+        raise ValueError(
+            f"ไฟล์ '{p.name}' ไม่ใช่ Excel — รองรับเฉพาะ .xlsx / .xlsm / .xltx / .xltm"
+        )
+    wb = load_workbook(p, data_only=True)
     ws = wb.active
     hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
 
@@ -3189,7 +3349,22 @@ def _read_login_accounts(path: Path) -> dict[str, dict[str, str]]:
       'e-Service' → เข้าระบบ DOE e-Service, 'e-Tracking' → เข้าระบบ E-Workpermit
       ถ้าไม่มีคอลัมน์นี้/เว้นว่าง จะ fallback ไปใช้ค่าที่เลือกในหน้าโปรแกรม
     """
-    wb = load_workbook(path, data_only=True)
+    p = Path(path) if path else Path("")
+    if not str(p).strip():
+        raise FileNotFoundError(
+            "ไม่ได้ระบุไฟล์ UsernameLogin.xlsx — โหมดนี้ต้องมีไฟล์รายการบัญชี login\n"
+            "กด 'เลือก...' เพื่อชี้ไปที่ไฟล์ Excel (คอลัมน์: Username, Password, Type, ระบบ)"
+        )
+    if not p.exists():
+        raise FileNotFoundError(
+            f"ไม่พบไฟล์ '{p}' — ต้องการไฟล์ UsernameLogin.xlsx\n"
+            "ตรวจสอบ path ให้ถูก หรือกด 'เลือก...' เพื่อชี้ไปที่ไฟล์ Excel"
+        )
+    if p.suffix.lower() not in (".xlsx", ".xlsm", ".xltx", ".xltm"):
+        raise ValueError(
+            f"ไฟล์ '{p.name}' ไม่ใช่ Excel — รองรับเฉพาะ .xlsx / .xlsm / .xltx / .xltm"
+        )
+    wb = load_workbook(p, data_only=True)
     ws = wb.active
     hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
 
@@ -3276,7 +3451,7 @@ def _open_first_detail(page: Page) -> bool:
 
 def _extract_alien_eng_name(page: Page) -> str:
     """คลิกแท็บ 'ข้อมูลคนต่างด้าว' แล้วดึงค่า 'ชื่อคนต่างด้าว(Eng)'
-    retry หลายรอบเผื่อแท็บโหลดช้า — คืน '' ถ้าดึงไม่ได้ (อย่า fallback ไปชื่อ login)
+    retry 2 รอบ (fast-fail ~1.6s) — คืน '' ถ้าดึงไม่ได้ (อย่า fallback ไปชื่อ login)
     """
     read_js = r"""() => {
         const active = [...document.querySelectorAll('.tab-pane')]
@@ -3294,7 +3469,15 @@ def _extract_alien_eng_name(page: Page) -> str:
         }
         return '';
     }"""
-    for attempt in range(4):  # retry เผื่อแท็บ/ข้อมูลยังโหลดไม่เสร็จ
+    # PASS 0: อ่านจาก tab ปัจจุบันก่อน (0 wait) — เผื่อ tab 'ข้อมูลคนต่างด้าว' active อยู่แล้ว
+    try:
+        v = (page.evaluate(read_js) or "").strip()
+        if v:
+            return v
+    except Exception:
+        pass
+    # PASS 1-2: คลิก tab แล้วรอ (fast-fail — 2 รอบ × 800ms = ~1.6s worst case)
+    for attempt in range(2):
         page.evaluate(
             r"""() => {
                 const f = [...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a')]
@@ -3302,7 +3485,7 @@ def _extract_alien_eng_name(page: Page) -> str:
                 if (f) f.click();
             }"""
         )
-        page.wait_for_timeout(1500 if attempt == 0 else 1200)
+        page.wait_for_timeout(800)
         try:
             name = page.evaluate(read_js)
         except Exception:
@@ -3311,6 +3494,99 @@ def _extract_alien_eng_name(page: Page) -> str:
         if name:
             return name
     return ""
+
+
+def _extract_employer_name_th(page: Page) -> str:
+    """ดึงค่า 'ชื่อสถานประกอบการ(ไทย)' (ในกลุ่ม 'ข้อมูลนายจ้าง')
+
+    Optimized path: ค่านี้อยู่บนทั้ง tab 'ข้อมูลคนต่างด้าว' และ 'คำขออนุญาต'
+    ปกติเรามาที่นี่หลัง _extract_alien_eng_name (ซึ่งเปิด tab 'ข้อมูลคนต่างด้าว' ค้างไว้)
+    → อ่านจาก tab ปัจจุบันก่อน (0 click, 0 wait) — ประหยัดเวลามาก
+    → ถ้าไม่เจอ ค่อย fallback ไปคลิก tab 'คำขออนุญาต' (retry แค่ 2 ครั้ง)
+
+    ใช้สำหรับตั้งชื่อโฟลเดอร์กลุ่มไฟล์ตามบริษัทของนายจ้าง (โหมดดาวน์โหลดใบแจ้งผล)
+    """
+    read_js = r"""() => {
+        const norm = s => (s||'').replace(/\s+/g,' ').trim();
+        // 1) ลองแบบ label-form-info / form-info ก่อน (โครงสร้าง Bootstrap ของหน้า detail)
+        const root = document.querySelector('.tab-content, .container, main, body') || document.body;
+        const all = Array.from(root.querySelectorAll('.label-form-info, .form-info'));
+        for (let i = 0; i < all.length; i++) {
+            const el = all[i];
+            const cls = el.className || '';
+            const text = norm(el.innerText || el.textContent || '');
+            if (!cls.includes('label-form-info')) continue;
+            if (!/ชื่อสถานประกอบการ\s*\(\s*ไทย\s*\)/.test(text)) continue;
+            for (let j = i + 1; j < all.length; j++) {
+                const next = all[j];
+                const ncls = next.className || '';
+                if (ncls.includes('label-form-info')) break;
+                if (ncls.includes('form-info')) {
+                    const v = norm(next.innerText || next.textContent || '');
+                    if (v) return v;
+                }
+            }
+        }
+        // 2) fallback: parse text ทั้ง tab-pane ที่ active
+        const active = [...document.querySelectorAll('.tab-pane')]
+            .find(p => p.classList.contains('active') || p.offsetParent !== null);
+        const text = active ? (active.innerText || '') : document.body.innerText || '';
+        const lines = text.split(/\n+/).map(s => s.trim()).filter(Boolean);
+        for (let i = 0; i < lines.length; i++) {
+            if (/ชื่อสถานประกอบการ\s*\(\s*ไทย\s*\)/.test(lines[i])) {
+                for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
+                    const v = lines[j];
+                    if (v && !/ชื่อสถานประกอบการ/.test(v)) return v;
+                }
+            }
+        }
+        return '';
+    }"""
+
+    # PASS 1: อ่านจาก tab ปัจจุบัน (มักเป็น 'ข้อมูลคนต่างด้าว' ที่ยังค้างอยู่)
+    # ไม่คลิก tab เพิ่ม ไม่รอ — ใช้ได้ทันทีถ้าฟิลด์อยู่ตรงนั้น
+    try:
+        v = (page.evaluate(read_js) or "").strip()
+        if v:
+            return v
+    except Exception:
+        pass
+
+    # PASS 2: fallback คลิก tab 'คำขออนุญาต' — retry 2 รอบพอ
+    for attempt in range(2):
+        try:
+            page.evaluate(
+                r"""() => {
+                    const f = [...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a, button')]
+                        .find(a => /^\s*คำขออนุญาต\s*$/.test(a.innerText || a.textContent || ''));
+                    if (f) f.click();
+                }"""
+            )
+        except Exception:
+            pass
+        page.wait_for_timeout(800 if attempt == 0 else 600)
+        try:
+            v = (page.evaluate(read_js) or "").strip()
+        except Exception:
+            v = ""
+        if v:
+            return v
+    return ""
+
+
+def _company_folder_name(s: str, max_len: int = 80) -> str:
+    """ทำชื่อโฟลเดอร์ปลอดภัยจากชื่อบริษัท (ตัดอักขระต้องห้าม + จำกัดความยาว)
+    - Windows ห้าม: \\ / : * ? " < > | และ trailing space/dot
+    - คงคำภาษาไทย/อังกฤษ/ตัวเลข/ช่องว่างไว้เพื่ออ่านง่าย
+    """
+    s = str(s or "").strip()
+    if not s:
+        return ""
+    s = re.sub(r'[\\/:*?"<>|\r\n\t]+', " ", s)
+    s = re.sub(r"\s{2,}", " ", s).strip(" .-_")
+    if len(s) > max_len:
+        s = s[:max_len].rstrip(" .-_")
+    return s
 
 
 def _extract_doc_url(raw: str, base_url: str) -> str:
@@ -3647,36 +3923,40 @@ def _download_doc_pdf(
 
 
 def _extract_pdf_amount(pdf_bytes: bytes) -> str:
-    """อ่านยอดเงินรวมจากไฟล์ PDF ใบเสร็จ → คืนเป็นสตริง เช่น '100', '1800', '1350'
-    (ว่าง = หาไม่เจอ). ใช้ตัวเลขที่มีทศนิยม 2 ตำแหน่ง (รูปแบบเงินบาท) แล้วเลือกค่ามากสุด
-    เพราะ 'รวมเป็นเงินทั้งสิ้น' จะเป็นยอดที่ใหญ่ที่สุดในใบเสร็จ
+    """อ่านยอดเงินจากไฟล์ PDF ใบเสร็จ → คืนเป็นสตริง เช่น '100', '400', '1800'
+    (ว่าง = หาไม่เจอ)
+    - 1 ไฟล์ PDF อาจมีใบเสร็จหลายหน้า/หลายใบ (เช่น หน้า1 ค่ายื่นคำขอ 100 + หน้า2 ค่าธรรมเนียม 300)
+      → รวมยอด 'รวมเป็นเงินทั้งสิ้น' ของทุกใบเข้าด้วยกัน (100+300 = 400)
+    - ถ้าหาวลี 'รวมเป็นเงินทั้งสิ้น' ไม่เจอ → fallback ใช้ตัวเลขเงินที่มากสุด (พฤติกรรมเดิม)
     """
     try:
         import io
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(pdf_bytes))
-        text = ""
-        for pg in reader.pages:
-            text += (pg.extract_text() or "") + "\n"
+        text = "\n".join((pg.extract_text() or "") for pg in reader.pages)
     except Exception:
         return ""
-    # จับเฉพาะตัวเลขที่มี .NN (จำนวนเงิน) เช่น 100.00 / 1,800.00 — กันเลขคำขอ/พาสปอร์ตปน
-    amounts = re.findall(r"\d{1,3}(?:,\d{3})*\.\d{2}", text)
-    vals: list[float] = []
-    for a in amounts:
-        try:
-            v = float(a.replace(",", ""))
-        except ValueError:
-            continue
-        if v > 0:
-            vals.append(v)
-    if not vals:
+
+    def _fmt(total: float) -> str:
+        if total <= 0:
+            return ""
+        if total == int(total):
+            return str(int(total))
+        return f"{total:.2f}".rstrip("0").rstrip(".").replace(".", "_")
+
+    _money = r"\d{1,3}(?:,\d{3})*\.\d{2}"
+    # ยอด 'รวมเป็นเงินทั้งสิ้น' ต่อ 1 ใบเสร็จ (เลขตามหลังวลีทันที) → รวมทุกใบในไฟล์เดียว
+    totals = re.findall(rf"รวมเป็นเงินทั้งสิ้น[^\d]{{0,40}}({_money})", text)
+    vals = [v for a in totals if (v := float(a.replace(",", ""))) > 0]
+    if vals:
+        return _fmt(sum(vals))
+
+    # fallback: ไม่พบวลีรวมยอด → เลือกตัวเลขเงินที่มากสุด (กันเลขคำขอ/พาสปอร์ตปน)
+    fvals = [v for a in re.findall(_money, text) if (v := float(a.replace(",", ""))) > 0]
+    if not fvals:
         return ""
-    top = max(vals)
-    if top == int(top):
-        return str(int(top))
-    return f"{top:.2f}".rstrip("0").rstrip(".").replace(".", "_")
+    return _fmt(max(fvals))
 
 
 # เดือนไทย + รูปแบบชื่อที่ยอมรับ (ใช้พาร์สข้อมูลในเอกสาร บต.55)
@@ -3737,10 +4017,11 @@ def _download_all_receipts(
     receipts_dir: Path,
     passport_safe: str,
     log=print,
+    name_suffix: str = "",
 ) -> list[dict[str, str]]:
     """ดาวน์โหลด 'หลักฐานการชำระเงิน' ทุกใบในแท็บการชำระเงิน
     คืน list ของ {amount, file, status, error} (1 รายการต่อ 1 ใบเสร็จ)
-    ตั้งชื่อไฟล์ตามราคาที่อ่านได้จากใน PDF: {PASSPORT}_RECEIPT{ราคา}.pdf
+    ตั้งชื่อไฟล์ตามราคาที่อ่านได้จากใน PDF: {PASSPORT}_RECEIPT{ราคา}{name_suffix}.pdf
     """
     results: list[dict[str, str]] = []
 
@@ -3810,7 +4091,7 @@ def _download_all_receipts(
                 continue
 
             amount = _extract_pdf_amount(body) or f"x{idx + 1}"
-            base = f"{passport_safe}_RECEIPT{amount}"
+            base = f"{passport_safe}_RECEIPT{amount}{name_suffix}"
             name = base + ".pdf"
             n = 2
             while name in used_names:  # ราคาซ้ำกันในการรันเดียว → เพิ่มเลขท้าย
@@ -3870,6 +4151,7 @@ def _download_bt55_per_person(
     req_no: str = "",
     people: list[dict[str, Any]] | None = None,
     log=print,
+    name_suffix: str = "",
 ) -> list[dict[str, str]]:
     """ดาวน์โหลดเอกสาร 'แบบ บต.55' ทุกฉบับในแท็บเอกสารตอบรับ
     (1 คำขออาจมีเอกสาร บต.55 แยกตามคนหลายฉบับ — ตัวเดิมดึงได้แค่ฉบับเดียว/พลาด)
@@ -3976,7 +4258,7 @@ def _download_bt55_per_person(
 
             info = _bt55_parse_pdf(body)
             stem = _bt55_filename_stem(info, req_no, people, fallback=f"{passport_safe}_{idx + 1}")
-            name = f"{stem}_BT55.pdf"
+            name = f"{stem}_BT55{name_suffix}.pdf"
             # ชื่อซ้ำ (รันซ้ำ/หลายแถวคำขอเดียวกัน) → ทับไฟล์เดิม ไม่หลบชื่อ จะได้ไฟล์เดียว
             receipts_dir.mkdir(parents=True, exist_ok=True)
             (receipts_dir / name).write_bytes(body)
@@ -4066,6 +4348,8 @@ def run_receipts(
     out_path: Path,
     row_range: str | None = None,
     doc_types: list[str] | None = None,
+    name_suffix: str = "",
+    make_subfolder: bool = False,
     log=print,
     progress=None,
     is_cancelled=None,
@@ -4075,10 +4359,13 @@ def run_receipts(
     - รองรับ session timeout: login ใหม่ด้วยบัญชีเดิมแล้วทำต่อ
     - resume ได้: ข้ามไฟล์ PDF ที่มีอยู่แล้ว (แยกตามประเภท)
     - doc_types: รายการคีย์จาก DOC_TYPES (default = ทั้งหมด)
+    - name_suffix: ส่วนต่อท้ายชื่อไฟล์ที่ผู้ใช้กำหนด เช่น "_IO" → {PASSPORT}_BT22_IO.pdf (ว่าง = ไม่ต่อท้าย)
+    - make_subfolder: True = แยกไฟล์ลงโฟลเดอร์ย่อยชื่อ {PASSPORT} ของแต่ละคน
     """
     doc_types = [d for d in (doc_types or DOC_TYPES_DEFAULT) if d in DOC_TYPES]
     if not doc_types:
         raise ValueError("ต้องเลือกประเภทเอกสารอย่างน้อย 1 อย่าง")
+    name_suffix = _normalize_name_suffix(name_suffix)
     out_path = _timestamped_path(out_path)
     records = _read_request_data(request_excel)
     accounts = _read_login_accounts(login_excel)
@@ -4088,6 +4375,10 @@ def run_receipts(
     log(f"[1/3] อ่าน RequestData: {request_excel} ({total} แถว) → จะทำ {len(selected)} แถว: {row_range or 'ทั้งหมด'}")
     log(f"      บัญชี login: {login_excel} ({len(accounts)} บัญชี)")
     log(f"      เอกสารที่จะดาวน์โหลด: {', '.join(DOC_TYPES[d]['label'] for d in doc_types)}")
+    if name_suffix:
+        log(f"      ต่อท้ายชื่อไฟล์: '{name_suffix}' (เช่น {{PASSPORT}}_BT44{name_suffix}.pdf)")
+    if make_subfolder:
+        log("      แยกโฟลเดอร์ตาม PASSPORT: receipts/{PASSPORT}/...")
 
     receipts_dir = out_path.parent / "receipts"
     receipts_dir.mkdir(parents=True, exist_ok=True)
@@ -4168,6 +4459,7 @@ def run_receipts(
                     res = _process_one_receipt(
                         page, rec, login_cfg, receipts_dir, doc_types, log=log,
                         per_person_done=per_person_done, req_people=req_people,
+                        name_suffix=name_suffix, make_subfolder=make_subfolder,
                     )
                     results.append(res)
                     done_count += 1
@@ -4197,11 +4489,15 @@ def _process_one_receipt(
     log=print,
     per_person_done: dict[tuple[str, str], str] | None = None,
     req_people: dict[str, list[dict[str, Any]]] | None = None,
+    name_suffix: str = "",
+    make_subfolder: bool = False,
 ) -> dict[str, Any]:
     """ค้นหา 1 เลขคำขอ → เปิด detail → ดาวน์โหลดเอกสารตามที่เลือก
     มี session recovery: ถ้าหลุด login ระหว่างทาง → login ใหม่ด้วยบัญชีเดิม แล้วลองอีกครั้ง
     per_person_done: เก็บ (เลขคำขอ, ประเภทเอกสาร) ที่โหลดแบบ "แยกตามคน" (บต.55) ไปแล้ว
       → คำขอเดียวกันในแถวถัดไปจะข้าม ไม่โหลดซ้ำ (ดาวน์โหลดครั้งเดียวต่อคำขอ)
+    name_suffix: ส่วนต่อท้ายชื่อไฟล์ (เช่น "_IO") — ต่อก่อน ".pdf"
+    make_subfolder: True = เก็บไฟล์ลงโฟลเดอร์ย่อยชื่อ {PASSPORT}
     """
     if per_person_done is None:
         per_person_done = {}
@@ -4210,6 +4506,10 @@ def _process_one_receipt(
     name_excel = rec.get("name_eng", "")
     passport = rec.get("passport", "") or seq  # fallback = ลำดับ
     passport_safe = _receipt_safe_name(passport)
+    # โฟลเดอร์ปลายทาง: ถ้าติ๊กสร้างโฟลเดอร์ → receipts/{PASSPORT}/ ของแต่ละคน
+    # ไม่สร้างโฟลเดอร์ตรงนี้ — ปล่อยให้ path ของไฟล์สร้างแบบ lazy ตอนเขียนไฟล์จริงเท่านั้น
+    # (ถ้า record ไหนไม่พบ/ดาวน์โหลดไม่สำเร็จ จะไม่มีโฟลเดอร์ว่างค้างไว้)
+    target_dir = receipts_dir / passport_safe if make_subfolder else receipts_dir
 
     docs_state: dict[str, dict[str, str]] = {
         dt: {"status": "", "pdf_file": "", "error": ""} for dt in doc_types
@@ -4235,7 +4535,7 @@ def _process_one_receipt(
                 todo.append(dt)
             continue
         if cfg_dt.get("multi"):
-            existing = sorted(receipts_dir.glob(f"{passport_safe}_RECEIPT*.pdf"))
+            existing = sorted(target_dir.glob(f"{passport_safe}_RECEIPT*.pdf"))
             if existing:
                 docs_state[dt]["status"] = "SKIP_EXISTS"
                 docs_state[dt]["pdf_file"] = ", ".join(p.name for p in existing)
@@ -4243,7 +4543,7 @@ def _process_one_receipt(
             else:
                 todo.append(dt)
             continue
-        out_pdf = receipts_dir / f"{passport_safe}_{cfg_dt['suffix']}.pdf"
+        out_pdf = target_dir / f"{passport_safe}_{cfg_dt['suffix']}{name_suffix}.pdf"
         if out_pdf.exists():
             docs_state[dt]["status"] = "SKIP_EXISTS"
             docs_state[dt]["pdf_file"] = out_pdf.name
@@ -4269,7 +4569,8 @@ def _process_one_receipt(
             if cfg_dt.get("per_person"):
                 people = (req_people or {}).get(req_no, [])
                 pp_results = _download_bt55_per_person(
-                    page, receipts_dir, passport_safe, req_no, people, log=log
+                    page, target_dir, passport_safe, req_no, people, log=log,
+                    name_suffix=name_suffix,
                 )
                 ok = [r for r in pp_results if r["status"] == "SUCCESS"]
                 errs_here = [r["error"] for r in pp_results if r.get("error")]
@@ -4288,7 +4589,7 @@ def _process_one_receipt(
                         break
                 continue
             if cfg_dt.get("multi"):
-                rec_results = _download_all_receipts(page, receipts_dir, passport_safe, log=log)
+                rec_results = _download_all_receipts(page, target_dir, passport_safe, log=log, name_suffix=name_suffix)
                 ok = [r for r in rec_results if r["status"] == "SUCCESS"]
                 errs_here = [r["error"] for r in rec_results if r.get("error")]
                 if ok:
@@ -4304,7 +4605,7 @@ def _process_one_receipt(
                         retry.append(dt)
                         break
                 continue
-            out_pdf = receipts_dir / f"{passport_safe}_{cfg_dt['suffix']}.pdf"
+            out_pdf = target_dir / f"{passport_safe}_{cfg_dt['suffix']}{name_suffix}.pdf"
             err = _download_doc_pdf(page, cfg_dt, out_pdf, log=log)
             if err:
                 docs_state[dt]["status"] = "FAIL"
@@ -4561,7 +4862,7 @@ def _save_result_docs_report(
     wb = Workbook()
     ws = wb.active
     ws.title = "ผลดาวน์โหลดเอกสารผลอนุญาต"
-    base_headers = ["ลำดับ", "ชื่อคนต่างด้าว(Eng)", "เลขที่คำขอ", "Username", "สถานะคำขอ", "Status รวม"]
+    base_headers = ["ลำดับ", "ชื่อคนต่างด้าว(Eng)", "ชื่อสถานประกอบการ(ไทย)", "เลขที่คำขอ", "Username", "สถานะคำขอ", "Status รวม"]
     headers: list[str] = list(base_headers)
     for dk in doc_keys:
         label = RESULT_DOC_TYPES[dk]["label"]
@@ -4582,8 +4883,8 @@ def _save_result_docs_report(
 
     for r in rows:
         row_vals: list[Any] = [
-            r.get("seq", ""), r.get("name_eng", ""), r.get("req_no", ""),
-            r.get("username", ""), r.get("status_text", ""), r.get("status", ""),
+            r.get("seq", ""), r.get("name_eng", ""), r.get("employer_th", ""),
+            r.get("req_no", ""), r.get("username", ""), r.get("status_text", ""), r.get("status", ""),
         ]
         docs = r.get("docs", {})
         for dk in doc_keys:
@@ -4593,6 +4894,10 @@ def _save_result_docs_report(
         row_vals.append(r.get("error", ""))
         ws.append(row_vals)
 
+        # subfolder prefix สำหรับ HYPERLINK — ตรงตามที่ไฟล์ถูกบันทึกจริง
+        subdir = str(r.get("subdir", "") or "").strip()
+        link_prefix = f"result_docs/{subdir}/" if subdir else "result_docs/"
+
         row_idx = ws.max_row
         for c_idx, h in enumerate(headers, start=1):
             cell = ws.cell(row=row_idx, column=c_idx)
@@ -4601,10 +4906,10 @@ def _save_result_docs_report(
                 cell.number_format = "@"
             if h in link_cols and cell.value:
                 fname = str(cell.value)
-                cell.value = f'=HYPERLINK("result_docs/{fname}","{fname}")'
+                cell.value = f'=HYPERLINK("{link_prefix}{fname}","{fname}")'
                 cell.font = link_font
 
-    base_widths = [8, 30, 20, 26, 22, 12]
+    base_widths = [8, 30, 40, 20, 26, 22, 12]
     doc_widths: list[int] = []
     for _ in doc_keys:
         doc_widths.extend([16, 46])
@@ -4636,7 +4941,7 @@ def _process_one_result_by_ref(
     req_no = rec.get("req_no", "")
     res: dict[str, Any] = {
         "seq": seq, "req_no": req_no, "username": rec.get("username", ""),
-        "name_eng": "", "status_text": "",
+        "name_eng": "", "employer_th": "", "subdir": "", "status_text": "",
         "docs": {dk: {"status": "", "file": "", "error": ""} for dk in doc_keys},
         "status": "", "error": "",
     }
@@ -4682,18 +4987,26 @@ def _process_one_result_by_ref(
 
     name_eng = _extract_alien_eng_name(page)
     if not name_eng:
-        # ดึงชื่อคนต่างด้าวไม่ได้ → ไม่ดาวน์โหลด (กันได้ไฟล์ชื่อผิด/ชื่อหาย)
-        # บันทึกเป็น NO_NAME ให้ตัวรันกลับมาทำ 'รอบสอง' อีกครั้ง
-        res["status"] = "NO_NAME"
-        res["error"] = "ดึงชื่อคนต่างด้าวไม่สำเร็จ — ข้ามไว้ทำรอบสอง"
-        log(f"     ⏭ ข้าม {req_no}: ดึงชื่อคนต่างด้าวไม่ได้ (จะรวมไว้ทำรอบสอง)")
-        return res
+        # ดึงชื่อไม่ได้ → ใช้ req_no เป็นชื่อ (ยังคงดาวน์โหลดต่อ ไม่ skip)
+        log(f"     ⚠ {req_no}: ดึงชื่อคนต่างด้าวไม่ได้ — ใช้เลขคำขอเป็นชื่อไฟล์แทน")
     res["name_eng"] = name_eng
     name_safe = (_receipt_safe_name(name_eng) or "").strip(" -_.").strip() or _receipt_safe_name(req_no)
 
+    # ดึงชื่อบริษัท (ไทย) จากแท็บ 'คำขออนุญาต' → ใช้ตั้งชื่อ subfolder
+    employer_th = _extract_employer_name_th(page)
+    res["employer_th"] = employer_th
+    subdir = _company_folder_name(employer_th) or "_no_company"
+    res["subdir"] = subdir
+    req_docs_dir = docs_dir / subdir
+    req_docs_dir.mkdir(parents=True, exist_ok=True)
+    if employer_th:
+        log(f"     🏢 บริษัท: {employer_th} → {subdir}/")
+    else:
+        log(f"     ⚠ ดึงชื่อบริษัทไม่ได้ → เก็บใน {subdir}/")
+
     def _download_all() -> None:
         for dk in doc_keys:
-            r = _download_response_doc_named(page, docs_dir, name_safe, RESULT_DOC_TYPES[dk], log=log, req_no=req_no)
+            r = _download_response_doc_named(page, req_docs_dir, name_safe, RESULT_DOC_TYPES[dk], log=log, req_no=req_no)
             res["docs"][dk] = {"status": r["status"], "file": r["file"], "error": r["error"]}
 
     _download_all()
@@ -4710,6 +5023,13 @@ def _process_one_result_by_ref(
                 if name_eng:
                     res["name_eng"] = name_eng
                     name_safe = (_receipt_safe_name(name_eng) or "").strip(" -_.").strip() or _receipt_safe_name(req_no)
+                    employer_th2 = _extract_employer_name_th(page)
+                    if employer_th2:
+                        res["employer_th"] = employer_th2
+                        subdir = _company_folder_name(employer_th2) or "_no_company"
+                        res["subdir"] = subdir
+                        req_docs_dir = docs_dir / subdir
+                        req_docs_dir.mkdir(parents=True, exist_ok=True)
                     _download_all()
         except Exception as _e:
             log(f"     ✗ ฟื้น session ไม่สำเร็จ: {_e}")
@@ -4789,7 +5109,7 @@ def run_result_docs_by_ref(
                 if not acct:
                     log(f"[กลุ่ม {gi}/{len(groups)}] ✗ ไม่พบบัญชีของ '{username}' ใน {login_excel.name} — ข้าม {len(recs)} รายการ")
                     for rec in recs:
-                        results.append({**rec, "name_eng": "", "status_text": "",
+                        results.append({**rec, "name_eng": "", "employer_th": "", "subdir": "", "status_text": "",
                                         "docs": {dk: {"status": "", "file": "", "error": ""} for dk in doc_keys},
                                         "status": "NO_ACCOUNT",
                                         "error": f"ไม่พบ username '{username}' ใน {login_excel.name}"})
@@ -4815,7 +5135,7 @@ def run_result_docs_by_ref(
                 except Exception as e:
                     log(f"      ✗ login ไม่สำเร็จ: {e} — ข้ามกลุ่มนี้")
                     for rec in recs:
-                        results.append({**rec, "name_eng": "", "status_text": "",
+                        results.append({**rec, "name_eng": "", "employer_th": "", "subdir": "", "status_text": "",
                                         "docs": {dk: {"status": "", "file": "", "error": ""} for dk in doc_keys},
                                         "status": "LOGIN_FAIL", "error": str(e)[:200]})
                         done_count += 1
@@ -4825,7 +5145,7 @@ def run_result_docs_by_ref(
                 RELOGIN_EVERY = 80  # re-login เชิงรุกทุก N รายการ กัน session timeout
                 MAX_RETRY_PASSES = 3  # จำนวนรอบ retry คำขอที่ยังไม่สำเร็จ (หลังรอบแรก)
 
-                # เก็บรายการคำขอของบัญชีนี้ครั้งเดียว (filter สถานะ AP/APSS) เพื่อ map
+                # เก็บรายการคำขอของบัญชีนี้ครั้งเดียว (filter สถานะ AP + SS) เพื่อ map
                 # เลขคำขอ → พารามิเตอร์ (user_id/form_type/group_id) สำหรับ navigate ตรง
                 # เร็วกว่าค้นหาทีละเลข + ลด round-trip ที่ทำให้ดาวน์โหลดค้างในงานยาว
                 row_by_req: dict[str, dict] = {}
@@ -4927,8 +5247,9 @@ def run_result_docs(
     docs_dir = out_path.parent / "result_docs"
     docs_dir.mkdir(parents=True, exist_ok=True)
     # สถานะ AP = รอนัดหมาย (รวมทั้ง 'รอทำการนัดหมาย' และ 'นัดหมายแล้ว')
-    # หมายเหตุ: โหมดนี้ล็อกที่ 'รอนัดหมาย' เสมอ — ไม่ใช้ filter_status_ids ของโหมด e-Tracking
-    status_ids = list(cfg.get("result_status_ids") or ["AP"])
+    # สถานะที่ดึง (default = AP+SS): AP = รอนัดหมาย, SS = ดำเนินการเสร็จสิ้น
+    # — override ได้ผ่าน cfg['result_status_ids'] หรือ CLI --result-status-ids
+    status_ids = list(cfg.get("result_status_ids") or ["AP", "SS"])
 
     # checkpoint ระดับคำขอ — รันใหม่จะข้ามคำขอที่เสร็จแล้วทันที (ไม่เปิด detail ซ้ำ)
     prog_path = _progress_path(out_path)
@@ -4999,6 +5320,7 @@ def run_result_docs(
                     rec: dict[str, Any] = {
                         "seq": seq_label, "req_no": req_no,
                         "username": acct["username"], "name_eng": "",
+                        "employer_th": "", "subdir": "",
                         "status_text": row.get("statusText", ""),
                         "docs": {dk: {"status": "", "file": "", "error": ""} for dk in doc_keys},
                         "status": "", "error": "",
@@ -5021,16 +5343,25 @@ def run_result_docs(
 
                     name_eng = _extract_alien_eng_name(page)
                     if not name_eng:
-                        # ดึงชื่อไม่ได้ → ไม่ดาวน์โหลด ปล่อยให้รอบสองมาทำใหม่
-                        rec["status"] = "NO_NAME"
-                        rec["error"] = "ดึงชื่อคนต่างด้าวไม่สำเร็จ — ข้ามไว้ทำรอบสอง"
-                        log(f"     ⏭ ข้าม {req_no}: ดึงชื่อคนต่างด้าวไม่ได้ (จะรวมไว้ทำรอบสอง)")
-                        return rec
+                        # ดึงชื่อไม่ได้ → ใช้ req_no เป็นชื่อ (ยังคงดาวน์โหลดต่อ ไม่ skip)
+                        log(f"     ⚠ {req_no}: ดึงชื่อคนต่างด้าวไม่ได้ — ใช้เลขคำขอเป็นชื่อไฟล์แทน")
                     rec["name_eng"] = name_eng
                     name_safe = (_receipt_safe_name(name_eng) or _receipt_safe_name(req_no)).strip(" -_.").strip()
 
+                    # ดึงชื่อบริษัท (ไทย) → ใช้ตั้ง subfolder
+                    employer_th = _extract_employer_name_th(page)
+                    rec["employer_th"] = employer_th
+                    subdir = _company_folder_name(employer_th) or "_no_company"
+                    rec["subdir"] = subdir
+                    req_docs_dir = docs_dir / subdir
+                    req_docs_dir.mkdir(parents=True, exist_ok=True)
+                    if employer_th:
+                        log(f"     🏢 บริษัท: {employer_th} → {subdir}/")
+                    else:
+                        log(f"     ⚠ ดึงชื่อบริษัทไม่ได้ → เก็บใน {subdir}/")
+
                     for dk in doc_keys:
-                        r = _download_response_doc_named(page, docs_dir, name_safe, RESULT_DOC_TYPES[dk], log=log, req_no=req_no)
+                        r = _download_response_doc_named(page, req_docs_dir, name_safe, RESULT_DOC_TYPES[dk], log=log, req_no=req_no)
                         rec["docs"][dk] = {"status": r["status"], "file": r["file"], "error": r["error"]}
 
                     # session หมดกลางทาง (เช่น modal Session Timeout) → login ใหม่ + เปิด detail
@@ -5045,8 +5376,15 @@ def run_result_docs(
                                 if name_eng2:
                                     rec["name_eng"] = name_eng2
                                     name_safe = (_receipt_safe_name(name_eng2) or _receipt_safe_name(req_no)).strip(" -_.").strip()
+                                    employer_th2 = _extract_employer_name_th(page)
+                                    if employer_th2:
+                                        rec["employer_th"] = employer_th2
+                                        subdir = _company_folder_name(employer_th2) or "_no_company"
+                                        rec["subdir"] = subdir
+                                        req_docs_dir = docs_dir / subdir
+                                        req_docs_dir.mkdir(parents=True, exist_ok=True)
                                     for dk in doc_keys:
-                                        r = _download_response_doc_named(page, docs_dir, name_safe, RESULT_DOC_TYPES[dk], log=log, req_no=req_no)
+                                        r = _download_response_doc_named(page, req_docs_dir, name_safe, RESULT_DOC_TYPES[dk], log=log, req_no=req_no)
                                         rec["docs"][dk] = {"status": r["status"], "file": r["file"], "error": r["error"]}
                         except Exception as _e:
                             log(f"     ✗ ฟื้น session ไม่สำเร็จ: {_e}")
@@ -14495,6 +14833,381 @@ def _save_appointment_report(rows: list[dict[str, Any]], out_path: Path, log=pri
         log(f"      · ⚠ เซฟรายงานไม่สำเร็จ: {str(e)[:160]}")
 
 
+# ─────────────────────────────────────────────────────────────────
+# โหมดใหม่ — ดาวน์โหลด 'แบบ บต.30' จาก tab 'เอกสารตอบรับจากระบบ' (สถานะ WP)
+#   วน login ทุกบัญชีใน UsernameLogin.xlsx → Tracking → filter WP →
+#   ทุก req_no: เปิด detail → tab 'เอกสารตอบรับ' → หา row 'แบบ บต.XX' → download
+#   → อ่าน PDF text (pypdf) → ดึง passport + form number → rename เป็น
+#      {PASSPORT}_BT{XX}_CTN.pdf  (เช่น MH788309_BT30_CTN.pdf)
+# ─────────────────────────────────────────────────────────────────
+_THAI_DIGIT_TR = str.maketrans("๐๑๒๓๔๕๖๗๘๙", "0123456789")
+
+
+def _thai_to_arabic(s: str) -> str:
+    return (s or "").translate(_THAI_DIGIT_TR)
+
+
+def _extract_bt_form_number_from_pdf(pdf_text: str) -> str:
+    """หา form number จาก PDF text:
+    - 'แบบ บต. ๓๐'    → '30'
+    - 'FORM WP. 30'   → '30'
+    ค้นเฉพาะช่วงต้นไฟล์ (~2000 ตัวอักษร) ที่เป็น header
+    คืน '' ถ้าหาไม่พบ
+    """
+    if not pdf_text:
+        return ""
+    head = pdf_text[:2500]
+    # ภาษาไทย: 'แบบ บต. ๓๐' / 'แบบ บต.30' / 'แบบบต.30'
+    m = re.search(r"แบบ\s*บต\s*\.?\s*([0-9๐-๙]{1,3})", head)
+    if m:
+        num = _thai_to_arabic(m.group(1)).strip()
+        if num.isdigit():
+            return num
+    # อังกฤษ: 'FORM WP. 30' / 'FORM WP.30'
+    m = re.search(r"FORM\s+WP\s*\.?\s*(\d{1,3})", head, flags=re.IGNORECASE)
+    if m:
+        return m.group(1)
+    return ""
+
+
+def _extract_passport_from_pdf(pdf_text: str) -> str:
+    """หา passport จาก PDF text ของแบบ บต.30
+    ที่ระบบดาวน์โหลดมา ตัวแบบฟอร์มเป็น placeholder (…) — ค่าที่กรอกจริงจะถูก
+    เรียงเป็นบล็อคข้อความท้ายหน้า 1 (คั่นด้วยขึ้นบรรทัดใหม่) เช่น:
+        อ้างอิงจากเอกสารเวอร์ชัน 1.0.1
+        MISS SANIN  NOURN
+        กัมพูชา
+        ...
+        ✔                    ← checkmark หน้ากล่อง 'หนังสือเดินทาง'
+        T0892785              ← passport ที่กรอก
+        MIN PHNOM PENH        ← 'ออกให้โดย'
+        กัมพูชา                ← ประเทศ
+        ...
+
+    รูปแบบ passport: 1-2 ตัวอักษร + 6-9 ตัวเลข/อักษร (เช่น T0892785, MH788309, A12345678)
+    คืน '' ถ้าหาไม่พบ
+    """
+    if not pdf_text:
+        return ""
+    # กันคำที่ดูเหมือน passport แต่ไม่ใช่ (เกิดจาก visa type / prefix)
+    _reject = {"PASSPORT", "PASSPO", "MISS", "MRS", "MSTR", "NON", "NONE"}
+    # 1) หลังเครื่องหมายถูก (✔/☑/✅) ทันที = passport ที่ระบบกรอกไว้
+    for pat in (
+        r"[✔☑✅√✓]\s*\n\s*([A-Z][A-Z0-9]{5,13})\b",
+        r"[✔☑✅√✓]\s*([A-Z][A-Z0-9]{5,13})\b",
+    ):
+        m = re.search(pat, pdf_text)
+        if m:
+            pp = m.group(1).strip().upper()
+            if pp not in _reject:
+                return pp
+    # 2) หลัง 'หนังสือเดินทาง' → หา token passport-like ตัวแรก
+    #    (บล็อกข้อมูลจะอยู่ท้ายหน้า 1 หลังคำ 'หนังสือเดินทาง' หลายบรรทัด)
+    m = re.search(
+        r"หนังสือเดินทาง[\s\S]{0,1500}?\b([A-Z]{1,2}\d{6,9})\b",
+        pdf_text,
+    )
+    if m:
+        pp = m.group(1).strip().upper()
+        if pp not in _reject:
+            return pp
+    # 3) fallback แบบเก่า — หลัง 'Passport เลขที่'
+    for pat in (
+        r"(?:Passport|หนังสือเดินทาง)[\s\S]{0,80}?เลขที่[.\s]*([A-Z][A-Z0-9]{5,13})",
+        r"(?:Passport)[\s\S]{0,60}?([A-Z]{1,2}\d{6,9})",
+    ):
+        m = re.search(pat, pdf_text, flags=re.IGNORECASE)
+        if m:
+            pp = m.group(1).strip().upper()
+            if pp not in _reject:
+                return pp
+    return ""
+
+
+def _bt30_ctn_download(
+    page: Page, log=print,
+) -> tuple[bytes, str, str]:
+    """ดาวน์โหลดเอกสาร 'แบบ บต.30' จาก tab 'เอกสารตอบรับจากระบบ' บนหน้า detail
+    (สมมติ page อยู่บนหน้า detail ของคำขอแล้ว)
+    คืน (pdf_bytes, matched_label, error_msg)
+      - pdf_bytes: bytes ของ PDF (v่าง = ล้มเหลว)
+      - matched_label: ข้อความ label ของแถวที่คลิก (เช่น 'แบบ บต.30 คำขอต่ออายุ...')
+      - error_msg: '' ถ้าสำเร็จ, มิฉะนั้นข้อความ error
+    """
+    pat = r"บต\.?\s*30"
+
+    # 1) คลิกแท็บเอกสารตอบรับ
+    clicked = page.evaluate(
+        r"""() => {
+            const re = /เอกสารตอบรับ/;
+            const f = [...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a')]
+                .find(a => re.test(a.innerText || ''));
+            if (f) { f.click(); return true; }
+            return false;
+        }"""
+    )
+    if not clicked:
+        return b"", "", "ไม่พบแท็บเอกสารตอบรับ"
+    page.wait_for_timeout(1800)
+
+    # 2) หาลิงก์ GetDocumentConfirm ที่อยู่ใต้แถวป้าย 'บต.30' (ใช้ pattern เดียวกับ _bt55)
+    #    โครงสร้าง: <div>label</div>...<div>...<a onclick="GetDocumentConfirm(...)">...</a></div>
+    pick_js = r"""(args) => {
+        const { pat, mode } = args;
+        const re = new RegExp(pat);
+        const seen = new Set(); const list = [];
+        let bestLabel = '';
+        document.querySelectorAll('[onclick*="GetDocumentConfirm"]').forEach(a => {
+            const oc = a.getAttribute('onclick') || '';
+            if (!oc) return;
+            const grp = a.parentElement;
+            const lbl = (grp && grp.previousElementSibling)
+                ? ((grp.previousElementSibling.innerText || '').trim()) : '';
+            if (!re.test(lbl)) return;
+            if (seen.has(oc)) return;
+            seen.add(oc); list.push({a, lbl});
+        });
+        if (!list.length) return mode === 'url' ? '' : (mode === 'label' ? '' : false);
+        // เลือกป้ายที่สั้นสุด (ตรงกับ บต.30 มากกว่า)
+        list.sort((x, y) => (x.lbl.length - y.lbl.length));
+        const first = list[0];
+        bestLabel = first.lbl;
+        if (mode === 'label') return bestLabel;
+        if (mode === 'url')   return (first.a.getAttribute('onclick') || '') + ' | ' + (first.a.getAttribute('href') || '');
+        first.a.click(); return true;
+    }"""
+
+    # เก็บ label ที่ match ไว้ก่อน (สำหรับ log/report)
+    matched_label = ""
+    try:
+        matched_label = page.evaluate(pick_js, {"pat": pat, "mode": "label"}) or ""
+    except Exception:
+        pass
+    if not matched_label:
+        return b"", "", "ไม่พบเอกสาร บต.30 ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"
+
+    # 3) ลอง prefetch URL — เร็วกว่าเปิด popup
+    prefetch_url = ""
+    try:
+        raw = page.evaluate(pick_js, {"pat": pat, "mode": "url"}) or ""
+        prefetch_url = _extract_doc_url(raw, page.url)
+    except Exception:
+        prefetch_url = ""
+
+    # 4) คลิก + คว้า PDF
+    body, err = _grab_pdf_after_click(
+        page,
+        lambda: page.evaluate(pick_js, {"pat": pat, "mode": "click"}),
+        log=log,
+        prefetch_url=prefetch_url,
+    )
+    if err:
+        return b"", matched_label, f"ดาวน์โหลด PDF ไม่สำเร็จ: {err}"
+    if not body or len(body) < 500:
+        return b"", matched_label, f"ไฟล์ PDF เล็กผิดปกติ ({len(body) if body else 0} bytes)"
+    return body, matched_label, ""
+
+
+def _bt30_ctn_read_pdf_text(pdf_bytes: bytes) -> str:
+    """อ่านข้อความจาก PDF (pypdf) — คืน '' ถ้าอ่านไม่ได้"""
+    if not pdf_bytes:
+        return ""
+    try:
+        import io as _io
+        from pypdf import PdfReader
+        reader = PdfReader(_io.BytesIO(pdf_bytes))
+        # อ่านเฉพาะ 2 หน้าแรก — พอสำหรับ header + passport
+        parts = []
+        for p in reader.pages[:2]:
+            try:
+                parts.append(p.extract_text() or "")
+            except Exception:
+                pass
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
+def _bt30_ctn_download_appointment(
+    page: Page, log=print,
+) -> tuple[bytes, str, str, str]:
+    """ดาวน์โหลด 'ใบนัดหมาย' จาก tab การนัดหมาย (สมมติ page อยู่บน detail แล้ว)
+
+    Flow:
+      1. คลิก tab การนัดหมาย (#tab_default_5)
+      2. หา iframe #link_appointment (จาก queue-fe*.doe.go.th)
+      3. อ่าน passport + ชื่อ จาก iframe DOM (ไม่ต้อง OCR)
+      4. เปิด iframe.src ใน new tab (share context/cookies) → page.pdf() → bytes
+
+    คืน (pdf_bytes, passport, name, error_msg)
+      - pdf_bytes: bytes ของ PDF (ว่าง = ล้มเหลว)
+      - passport: เลขที่หนังสือเดินทาง (จาก DOM)
+      - name: ชื่อคนต่างด้าว (Eng)
+      - error_msg: '' ถ้าสำเร็จ, มิฉะนั้นข้อความ error
+    """
+    # 1) คลิก tab การนัดหมาย
+    try:
+        page.evaluate(r"""() => {
+            if (window.jQuery) {
+                try { jQuery('a[href="#tab_default_5"]').tab('show'); } catch(e){}
+            }
+            const a = document.querySelector('a[href="#tab_default_5"]');
+            if (a) a.click();
+            // fallback: หา anchor ที่ข้อความ 'การนัดหมาย'
+            const els = [...document.querySelectorAll('a,.nav-link,.nav-tabs a,.nav a,[role="tab"]')];
+            const t = els.find(x => /^\s*การนัดหมาย\s*$/.test((x.textContent||'').trim()));
+            if (t) t.click();
+        }""")
+    except Exception:
+        pass
+    page.wait_for_timeout(2200)
+
+    # 2) หา iframe #link_appointment / iframe src
+    iframe_src = ""
+    try:
+        iframe_src = page.evaluate(
+            "() => (document.querySelector('#link_appointment') "
+            "|| document.querySelector('iframe.iframe_show') "
+            "|| document.querySelector('iframe[src*=\"queue\"]') || {}).src || ''"
+        )
+    except Exception:
+        iframe_src = ""
+    if not iframe_src:
+        # ตรวจว่า pane บอก "ไม่มีการนัดหมาย" ไหม
+        try:
+            empty_txt = page.evaluate(
+                r"""() => {
+                    const p = document.querySelector('#tab_default_5');
+                    if (!p) return '';
+                    return (p.innerText || '').trim().slice(0, 100);
+                }"""
+            )
+        except Exception:
+            empty_txt = ""
+        if "ไม่มีการนัดหมาย" in (empty_txt or ""):
+            return b"", "", "", "record นี้ไม่มีการนัดหมาย (ยังไม่ได้จอง / ยกเลิกไปแล้ว)"
+        return b"", "", "", "ไม่พบ iframe ใบนัดหมายบน tab การนัดหมาย"
+
+    # 3) หา frame ที่ตรงกัน + รอ load
+    appt_frame = None
+    for _ in range(15):
+        for fr in page.frames:
+            if fr.name == "link_appointment" \
+                    or "bookingdate" in (fr.url or "") \
+                    or "bookingdetail" in (fr.url or ""):
+                appt_frame = fr
+                break
+        if appt_frame:
+            break
+        page.wait_for_timeout(500)
+    if not appt_frame:
+        return b"", "", "", "iframe โหลดไม่สำเร็จ (queue system อาจล่มชั่วคราว)"
+    try:
+        appt_frame.wait_for_load_state("domcontentloaded", timeout=15_000)
+    except Exception:
+        pass
+    page.wait_for_timeout(2500)
+
+    # 4) อ่าน passport + name จาก iframe DOM
+    #    Note: iframe body มี text ต่อกันไม่มี space:
+    #    "...หมายเลขนัดหมายชื่อคนต่างด้าวเลขที่หนังสือเดินทาง2-CCO001122601108Miss KYI KYI NAINGMH190359ยกเลิก..."
+    #    → หา passport แบบ Myanmar (M[A-Z]\d) หรือ 1-2 letters + 6-8 digits
+    #    → ตรวจ 'ยังไม่มีการนัดหมาย' ก่อน (record status=AP ยังไม่จอง → หน้า booking form)
+    passport = ""
+    name_eng = ""
+    is_booking_form = False  # หน้าแบบยังไม่จอง (ต้อง skip download)
+    try:
+        info = appt_frame.evaluate(r"""() => {
+            const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+            const text = norm(document.body ? document.body.innerText : '');
+            // ตรวจว่ายังไม่มีการนัดหมาย (booking form, ยังไม่ได้จอง)
+            const isBooking = /ยังไม่มีการนัดหมาย|กรุณาเลือก\s*['\u2018\u2019]?สถานที่/.test(text)
+                           || /เพิ่มวันนัดหมาย/.test(text);
+            // Passport: หา pattern ที่ตรง — Myanmar M[A-Z]\d{6-8} มากที่สุด
+            let passport = '';
+            const patterns = [
+                /\b(M[A-Z]\d{6,8})\b/,       // Myanmar: MH190359, MI123456
+                /\b(C[A-Z]\d{6,8})\b/,       // Cambodia: CB123456
+                /\b([A-Z]{1,2}\d{6,9})\b/,   // generic 1-2 letters + 6-9 digits
+            ];
+            for (const p of patterns) {
+                const m = text.match(p);
+                if (m) { passport = m[1]; break; }
+            }
+            // Name: pattern 'Miss/Mr/Mrs' + words in Latin
+            let name = '';
+            const nm = text.match(/(Mr\.?|Mrs\.?|Miss|Ms\.?|Mss\.?)\s+([A-Z][A-Za-z\.\s]{1,80}?)(?=\s*[A-Z]{1,2}\d|\s{2,}|$)/);
+            if (nm) name = (nm[1] + ' ' + nm[2]).trim();
+            return { passport, name, isBooking, bodyLen: text.length,
+                     bodyStart: text.slice(0, 200) };
+        }""")
+        passport = (info or {}).get("passport", "") or ""
+        name_eng = (info or {}).get("name", "") or ""
+        is_booking_form = bool((info or {}).get("isBooking", False))
+    except Exception as e:
+        log(f"     ⚠ อ่าน passport/name จาก iframe ไม่สำเร็จ: {str(e)[:100]}")
+
+    # ถ้าเป็นหน้า booking (ยังไม่ได้จอง) → skip ไม่ต้องดาวน์โหลด
+    if is_booking_form:
+        return b"", passport, name_eng, "record นี้ยังไม่ได้จองการนัดหมาย (หน้า booking form)"
+
+    # 5) เปิด iframe URL ใน new tab → คลิก 'พิมพ์แบบฟอร์มนัดหมาย' (React จะ swap DOM
+    #    เป็น 'ใบนัดหมาย' ตัวจริง — ตราครุฑ + QR + แบบฟอร์ม A4 ตาม @media print/tailwind)
+    #    → page.pdf() → bytes
+    ctx = page.context
+    pdf_bytes = b""
+    err = ""
+    new_page = None
+    try:
+        new_page = ctx.new_page()
+        # hook window.print เพื่อไม่ให้ blocking print dialog เปิดใน headed mode
+        try:
+            new_page.add_init_script(
+                "window.print = function(){ window.__printCalled = true; };"
+            )
+        except Exception:
+            pass
+        new_page.goto(iframe_src, wait_until="networkidle", timeout=30_000)
+        new_page.wait_for_timeout(3000)
+
+        # คลิกปุ่ม 'พิมพ์แบบฟอร์มนัดหมาย' (ตัวแรก — single ไม่ใช่ 'ทั้งหมด')
+        # ปุ่มนี้ทำให้ React swap DOM เป็น print template (~5x เพิ่มขึ้น)
+        try:
+            new_page.locator(
+                "button:has-text('พิมพ์แบบฟอร์มนัดหมาย')"
+            ).nth(0).click(timeout=6000)
+        except Exception as _e:
+            # fallback: หาปุ่มด้วย JS
+            new_page.evaluate(r"""() => {
+                const b = [...document.querySelectorAll('button')].find(x =>
+                    /^\s*พิมพ์แบบฟอร์มนัดหมาย\s*$/.test((x.textContent||'').trim())
+                );
+                if (b) b.click();
+            }""")
+        # รอ React render + window.print ถูกเรียก
+        new_page.wait_for_timeout(3500)
+
+        try:
+            new_page.emulate_media(media="print")
+        except Exception:
+            pass
+        pdf_bytes = new_page.pdf(
+            format="A4",
+            print_background=True,
+            margin={"top": "10mm", "bottom": "10mm", "left": "10mm", "right": "10mm"},
+        )
+        if not pdf_bytes or len(pdf_bytes) < 5000:
+            err = f"PDF เล็กผิดปกติ ({len(pdf_bytes) if pdf_bytes else 0} bytes) — DOM swap อาจไม่สำเร็จ"
+    except Exception as e:
+        err = f"page.pdf() ล้มเหลว: {str(e).splitlines()[0][:200]}"
+    finally:
+        if new_page is not None:
+            try: new_page.close()
+            except Exception: pass
+
+    return pdf_bytes, passport, name_eng, err
+
+
 def run_appointment(
     cfg: dict,
     login_excel: Path,
@@ -14622,6 +15335,781 @@ def run_appointment(
     return success, out_path
 
 
+# ─────────────────────────────────────────────────────────────────
+# run_bt30_ctn — main entry สำหรับโหมด 'ดาวน์โหลด บต.30 (ใบตอบรับจากระบบ)'
+# ─────────────────────────────────────────────────────────────────
+def _save_bt30_ctn_report(rows: list[dict[str, Any]], out_path: Path, log=print) -> None:
+    """เซฟรายงาน — คอลัมน์ 'ไฟล์ CTN' และ 'ไฟล์ APPOINTMENT' เป็น hyperlink (file://) ไปยัง reports/bt30_ctn/"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "บต.30 CTN + Appointment"
+    headers = [
+        "ลำดับ", "Username", "เลขที่คำขอ", "Passport", "รูปแบบ (BT..)",
+        "ป้ายในระบบ", "สถานะ", "ไฟล์ CTN", "ไฟล์ APPOINTMENT", "หมายเหตุ",
+    ]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    link_font = Font(color="0563C1", underline="single")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    text_cols = {"เลขที่คำขอ", "Passport"}
+    link_cols = {"ไฟล์ CTN", "ไฟล์ APPOINTMENT"}
+    save_subdir = "bt30_ctn"
+    for i, r in enumerate(rows, start=1):
+        ws.append([
+            i,
+            r.get("username", ""),
+            r.get("req_no", ""),
+            r.get("passport", ""),
+            r.get("form_code", ""),
+            r.get("label", ""),
+            r.get("status", ""),
+            r.get("pdf_file", ""),
+            r.get("appt_file", ""),
+            r.get("error", ""),
+        ])
+        row_idx = ws.max_row
+        for c_idx, h in enumerate(headers, start=1):
+            cell = ws.cell(row=row_idx, column=c_idx)
+            if h in text_cols and cell.value not in (None, ""):
+                cell.value = str(cell.value)
+                cell.number_format = "@"
+            if h in link_cols and cell.value:
+                fname = str(cell.value)
+                abs_path = (out_path.parent / save_subdir / fname).resolve()
+                try:
+                    cell.hyperlink = abs_path.as_uri()
+                except Exception:
+                    cell.hyperlink = f"{save_subdir}/{fname}"
+                cell.value = fname
+                cell.font = link_font
+
+    widths = [6, 28, 20, 18, 12, 40, 12, 45, 45, 40]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        wb.save(out_path)
+        log(f"      · เซฟรายงาน → {out_path}")
+    except Exception as e:
+        log(f"      · ⚠ เซฟรายงานไม่สำเร็จ: {str(e)[:160]}")
+
+
+def _bt30_ctn_process_record(
+    page: Page, rec: dict, save_dir: Path, make_subfolder: bool = False,
+    do_ctn: bool = True, do_appointment: bool = False, log=print,
+) -> dict[str, Any]:
+    """1 คำขอ: เปิด detail → ดาวน์โหลด บต.XX (ใบตอบรับ) และ/หรือ ใบนัดหมาย
+    → บันทึกเป็น {PASSPORT}_BT{XX}_CTN.pdf และ/หรือ {PASSPORT}_APPOINTMENT.pdf
+    คืน dict สำหรับใส่ report
+    """
+    req_no = rec.get("req_no", "")
+    row = rec.get("_row", {}) or {}
+    out = {
+        "req_no": req_no,
+        "username": rec.get("username", ""),
+        "passport": "",
+        "form_code": "",
+        "label": "",
+        "pdf_file": "",
+        "appt_file": "",
+        "status": "FAIL",
+        "error": "",
+    }
+    # 1) เปิด detail (reuse ของ appointment mode)
+    ok, err = _appt_open_detail(page, req_no, log=log)
+    if not ok:
+        out["error"] = err
+        return out
+
+    passport = ""
+    form_num = ""
+    ctn_ok = False
+    appt_ok = False
+    ctn_err = ""
+    appt_err = ""
+
+    # --- 2A) ดาวน์โหลด ใบตอบรับ (บต.XX) ---
+    if do_ctn:
+        body, matched_label, derr = _bt30_ctn_download(page, log=log)
+        out["label"] = matched_label
+        if derr:
+            ctn_err = derr
+        else:
+            pdf_text = _bt30_ctn_read_pdf_text(body)
+            passport = _extract_passport_from_pdf(pdf_text)
+            form_num = _extract_bt_form_number_from_pdf(pdf_text) or "30"
+            out["passport"] = passport
+            out["form_code"] = f"BT{form_num}" if form_num else ""
+
+            prefix = passport if passport else (req_no or "unknown")
+            fname = f"{prefix}_BT{form_num}_CTN.pdf" if form_num else f"{prefix}_BT_CTN.pdf"
+            target_dir = save_dir / prefix if make_subfolder else save_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_path = target_dir / fname
+            if target_path.exists():
+                n = 2
+                stem = target_path.stem
+                while True:
+                    alt = target_dir / f"{stem}_{n}.pdf"
+                    if not alt.exists():
+                        target_path = alt
+                        break
+                    n += 1
+            try:
+                target_path.write_bytes(body)
+                try:
+                    rel = target_path.relative_to(save_dir).as_posix()
+                except Exception:
+                    rel = target_path.name
+                out["pdf_file"] = rel
+                ctn_ok = True
+                log(f"      · CTN: {rel}  (passport={passport or '-'}, form=BT{form_num or '?'})")
+            except Exception as e:
+                ctn_err = f"บันทึก PDF ล้มเหลว: {str(e)[:160]}"
+
+    # --- 2B) ดาวน์โหลด ใบนัดหมาย (APPOINTMENT) ---
+    if do_appointment:
+        appt_bytes, appt_pp, appt_name, aerr = _bt30_ctn_download_appointment(page, log=log)
+        if aerr:
+            appt_err = aerr
+        elif appt_bytes:
+            # ใช้ passport จาก CTN ก่อน — ถ้าไม่มี ใช้จาก iframe
+            appt_prefix = passport or appt_pp or (req_no or "unknown")
+            if not out["passport"] and appt_pp:
+                out["passport"] = appt_pp
+            appt_fname = f"{appt_prefix}_APPOINTMENT.pdf"
+            target_dir = save_dir / appt_prefix if make_subfolder else save_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            appt_path = target_dir / appt_fname
+            if appt_path.exists():
+                n = 2
+                stem = appt_path.stem
+                while True:
+                    alt = target_dir / f"{stem}_{n}.pdf"
+                    if not alt.exists():
+                        appt_path = alt
+                        break
+                    n += 1
+            try:
+                appt_path.write_bytes(appt_bytes)
+                try:
+                    rel = appt_path.relative_to(save_dir).as_posix()
+                except Exception:
+                    rel = appt_path.name
+                out["appt_file"] = rel
+                appt_ok = True
+                log(f"      · APPOINTMENT: {rel}  (passport={appt_prefix}, name={appt_name or '-'})")
+            except Exception as e:
+                appt_err = f"บันทึก APPOINTMENT PDF ล้มเหลว: {str(e)[:160]}"
+
+    # --- 3) สรุปสถานะ ---
+    wanted = []
+    if do_ctn: wanted.append(("ctn", ctn_ok, ctn_err))
+    if do_appointment: wanted.append(("appt", appt_ok, appt_err))
+    n_ok = sum(1 for _, ok, _ in wanted if ok)
+    if n_ok == len(wanted) and wanted:
+        out["status"] = "SUCCESS"
+    elif n_ok > 0:
+        out["status"] = "PARTIAL"
+    else:
+        # ไม่มีอะไรสำเร็จ → เช็คว่าเป็น "ไม่มีเอกสาร" ทุกอย่างไหม
+        errs = [e for _, _, e in wanted if e]
+        no_doc_markers = ("ไม่พบ", "ไม่มี", "ยังไม่ได้จอง", "ยังไม่ได้")
+        if all(any(m in e for m in no_doc_markers) for e in errs if e):
+            out["status"] = "NO_DOC"
+        else:
+            out["status"] = "FAIL"
+    err_parts = []
+    if ctn_err:  err_parts.append(f"CTN: {ctn_err}")
+    if appt_err: err_parts.append(f"APPT: {appt_err}")
+    if err_parts:
+        out["error"] = " | ".join(err_parts)
+    if do_ctn and ctn_ok and not passport:
+        # download success แต่หา passport ไม่เจอ → mark PARTIAL
+        if out["status"] == "SUCCESS":
+            out["status"] = "PARTIAL"
+        if not out["error"]:
+            out["error"] = "ดาวน์โหลด PDF สำเร็จ แต่หา passport ในไฟล์ไม่พบ"
+    return out
+
+
+def run_bt30_ctn(
+    cfg: dict,
+    login_excel: Path | None,
+    out_path: Path,
+    row_range: str | None = None,
+    make_subfolder: bool = False,
+    do_ctn: bool = True,
+    do_appointment: bool = False,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด 'ดาวน์โหลด (ใบตอบรับ / ใบนัดหมาย)' — วนทุกบัญชี → filter สถานะ → ทุกคำขอ
+
+    Args:
+        do_ctn: True = ดาวน์โหลด 'ใบตอบรับ บต.30' จาก tab เอกสารตอบรับ (สถานะ WP2)
+        do_appointment: True = ดาวน์โหลด 'ใบนัดหมาย' จาก tab การนัดหมาย (สถานะ AP/APSS)
+        (ถ้าเลือกทั้งคู่ → รันในลูปเดียวกัน แต่ผู้ใช้ควรเลือก status filter ให้ครอบคลุมทั้ง WP+AP+SS)
+
+    Flow:
+        UsernameLogin.xlsx (หรือบัญชีเดียวจาก cfg) → login ทีละบัญชี →
+        Tracking → กรอง status=WP (รอชำระเงิน) [+ request_types + date filter ถ้ามีใน cfg] →
+        ทุก req_no ที่เจอ:
+            เปิด detail → tab 'เอกสารตอบรับจากระบบ' →
+            หา row 'แบบ บต.30' → ดาวน์โหลด PDF →
+            อ่าน passport + form number จาก PDF text →
+            เซฟเป็น reports/bt30_ctn/{PASSPORT}_BT{XX}_CTN.pdf
+
+    Args:
+        cfg: ตัวเลือกรวม (headless, hide_window, request_types, date_from, date_to,
+             username/password/user_type — ใช้เป็น single-user fallback)
+        login_excel: UsernameLogin.xlsx (Username, Password, Type) — None หรือไฟล์ไม่มี/อ่านไม่ได้
+                     → fallback ไปใช้ cfg['username']+cfg['password'] (บัญชีเดียว)
+        out_path: ไฟล์ Excel report
+        row_range: '1-10,15' → ทำเฉพาะ row ที่เลือกในแต่ละบัญชี (ว่าง = ทั้งหมด)
+        make_subfolder: True → เซฟใน reports/bt30_ctn/{PASSPORT}/{PASSPORT}_BT30_CTN.pdf
+
+    Returns: (count_success, out_path)
+    """
+    if not (do_ctn or do_appointment):
+        raise ValueError(
+            "ต้องเลือกอย่างน้อย 1 เอกสาร (ใบตอบรับ หรือ ใบนัดหมาย) ก่อนรันโหมดนี้"
+        )
+    out_path = _timestamped_path(out_path)
+
+    # ---- อ่าน accounts จาก UsernameLogin.xlsx หรือ fallback ไป single-user จาก cfg ----
+    accounts: dict[str, dict[str, str]] = {}
+    _src_desc = ""
+    if login_excel and Path(login_excel).exists():
+        try:
+            accounts = _read_login_accounts(Path(login_excel))
+            _src_desc = f"ไฟล์ {Path(login_excel).name}"
+        except Exception as e:
+            log(f"      ⚠ อ่านไฟล์ {Path(login_excel).name} ไม่ได้: {str(e).splitlines()[0][:160]}")
+            log("        · จะลอง fallback ไปใช้ Username/Password จากช่องด้านบนแทน")
+            accounts = {}
+    # fallback: บัญชีเดียวจาก cfg
+    if not accounts:
+        _u = (cfg.get("username") or "").strip()
+        _p = cfg.get("password") or ""
+        if _u and _p:
+            accounts = {_u.lower(): {
+                "username": _u,
+                "password": _p,
+                "type": (cfg.get("user_type") or "ผู้กระทำการแทน"),
+                "method": (cfg.get("method") or "E-Workpermit"),
+            }}
+            _src_desc = f"Username/Password ด้านบน (บัญชีเดียว: {_u})"
+    if not accounts:
+        raise ValueError(
+            "ไม่มีบัญชี login — ต้องมีไฟล์ UsernameLogin.xlsx (มีข้อมูลอย่างน้อย 1 แถว) "
+            "หรือกรอก Username/Password ในช่อง 'ข้อมูลเข้าสู่ระบบ' ด้านบน"
+        )
+    log(f"[1/3] บัญชี login จาก {_src_desc}: {len(accounts)} บัญชี")
+
+    # ---- Status filter: ถ้า UI ระบุ filter_status_ids มา → ใช้ตามนั้น (ไม่ล็อก WP)
+    # ถ้าไม่ระบุ → default = WP + local filter เฉพาะ WP2 (พฤติกรรมเดิม สำหรับใบตอบรับ บต.30 MoU)
+    _user_status_ids = list(cfg.get("filter_status_ids") or [])
+    _user_status_ids = [s for s in _user_status_ids if s]  # ตัด empty
+    if _user_status_ids:
+        status_ids_for_filter = _user_status_ids
+        wp2_only = False
+        log(f"      สถานะ: {','.join(status_ids_for_filter)} (จาก UI) | "
+            f"Tab: เอกสารตอบรับจากระบบ | เอกสาร: แบบ บต.30")
+    else:
+        status_ids_for_filter = ["WP"]
+        wp2_only = True
+        log("      สถานะ: WP (รอชำระเงิน) — filter WP2 เฉพาะ | "
+            "Tab: เอกสารตอบรับจากระบบ | เอกสาร: แบบ บต.30")
+
+    # request_types (multi-select) + date filter — เอามาจาก cfg ที่ GUI ส่งเข้ามา
+    req_types_list: list[str] = []
+    for c in (cfg.get("request_types") or []):
+        s = (c or "").strip()
+        if s and s not in {"0", "ALL", "all"} and s not in req_types_list:
+            req_types_list.append(s)
+    if not req_types_list:
+        single = (cfg.get("request_type") or "").strip()
+        if single and single not in {"0", "ALL", "all"}:
+            req_types_list = [single]
+    if req_types_list:
+        log(f"      ฟิลเตอร์รายการคำขอ: {', '.join(req_types_list) if len(req_types_list) <= 3 else str(len(req_types_list)) + ' รายการ'}")
+    date_from = (cfg.get("date_from") or "").strip()
+    date_to = (cfg.get("date_to") or "").strip()
+    if date_from or date_to:
+        log(f"      วันที่ยื่นคำขอ: {date_from or '(ต้นสุด)'} → {date_to or '(ล่าสุด)'}")
+
+    save_dir = out_path.parent / "bt30_ctn"
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    results: list[dict[str, Any]] = []
+    success = 0
+    total_known = 0
+
+    if progress:
+        try: progress(0, 1)
+        except Exception: pass
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        ctx = browser.new_context(
+            locale="th-TH", ignore_https_errors=True,
+            viewport={"width": 1920, "height": 1080},
+        )
+        page = ctx.new_page()
+        try:
+            for u_idx, (ukey, acct) in enumerate(accounts.items(), start=1):
+                if is_cancelled and is_cancelled():
+                    log("[!] ผู้ใช้ยกเลิก — หยุด")
+                    break
+                username = acct["username"]
+                log(f"  [บัญชี {u_idx}/{len(accounts)}] === Login: {username} ({acct['type']}) ===")
+                try:
+                    if u_idx > 1:
+                        _logout_safely(page)
+                        page.wait_for_timeout(1000)
+                    login(page, {
+                        "username": acct["username"], "password": acct["password"],
+                        "user_type": acct["type"],
+                        "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+                    })
+                    goto_tracking(page)
+                except Exception as e:
+                    log(f"      ⛔ login/เปิด tracking ไม่สำเร็จ: {str(e).splitlines()[0][:160]}")
+                    results.append({
+                        "req_no": "", "username": username,
+                        "status": "LOGIN_FAIL", "error": str(e).splitlines()[0][:200],
+                        "passport": "", "form_code": "", "label": "", "pdf_file": "",
+                    })
+                    continue
+
+                # collect rows (ต่อ 1 บัญชี) — วน request_types ถ้ามีหลาย
+                all_rows: list[dict] = []
+                seen_req: set = set()
+                try:
+                    if not req_types_list:
+                        apply_wa_filter(
+                            page, "", status_ids=status_ids_for_filter,
+                            date_from=date_from, date_to=date_to,
+                        )
+                        all_rows = collect_all_wa_rows(page, log=log)
+                    else:
+                        for rt_i, rt in enumerate(req_types_list, 1):
+                            if is_cancelled and is_cancelled():
+                                break
+                            if len(req_types_list) > 1:
+                                log(f"      [{rt_i}/{len(req_types_list)}] filter: {rt}")
+                            apply_wa_filter(
+                                page, rt, status_ids=status_ids_for_filter,
+                                date_from=date_from, date_to=date_to,
+                            )
+                            chunk = collect_all_wa_rows(page, log=log)
+                            for r in chunk:
+                                k = str(r.get("reqNo") or "")
+                                if k and k in seen_req:
+                                    continue
+                                if k:
+                                    seen_req.add(k)
+                                all_rows.append(r)
+                except Exception as e:
+                    log(f"      ✗ เก็บรายการคำขอไม่สำเร็จ: {str(e).splitlines()[0][:160]}")
+                    continue
+
+                # ---- Local filter: ถ้าใช้ default WP → คัดเฉพาะ WP2 (BT30 อยู่แค่ WP2)
+                # ถ้า UI ระบุสถานะเอง → ไม่กรองต่อ (เชื่อ user)
+                _before = len(all_rows)
+                if wp2_only:
+                    wp_rows = [
+                        r for r in all_rows
+                        if str(r.get("status") or "").upper() == "WP2"
+                    ]
+                    _target_label = "'รอชำระเงิน' (WP2)"
+                else:
+                    wp_rows = list(all_rows)
+                    _target_label = f"({','.join(status_ids_for_filter)})"
+                if _before == 0:
+                    _hint = "" if not req_types_list else \
+                            f" (filter รายการคำขอ: {', '.join(req_types_list)})"
+                    log(f"      ⚠ บัญชีนี้ไม่มีคำขอในสถานะ {','.join(status_ids_for_filter)}{_hint}")
+                    log("        · ตรวจ badge สถานะบนหน้าเว็บว่ามีจริงไหม")
+                    log("        · หรือลองล้าง filter รายการคำขอ (เลือก 'ล้าง' ในกล่อง Listbox) แล้วรันใหม่")
+                else:
+                    _sub_counts: dict[str, int] = {}
+                    for r in all_rows:
+                        s = str(r.get("status") or "?").upper()
+                        _sub_counts[s] = _sub_counts.get(s, 0) + 1
+                    _sub_txt = ", ".join(f"{k}={v}" for k, v in sorted(_sub_counts.items()))
+                    if wp2_only:
+                        log(
+                            f"      สถานะย่อยที่เจอ: {_sub_txt}  → คัดเฉพาะ WP2: "
+                            f"{len(wp_rows)}/{_before}"
+                        )
+                    else:
+                        log(f"      สถานะย่อยที่เจอ: {_sub_txt}  (ใช้ทั้งหมด: {len(wp_rows)})")
+                log(f"      พบ {len(wp_rows)} คำขอสถานะ {_target_label}")
+
+                # row_range: ต่อบัญชี
+                indices = _parse_row_range(row_range, len(wp_rows)) if row_range else list(range(1, len(wp_rows) + 1))
+                selected_rows = [wp_rows[i - 1] for i in indices if 1 <= i <= len(wp_rows)]
+                total_known += len(selected_rows)
+
+                for k, row in enumerate(selected_rows, start=1):
+                    if is_cancelled and is_cancelled():
+                        break
+                    req_no = row.get("reqNo", "") or row.get("req_no", "")
+                    if not req_no:
+                        continue
+                    log(f"    ({k}/{len(selected_rows)}) คำขอ {req_no} — {row.get('statusText','')}")
+                    rec_in = {"req_no": req_no, "username": username, "_row": row}
+                    try:
+                        r = _bt30_ctn_process_record(
+                            page, rec_in, save_dir, make_subfolder=make_subfolder,
+                            do_ctn=do_ctn, do_appointment=do_appointment,
+                            log=log,
+                        )
+                        r["username"] = username
+                        results.append(r)
+                        if r.get("status") == "SUCCESS":
+                            success += 1
+                    except Exception as e:
+                        results.append({
+                            "req_no": req_no, "username": username,
+                            "status": "ERROR", "error": str(e).splitlines()[0][:200],
+                            "passport": "", "form_code": "", "label": "", "pdf_file": "",
+                            "appt_file": "",
+                        })
+                        log(f"      ✗ ผิดพลาด: {str(e).splitlines()[0][:160]}")
+                    if progress:
+                        try: progress(len(results), max(total_known, len(results)))
+                        except Exception: pass
+                    _save_bt30_ctn_report(results, out_path, log=lambda *a: None)
+        finally:
+            ctx.close(); browser.close()
+
+    _save_bt30_ctn_report(results, out_path, log=log)
+    fail = sum(1 for r in results if r.get("status") not in ("SUCCESS",))
+    log(f"[3/3] สรุป: ดาวน์โหลด บต.30 สำเร็จ {success} คำขอ (ล้มเหลว/partial {fail})")
+    return success, out_path
+
+
+# ─────────────────────────────────────────────────────────────────
+# run_namelist_alien — ดึงรายชื่อคนต่างด้าวจากหน้า NameListAlien
+# URL: /Requtst63_2/NameListAlien?form_type=<FORM_TYPE>
+# DataTable server-side (id=AlienRenewFormCrList_table) — วน pagination
+# ทุกหน้า (100 rows/หน้า) → เขียนออก Excel
+# ─────────────────────────────────────────────────────────────────
+NAMELIST_ALIEN_URL_TMPL = (
+    "https://eworkpermit.doe.go.th/Requtst63_2/NameListAlien?form_type={form_type}"
+)
+NAMELIST_ALIEN_TABLE_ID = "AlienRenewFormCrList_table"
+
+
+def _parse_namelist_alien_cells(cells: list[str]) -> dict[str, str]:
+    """แยกข้อมูลจาก text ของแต่ละ cell ในตาราง NameListAlien
+    cells: list ของ innerText 7 cell (index 0..6)
+        [0] ลำดับ
+        [1] "RA... \n เลขประจำตัวคนต่างด้าว : XXX \n เลขที่ใบอนุญาตทำงาน : XXX"
+        [2] "Mr. NAME (Eng) \n Thai name \n เพศ : ..."
+        [3] ผลตรวจ+ประกัน (badges + note)
+        [4] สัญชาติ
+        [5] "รอยื่นคำขอ..." หรือ "ยื่นคำขอแล้ว \n เลขที่คำขอ : 69125200710969"
+        [6] ผู้ยื่นคำขอ (name หรือ '-')
+    """
+    out = {
+        "ref_no": "",
+        "alien_id": "",
+        "work_permit_no": "",
+        "name_eng": "",
+        "name_th": "",
+        "gender": "",
+        "health_status": "",
+        "nationality": "",
+        "request_status": "",
+        "request_no": "",
+        "submitter": "",
+    }
+    if not cells:
+        return out
+    # cell[1] — reference/id block
+    c1 = cells[1] if len(cells) > 1 else ""
+    lines = [ln.strip() for ln in re.split(r"[\r\n]+", c1) if ln.strip()]
+    for ln in lines:
+        if ln.startswith("RA") and not out["ref_no"]:
+            out["ref_no"] = ln.strip()
+        elif "เลขประจำตัวคนต่างด้าว" in ln:
+            m = re.search(r":\s*(\S+)", ln)
+            if m:
+                out["alien_id"] = m.group(1)
+        elif "เลขที่ใบอนุญาตทำงาน" in ln:
+            m = re.search(r":\s*(\S+)", ln)
+            if m:
+                out["work_permit_no"] = m.group(1)
+    # cell[2] — name/gender block
+    c2 = cells[2] if len(cells) > 2 else ""
+    lines2 = [ln.strip() for ln in re.split(r"[\r\n]+", c2) if ln.strip()]
+    for ln in lines2:
+        if re.match(r"^(Mr|Mrs|Miss|Ms|Master|Mstr)\.?\s+", ln, flags=re.IGNORECASE):
+            out["name_eng"] = ln
+        elif re.match(r"^(นาย|นาง|นางสาว|เด็กชาย|เด็กหญิง)\s", ln):
+            out["name_th"] = ln
+        elif "เพศ" in ln:
+            m = re.search(r":\s*(\S+)", ln)
+            if m:
+                out["gender"] = m.group(1)
+    # cell[3] — health status (เก็บทั้งบล็อค — badges + note)
+    if len(cells) > 3:
+        out["health_status"] = re.sub(r"\s+", " ", cells[3]).strip()[:400]
+    # cell[4] — nationality
+    if len(cells) > 4:
+        out["nationality"] = cells[4].strip()
+    # cell[5] — request status + req_no
+    c5 = cells[5] if len(cells) > 5 else ""
+    lines5 = [ln.strip() for ln in re.split(r"[\r\n]+", c5) if ln.strip()]
+    status_lines = []
+    for ln in lines5:
+        if "เลขที่คำขอ" in ln:
+            m = re.search(r":\s*(\S+)", ln)
+            if m:
+                out["request_no"] = m.group(1)
+        else:
+            status_lines.append(ln)
+    out["request_status"] = " ".join(status_lines)[:200]
+    # cell[6] — submitter
+    if len(cells) > 6:
+        s = cells[6].strip()
+        out["submitter"] = "" if s == "-" else s
+    return out
+
+
+def _namelist_alien_collect_all(
+    page: Page, log=print, limit: int = 0, is_cancelled=None,
+) -> list[dict[str, str]]:
+    """ตั้ง page length = 100 → วน pagination ทุกหน้า → parse rows
+    - limit > 0: หยุดทันทีเมื่อ collected ครบจำนวน
+    - is_cancelled(): callable → หยุดถ้าคืน True
+    คืน list ของ dict (parsed)
+    """
+    tid = NAMELIST_ALIEN_TABLE_ID
+    # ตั้ง page length = 100 + ไปหน้าแรก
+    page.evaluate(
+        """(tid) => {
+            try {
+                const dt = window.jQuery('#' + tid).DataTable();
+                dt.page.len(100).page(0).draw('page');
+            } catch(e) {}
+        }""", tid,
+    )
+    info = _wait_datatable_idle(page, tid, max_wait_ms=45_000)
+    pages = int(info.get("pages") or 1)
+    total = int(info.get("recordsDisplay") or 0)
+    length = int(info.get("length") or 100)
+    log(f"      [paginate] ทั้งหมด {total:,} แถว / {pages:,} หน้า ({length} แถว/หน้า)")
+    if limit and limit > 0:
+        log(f"      [paginate] จำกัด: {limit:,} แถวแรก")
+
+    all_rows: list[dict[str, str]] = []
+    seen: set = set()
+    cur_page = 0
+    while True:
+        if is_cancelled and is_cancelled():
+            log("      [paginate] ยกเลิกโดยผู้ใช้")
+            break
+        rows_now = page.evaluate(
+            r"""(tid) => {
+                const out = [];
+                document.querySelectorAll('#' + tid + ' tbody tr').forEach(tr => {
+                    const cells = Array.from(tr.querySelectorAll('td'))
+                        .map(td => (td.innerText || '').trim());
+                    if (cells.length) out.push(cells);
+                });
+                return out;
+            }""", tid,
+        )
+        added = 0
+        for cells in rows_now:
+            parsed = _parse_namelist_alien_cells(cells)
+            key = parsed.get("ref_no") or (parsed.get("alien_id") + "|" + parsed.get("name_eng"))
+            if key in seen:
+                continue
+            seen.add(key)
+            all_rows.append(parsed)
+            added += 1
+            if limit and limit > 0 and len(all_rows) >= limit:
+                break
+        log(f"      [paginate] หน้า {cur_page + 1}/{pages} → +{added} (สะสม {len(all_rows):,})")
+
+        # ครบ limit → stop
+        if limit and limit > 0 and len(all_rows) >= limit:
+            log(f"      [paginate] ถึง limit ({limit:,}) — หยุด")
+            break
+        if cur_page >= pages - 1:
+            break
+        # go next
+        page.evaluate(
+            """(tid) => {
+                try { window.jQuery('#' + tid).DataTable().page('next').draw('page'); } catch(e) {}
+            }""", tid,
+        )
+        info = _wait_datatable_idle(page, tid, max_wait_ms=45_000)
+        new_page = int(info.get("page") or -1)
+        if new_page == cur_page:
+            log("      [paginate] ไม่ขยับหน้า — หยุด")
+            break
+        cur_page = new_page
+        if cur_page > pages + 5:
+            log("      [paginate] เกินหน้าสุดท้าย — หยุด")
+            break
+    return all_rows
+
+
+def _save_namelist_alien_report(rows: list[dict[str, str]], out_path: Path, log=print) -> None:
+    """เซฟรายงาน — 12 คอลัมน์"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "รายชื่อคนต่างด้าว"
+    headers = [
+        "ลำดับ", "หมายเลขอ้างอิง", "เลขประจำตัวคนต่างด้าว", "เลขที่ใบอนุญาตทำงาน",
+        "ชื่อ (Eng)", "ชื่อ (ไทย)", "เพศ",
+        "ผลตรวจ+ประกัน", "สัญชาติ", "สถานะคำขอ", "เลขที่คำขอ", "ผู้ยื่นคำขอ",
+    ]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    text_cols = {"เลขประจำตัวคนต่างด้าว", "เลขที่ใบอนุญาตทำงาน", "เลขที่คำขอ", "หมายเลขอ้างอิง"}
+    for i, r in enumerate(rows, start=1):
+        ws.append([
+            i,
+            r.get("ref_no", ""),
+            r.get("alien_id", ""),
+            r.get("work_permit_no", ""),
+            r.get("name_eng", ""),
+            r.get("name_th", ""),
+            r.get("gender", ""),
+            r.get("health_status", ""),
+            r.get("nationality", ""),
+            r.get("request_status", ""),
+            r.get("request_no", ""),
+            r.get("submitter", ""),
+        ])
+        row_idx = ws.max_row
+        for c_idx, h in enumerate(headers, start=1):
+            cell = ws.cell(row=row_idx, column=c_idx)
+            if h in text_cols and cell.value not in (None, ""):
+                cell.value = str(cell.value)
+                cell.number_format = "@"
+            if h == "ผลตรวจ+ประกัน" and cell.value:
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+    widths = [6, 22, 18, 18, 30, 30, 8, 45, 12, 22, 18, 22]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        wb.save(out_path)
+        log(f"      · เซฟรายงาน → {out_path}")
+    except Exception as e:
+        log(f"      · ⚠ เซฟรายงานไม่สำเร็จ: {str(e)[:160]}")
+
+
+def run_namelist_alien(
+    cfg: dict,
+    out_path: Path,
+    form_type: str = "MT_63_2_3103_RENEWAL",
+    limit: int = 0,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """ดึงรายชื่อคนต่างด้าวจากหน้า NameListAlien (ทุก pagination) → บันทึก Excel
+
+    Flow:
+        1) Login (บัญชีเดียวจาก cfg — ไม่ต้องใช้ UsernameLogin.xlsx)
+        2) goto /Requtst63_2/NameListAlien?form_type=<form_type>
+        3) DataTable set len=100 + วนทุก page
+        4) ทุก row: parse text ในแต่ละ cell → เขียน Excel
+
+    Args:
+        cfg: {username, password, user_type, method, headless, hide_window}
+        out_path: ไฟล์ Excel
+        form_type: default MT_63_2_3103_RENEWAL (ตาม URL ผู้ใช้ระบุ)
+        limit: 0 = ทั้งหมด, >0 = จำกัดแถวแรก N (ประหยัดเวลาตอนทดสอบ)
+
+    Returns: (count, out_path)
+    """
+    out_path = _timestamped_path(out_path)
+    log(f"[1/3] URL: {NAMELIST_ALIEN_URL_TMPL.format(form_type=form_type)}")
+    log(f"      ไฟล์รายงาน: {out_path.name}")
+
+    def _cancelled() -> bool:
+        return bool(is_cancelled and is_cancelled())
+
+    if progress:
+        try: progress(0, 1)
+        except Exception: pass
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--disable-blink-features=AutomationControlled"])
+        ctx = browser.new_context(
+            locale="th-TH", timezone_id="Asia/Bangkok",
+            viewport={"width": 1600, "height": 1000},
+        )
+        page = ctx.new_page()
+        try:
+            log("[2/3] กำลังเข้าสู่ระบบ...")
+            login(page, cfg)
+            log(f"      ล็อกอินสำเร็จ ({page.url})")
+
+            url = NAMELIST_ALIEN_URL_TMPL.format(form_type=form_type)
+            log(f"      เปิดหน้ารายชื่อ...")
+            page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+            page.wait_for_timeout(3500)
+            if _is_logged_out(page):
+                log("      ⚠ session หมด — login ใหม่")
+                login(page, cfg)
+                page.goto(url, wait_until="domcontentloaded", timeout=45_000)
+                page.wait_for_timeout(3500)
+
+            # ตรวจว่าตารางโหลด
+            try:
+                page.wait_for_selector(f"#{NAMELIST_ALIEN_TABLE_ID}", state="visible", timeout=20_000)
+            except Exception:
+                raise RuntimeError(f"ไม่พบตาราง {NAMELIST_ALIEN_TABLE_ID} — เปิดหน้าไม่สำเร็จ")
+
+            all_rows = _namelist_alien_collect_all(
+                page, log=log, limit=limit, is_cancelled=is_cancelled,
+            )
+            if limit and limit > 0 and len(all_rows) > limit:
+                all_rows = all_rows[:limit]
+                log(f"      จำกัดเฉพาะ {limit:,} แถวแรก")
+
+            if progress:
+                try: progress(len(all_rows), len(all_rows))
+                except Exception: pass
+
+            log(f"[3/3] บันทึก Excel {len(all_rows):,} แถว...")
+            _save_namelist_alien_report(all_rows, out_path, log=log)
+            return len(all_rows), out_path
+        finally:
+            ctx.close(); browser.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="0 = ทั้งหมด, >0 = จำกัด N รายการ")
@@ -14669,6 +16157,10 @@ def main() -> int:
     ap.add_argument(
         "--result-doc-types", default=None,
         help="(โหมด results) ประเภทเอกสาร คั่นด้วย , เช่น 'result_notice,request_receipt' หรือ 'all' (default=ทั้งหมด)",
+    )
+    ap.add_argument(
+        "--result-status-ids", default=None,
+        help="(โหมด results) status ids ที่จะดึง คั่นด้วย , — default 'AP,SS' (AP=รอนัดหมาย, SS=ดำเนินการเสร็จสิ้น). ตัวเลือก: WP,WCOSNA,WA,AP,SS",
     )
     ap.add_argument(
         "--ref-excel", type=Path, default=ROOT / "Ref_number.xlsx",
@@ -14795,6 +16287,15 @@ def main() -> int:
                     return 2
         else:
             result_keys = list(RESULT_DOC_TYPES_DEFAULT)
+        # ปรับ status filter (default AP+SS) — CLI ทับค่า default ได้
+        if args.result_status_ids:
+            raw_sids = args.result_status_ids.strip().upper()
+            if raw_sids in ("ALL", "*"):
+                cfg["result_status_ids"] = ["WP", "WCOSNA", "WA", "AP", "SS"]
+            else:
+                sids = [s.strip().upper() for s in raw_sids.split(",") if s.strip()]
+                if sids:
+                    cfg["result_status_ids"] = sids
         # ถ้ามีไฟล์ Ref_number.xlsx → ค้นหา-ดาวน์โหลดตามเลขคำขอ
         # ถ้าไม่มี → fallback ดึงจาก e-Tracking (สถานะรอนัดหมาย) แบบเดิม
         if args.ref_excel and Path(args.ref_excel).exists():

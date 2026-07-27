@@ -21,36 +21,49 @@
 
 ### ⚡ ติดตั้งรวดเดียว (Copy วางได้เลย) 
 
-วางทั้งบล็อกนี้ลง **PowerShell** ที่โฟลเดอร์โปรเจกต์ — ติดตั้งครบทุกอย่างในคำสั่งเดียว:
+**PowerShell** (คั่นด้วย `;`) — คลิกขวาโฟลเดอร์ → **Open in Terminal**:
 ```powershell
-python -m pip install --upgrade pip; pip install "playwright>=1.47.0" "python-dotenv>=1.0.1" "openpyxl>=3.1.5" "pypdf>=6.0.0"; python -m playwright install chromium
+python -m pip install --upgrade pip; python -m pip install -r requirements.txt; python -m playwright install chromium
 ```
 
-หรือถ้ามีไฟล์ `requirements.txt` อยู่แล้ว:
-```powershell
-python -m pip install --upgrade pip; pip install -r requirements.txt; python -m playwright install chromium
+**cmd.exe** (คั่นด้วย `&&`) — Command Prompt:
+```cmd
+python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m playwright install chromium
+```
+
+> ⚠️ **อย่าใช้ `;` ใน cmd** — cmd จะมองเป็นคำสั่งเดียวยาว ๆ แล้ว fail  
+> ⚠️ **ใช้ `python -m pip` ทุกครั้ง** — Python 3.14 / Microsoft Store ไม่ได้ทำ `pip.exe` ไว้บน PATH
+
+ถ้ายังไม่มีไฟล์ `requirements.txt` ให้ทดแทน `-r requirements.txt` ด้วย:
+```
+"playwright>=1.47.0" "python-dotenv>=1.0.1" "openpyxl>=3.1.5" "pypdf>=6.0.0"
 ```
 
 
-### 1. ติดตั้ง Python 3.10 ขึ้นไป
-- ดาวน์โหลดจาก https://www.python.org/downloads/
-- **ตอนติดตั้ง ติ๊ก ✅ "Add Python to PATH"**
+### 1. ติดตั้ง Python (แนะนำ 3.12)
+- ดาวน์โหลด **Python 3.12** จาก https://www.python.org/downloads/release/python-3128/ (Windows installer 64-bit)
+- **ตอนติดตั้ง ติ๊ก ✅ "Add python.exe to PATH"**
+- **⚠️ อย่าใช้ Python 3.14** — Playwright ยังไม่มี wheel สำหรับ Python 3.14 (เพิ่งมีตอนออกหมาดๆ) → `pip install playwright` จะ fail
 - ตรวจสอบว่าติดตั้งสำเร็จ — เปิด Command Prompt / PowerShell แล้วพิมพ์:
   ```cmd
   python --version
-  pip --version
+  python -m pip --version
   ```
-  ต้องขึ้นเลขเวอร์ชัน (เช่น `Python 3.12.x`)
+  ต้องขึ้นเลขเวอร์ชัน (เช่น `Python 3.12.x`) — หากเดินเครื่องมีหลายเวอร์ชัน ให้เรียกเจาะด้วย `py -3.12`:
+  ```cmd
+  py -3.12 --version
+  py -3.12 -m pip install -r requirements.txt
+  ```
 
 ### 2. เปิด PowerShell ที่โฟลเดอร์โปรเจกต์
 - เปิด File Explorer ไปที่ `D:\Programing\E-work`
 - กด Shift + คลิกขวาในโฟลเดอร์ → **"Open PowerShell window here"**
 
-### 3. ติดตั้งไลบรารีทั้งหมด (คำสั่ง cmd)
+### 3. ติดตั้งไลบรารีทั้งหมด
 
 **วิธี A — ติดตั้งลง Python ระบบ (ง่ายสุด)**
 ```cmd
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
 
@@ -58,7 +71,7 @@ python -m playwright install chromium
 ```cmd
 python -m venv .venv
 .\.venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python -m playwright install chromium
 ```
 > ถ้าใช้ **PowerShell** แล้ว `activate` ติด error เรื่อง Execution Policy ให้รันครั้งเดียว:
@@ -68,7 +81,7 @@ python -m playwright install chromium
 
 **ถ้าไม่มีไฟล์ `requirements.txt`** — ติดตั้งทีละตัวได้:
 ```cmd
-pip install "playwright>=1.47.0" "python-dotenv>=1.0.1" "openpyxl>=3.1.5"
+python -m pip install "playwright>=1.47.0" "python-dotenv>=1.0.1" "openpyxl>=3.1.5" "pypdf>=6.0.0"
 python -m playwright install chromium
 ```
 
@@ -76,9 +89,9 @@ python -m playwright install chromium
 
 ### 4. ตรวจสอบว่าติดตั้งครบ (เลือกทำ)
 ```cmd
-pip show playwright python-dotenv openpyxl
+python -m pip show playwright python-dotenv openpyxl pypdf
 ```
-ถ้าขึ้นข้อมูลของทั้ง 3 ตัว = พร้อมใช้งาน
+ถ้าขึ้นข้อมูลของทั้ง 4 ตัว = พร้อมใช้งาน
 
 ---
 
@@ -154,6 +167,15 @@ A: ได้ แต่อย่าปิดหน้าต่างเบรา�
 
 **Q: รันแล้ว Login ไม่ผ่าน**  
 A: ตรวจ Username/Password และเลือก **ประเภทผู้ใช้** กับ **ระบบ** ให้ตรงกับที่ใช้ปกติ
+
+**Q: ขึ้น `'pip' is not recognized as an internal or external command`**  
+A: Python 3.14 / Microsoft Store install ไม่ได้ทำ `pip.exe` ให้อยู่บน PATH → ให้ใช้ `python -m pip ...` ทุกครั้งแทน (เช่น `python -m pip install -r requirements.txt`)
+
+**Q: ขึ้น `no such option: -m` ตอนรันคำสั่งติดตั้ง one-liner**  
+A: cmd.exe ไม่รู้จัก `;` → มองเป็นคำสั่งเดียวยาว → ให้เปลี่ยนเป็น `&&` หรือรันทีละคำสั่ง (ดูหัวข้อ "❡️ ติดตั้งรวดเดียว")
+
+**Q: `pip install playwright` fail ขึ้น `Could not find a version that satisfies the requirement`**  
+A: คุณน่าจะใช้ Python 3.14 ซึ่ง Playwright ยังไม่รองรับ — ติดตั้ง **Python 3.12** เพิ่ม (ใช้คู่กันกับ 3.14 ได้) แล้วรันด้วย `py -3.12 -m pip install -r requirements.txt`
 
 **Q: ขึ้น `ModuleNotFoundError: No module named 'dotenv'` (หรือ module อื่น)**  
 A: เกิดจากรัน Python คนละตัวกับที่ลง library ไว้ แก้ได้ 2 ทาง:
