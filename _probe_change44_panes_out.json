@@ -1,0 +1,124 @@
+{
+  "url": "https://eworkpermit.doe.go.th/Forms/DetailFormRequest44/69144400629422?id=RA17662449023455621",
+  "navLinks": [
+    {
+      "text": "สถานะคำขอ",
+      "href": "#tab-status",
+      "ariaControls": "",
+      "dataTarget": "",
+      "cls": "active"
+    },
+    {
+      "text": "ข้อมูลคนต่างด้าว",
+      "href": "#tab-alien",
+      "ariaControls": "",
+      "dataTarget": "",
+      "cls": ""
+    },
+    {
+      "text": "คำขออนุญาต",
+      "href": "#tab-request",
+      "ariaControls": "",
+      "dataTarget": "",
+      "cls": ""
+    },
+    {
+      "text": "การชำระเงิน",
+      "href": "#tab-payment",
+      "ariaControls": "",
+      "dataTarget": "",
+      "cls": ""
+    },
+    {
+      "text": "การนัดหมาย",
+      "href": "#tab-appointment",
+      "ariaControls": "",
+      "dataTarget": "",
+      "cls": ""
+    },
+    {
+      "text": "เอกสารตอบรับจากระบบ",
+      "href": "#tab-response",
+      "ariaControls": "",
+      "dataTarget": "",
+      "cls": ""
+    }
+  ],
+  "panes": [
+    {
+      "index": 0,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5 text-left",
+      "ariaLabelledby": "",
+      "innerTextLen": 100,
+      "innerTextHead": "สถานะคำขอ 18 มิ.ย. 2026 13:11 ยกเลิกคำขอ - 18 มิ.ย. 2026 12:36 ยื่นคำขอใบอนุญาตเปลี่ยนรายการ -",
+      "headStep": [
+        "สถานะคำขอ"
+      ]
+    },
+    {
+      "index": 1,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5",
+      "ariaLabelledby": "",
+      "innerTextLen": 2376,
+      "innerTextHead": "ข้อมูลผู้ยื่นคำขอ ชื่อคนต่างด้าว(Eng) Miss EI EI THWIN ชื่อคนต่างด้าว(ไทย) นางสาว อิ อิ ทวิน สัญชาติ เมียนมา เกิดวันที่ 25 พ.ย. 2005 อายุ 20 ปี ข้อมูลสำหรับติดต่อ โทรศัพท์ - อีเมล eieithwin63598@mailforeign.com ที่อยู่ใน",
+      "headStep": [
+        "ข้อมูลผู้ยื่นคำขอ",
+        "ข้อมูลสำหรับติดต่อ",
+        "ที่อยู่ในประเทศไทย",
+        "ข้อมูลใบอนุญาต"
+      ]
+    },
+    {
+      "index": 2,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5 text-left",
+      "ariaLabelledby": "",
+      "innerTextLen": 393,
+      "innerTextHead": "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน แสดงทั้งหมด ซ่อนทั้งหมด เอกสารนายจ้าง แสดงทั้งหมด ซ่อนทั้งหมด",
+      "headStep": [
+        "ข้อมูลนายจ้างและประเภทงานในใบอนุญาตทำงาน",
+        "เอกสารนายจ้าง"
+      ]
+    },
+    {
+      "index": 3,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5",
+      "ariaLabelledby": "",
+      "innerTextLen": 61,
+      "innerTextHead": "การชำระเงิน",
+      "headStep": [
+        "การชำระเงิน"
+      ]
+    },
+    {
+      "index": 4,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5 text-left",
+      "ariaLabelledby": "",
+      "innerTextLen": 287,
+      "innerTextHead": "ไม่มีการนัดหมาย",
+      "headStep": []
+    },
+    {
+      "index": 5,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5",
+      "ariaLabelledby": "",
+      "innerTextLen": 169,
+      "innerTextHead": "ไม่มีเอกสารการตอบรับ",
+      "headStep": []
+    },
+    {
+      "index": 6,
+      "id": "",
+      "cls": "tab-pane mt-1 mb-5 pb-5 text-left",
+      "ariaLabelledby": "",
+      "innerTextLen": 13,
+      "innerTextHead": "",
+      "headStep": []
+    }
+  ]
+}

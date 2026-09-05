@@ -1,0 +1,67 @@
+{
+  "url": "https://eworkpermit.doe.go.th/Forms/DetailFormRequest44/69144400629422?id=RA17662449023455621",
+  "frames": [
+    {
+      "index": 0,
+      "isMain": true,
+      "url": "https://eworkpermit.doe.go.th/Forms/DetailFormRequest44/69144400629422?id=RA17662449023455621",
+      "diag": {
+        "url": "https://eworkpermit.doe.go.th/Forms/DetailFormRequest44/69144400629422?id=RA17662449023455621",
+        "idsWithTab": [
+          "workCatTable_wrapper",
+          "workCatTable_processing",
+          "workCatTable"
+        ],
+        "headStep": 16,
+        "labelFormInfo": 46,
+        "formInfo": 37,
+        "tabPanes": 7,
+        "panes": {
+          "tab-status": {
+            "exists": false
+          },
+          "tab-request": {
+            "exists": false
+          },
+          "tab-alien": {
+            "exists": false
+          }
+        }
+      }
+    },
+    {
+      "index": 1,
+      "isMain": false,
+      "url": "about:blank",
+      "diag": {
+        "url": "about:blank",
+        "idsWithTab": [],
+        "headStep": 0,
+        "labelFormInfo": 0,
+        "formInfo": 0,
+        "tabPanes": 0,
+        "panes": {
+          "tab-status": {
+            "exists": false
+          },
+          "tab-request": {
+            "exists": false
+          },
+          "tab-alien": {
+            "exists": false
+          }
+        }
+      }
+    }
+  ],
+  "iframeAttrs": [
+    {
+      "id": "link_appointment",
+      "name": "",
+      "src": "",
+      "cls": "iframe_show",
+      "w": 0,
+      "h": 0
+    }
+  ]
+}

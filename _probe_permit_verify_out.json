@@ -1,0 +1,11 @@
+{
+  "request_type": "MT_59_MOU_RENEWAL",
+  "statuses": [
+    "WP",
+    "WCOSNA",
+    "WA",
+    "AP",
+    "SS"
+  ],
+  "rows": []
+}

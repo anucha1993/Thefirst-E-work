@@ -1,0 +1,113 @@
+{
+  "stages": [
+    {
+      "url": "https://queue-fe-uat.doe.go.th/doe/bookingdate/yRZzXT4FRzmw16fXeQnIh_lUVn-345rNp_LCQR8RrKyRbQB_skNht-bmHPfTeNyo3FYAPg_hBaOGstm0QK2NYeO0uu-1JEZ_741OvILCIe8muPaSxpmxn3mg30FHcngR-yD5RrbSxmpjUMcSlckTrGEmTzl37ALyW0V7r6Mt_ajPYRbRz5nYwuYJTiv-f9cRXOkI7bU83_iI_n5xOGhNydQ9ItSMaNurLAd2KT31WwcF8c1voGu_HZaapBIDSSUH3p-J74Ht9zxKBT2_XAneT-uDlfCzZv4p8PSL7aU_TXYyONh80Ynxw_uTaCMiaWStTTIezXa2ebNrKXcnpdT_ZXbZ5hvv8wa3UwYz3kwwXTsd07TMa_QHeXQFVMp-fRiaexU1wdJ4iMVABZVsG8fqm41X9TbrUVp2YSHiQxlghnX2p5Rc7lZxssU1hub8wSWW-pJrFKxclUV4DK1Emm1VsmCHWzpxZ7PSljQFrBNOP8FJSh_FWgLYv_HUCeczZf5tlYo7JUkOCvBsP9deTa2Q1Frdr6dllJJTW1PV9tnwaCPHE5J5zZqNTw_eOeDBJsr2o0VFW_POyT-mwY6zcpvnJ0xlkU-vkZJ9Bed1hrYYovPpZOtoTA9z_0u5vp_VKzOdZXOhymV3Wvej86bQ_V-GOpl8DaWOY8KHRTIDqFmERvV-gxurZd5im7nxmS7YB_EQc5GenZXnDHPNx-IadY8vI2xZS_H4ChRnbumgsSgII7s3sBKZB3qWlR3RWhmRGo5kKLFHUNpee7VX9kNDoz6JbM2wBP3ix_LvQ8QonL41aVOZMgV5fSNI0yQ5GhYtxKmnGWGEw94WXy0adQYGcHLEUA5s13vwwP-4OwUkCtr33ehlYo05qeSlRDwZ1zU2Gtg5Ok4am_A47fVAj8p90u-J6uzHTDz0upRYV0NU8PuvwUbHQmZka1omKnpMKgijm3o2pvjpmNWn5w6FaXb2Mig4Tg?t=1785922692673",
+      "buttons": [
+        {
+          "i": 0,
+          "tag": "BUTTON",
+          "text": "กรุณาเลือกสถานที่",
+          "id": "",
+          "cls": "w-full px-3 py-2  border-2 rounded-lg focus:bg-main focus:bg-opacity-5 flex justify-between focus:border-main  undefined",
+          "disabled": false,
+          "visible": true
+        },
+        {
+          "i": 1,
+          "tag": "BUTTON",
+          "text": "เพิ่มวันนัดหมาย",
+          "id": "",
+          "cls": "py-1.5 px-2.5 bg-white border-main text-main border rounded-xl w-full font-lineseedbold",
+          "disabled": false,
+          "visible": true
+        },
+        {
+          "i": 2,
+          "tag": "BUTTON",
+          "text": "ถัดไป",
+          "id": "",
+          "cls": "py-1.5 px-2.5 bg-hint border-hint text-gray rounded-xl cursor-not-allowed w-full font-lineseedbold",
+          "disabled": true,
+          "visible": true
+        }
+      ],
+      "inputs": [],
+      "labels": [],
+      "stage": "initial"
+    },
+    {
+      "url": "https://queue-fe-uat.doe.go.th/doe/bookingdate/yRZzXT4FRzmw16fXeQnIh_lUVn-345rNp_LCQR8RrKyRbQB_skNht-bmHPfTeNyo3FYAPg_hBaOGstm0QK2NYeO0uu-1JEZ_741OvILCIe8muPaSxpmxn3mg30FHcngR-yD5RrbSxmpjUMcSlckTrGEmTzl37ALyW0V7r6Mt_ajPYRbRz5nYwuYJTiv-f9cRXOkI7bU83_iI_n5xOGhNydQ9ItSMaNurLAd2KT31WwcF8c1voGu_HZaapBIDSSUH3p-J74Ht9zxKBT2_XAneT-uDlfCzZv4p8PSL7aU_TXYyONh80Ynxw_uTaCMiaWStTTIezXa2ebNrKXcnpdT_ZXbZ5hvv8wa3UwYz3kwwXTsd07TMa_QHeXQFVMp-fRiaexU1wdJ4iMVABZVsG8fqm41X9TbrUVp2YSHiQxlghnX2p5Rc7lZxssU1hub8wSWW-pJrFKxclUV4DK1Emm1VsmCHWzpxZ7PSljQFrBNOP8FJSh_FWgLYv_HUCeczZf5tlYo7JUkOCvBsP9deTa2Q1Frdr6dllJJTW1PV9tnwaCPHE5J5zZqNTw_eOeDBJsr2o0VFW_POyT-mwY6zcpvnJ0xlkU-vkZJ9Bed1hrYYovPpZOtoTA9z_0u5vp_VKzOdZXOhymV3Wvej86bQ_V-GOpl8DaWOY8KHRTIDqFmERvV-gxurZd5im7nxmS7YB_EQc5GenZXnDHPNx-IadY8vI2xZS_H4ChRnbumgsSgII7s3sBKZB3qWlR3RWhmRGo5kKLFHUNpee7VX9kNDoz6JbM2wBP3ix_LvQ8QonL41aVOZMgV5fSNI0yQ5GhYtxKmnGWGEw94WXy0adQYGcHLEUA5s13vwwP-4OwUkCtr33ehlYo05qeSlRDwZ1zU2Gtg5Ok4am_A47fVAj8p90u-J6uzHTDz0upRYV0NU8PuvwUbHQmZka1omKnpMKgijm3o2pvjpmNWn5w6FaXb2Mig4Tg?t=1785922692673",
+      "buttons": [
+        {
+          "i": 0,
+          "tag": "BUTTON",
+          "text": "กรุณาเลือกสถานที่",
+          "id": "",
+          "cls": "w-full px-3 py-2  border-2 rounded-lg focus:bg-main focus:bg-opacity-5 flex justify-between focus:border-main  undefined",
+          "disabled": false,
+          "visible": true
+        },
+        {
+          "i": 1,
+          "tag": "BUTTON",
+          "text": "เพิ่มวันนัดหมาย",
+          "id": "",
+          "cls": "py-1.5 px-2.5 bg-white border-main text-main border rounded-xl w-full font-lineseedbold",
+          "disabled": false,
+          "visible": true
+        },
+        {
+          "i": 2,
+          "tag": "BUTTON",
+          "text": "ถัดไป",
+          "id": "",
+          "cls": "py-1.5 px-2.5 bg-hint border-hint text-gray rounded-xl cursor-not-allowed w-full font-lineseedbold",
+          "disabled": true,
+          "visible": true
+        }
+      ],
+      "inputs": [],
+      "labels": [],
+      "stage": "after-dropdown-click"
+    }
+  ],
+  "li_after_click": [],
+  "api_calls": [
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://queue-be-uat.doe.go.th/doe-booking/api/v1/dictionary/get-all",
+      "body": "[{\"id\":5,\"key\":\"person\",\"th\":\"คน\",\"en\":\"Person\",\"cb\":\"មនុស្ស\",\"lo\":\"ຄົນ\",\"mm\":\"လူ\",\"vn\":\"Người\"},{\"id\":1,\"key\":\"submit\",\"th\":\"ยืนยัน\",\"en\":\"Confirm\",\"cb\":\"បញ្ជាក់\",\"lo\":\"ຢືນຢັນ\",\"mm\":\"အတည်ပြုသည်\",\"vn\":\"Xác nhận\"},{\"id\":61,\"key\":\"august_mini\",\"th\":\"ส.ค.\",\"en\":\"Aug\",\"cb\":\"សីហា\",\"lo\":\"ສິງຫາ\",\"mm\":\"ဩဂုတ်\",\"vn\":\"Th8\"},{\"id\":67,\"key\":\"mon\",\"th\":\"จ\",\"en\":\"Mon\",\"cb\":\"ច\",\"lo\":\"ຈ\",\"mm\":\"တ.\",\"vn\":\"T2\"},{\"id\":74,\"key\":\"not_bookingdetail\",\"th\":\"กด 'เพิ่มวันนัดหมาย' เพื่อทำการนัดหมายการออกใบอนุญาต\",\"en\":\"Click \\\"Add Appointment\\\" to schedule a permit issuance appointment\",\"cb\":\"ចុច \\\"បន្ថែមការណាត់ជួប\\\" ដើម្បីកំណត់ការណាត់ជួបការផ្ដល់អាជ្ញាប័ណ្ណ\",\"lo\":\"ກົດ \\\"ເພີ່ມວັນນັດຫມາຍ\\\" ເພື່ອການນັດຫມາຍການອອກໃບອະນຸຍາດ\",\"mm\":\"\\\"ရက်ချိန်းထည့်ပါ\\\" ကိုနှိပ်၍ ခွင့်ပြုချက်ထုတ်ရန် ရက်ချိန်းပေးပါ\",\"vn\":\"Nhấp \\\"Thêm lịch hẹn\\\" để lên lịch hẹn cấp phép\"},{\"id\":75,\"key\":\"not_time\",\"th\":\"“กรุณาเลือก ‘สถานที่’ และ ‘วันนัดหมาย’ ก่อนเลือกช่วงเวลา”\",\"en\":\"Please select \\\"Location\\\" and \\\"Appointment Date\\\" before choosing a time slot\",\"cb\":\"សូមជ្រើសរើស \\\"ទីតាំង\\\" និង \\\"កាលបរិច្ឆេទការណាត់ជួប\\\" មុននឹងជ្រើសរើសម៉ោង\",\"lo\":\"ກະລຸນາເລືອກ \\\"ສະຖານທີ່\\\" ແລະ \\\"ວັນນັດຫມາຍ\\\" ກ່ອນເລືອກເວລາ\",\"mm\":\"\\\"နေရာ\\\" နှင့် \\\"ရက်ချိန်း\\\" ကိုရွေးချယ်ပါ၊ အချိန်တစ်ခုကိုရွေးချယ်ရန်မတိုင်မီ\",\"vn\":\"Vui lòng chọn \\\"Địa điểm\\\" và \\\"Ngày hẹn\\\" trước khi chọn giờ\"},{\"id\":76,\"key\":\"add_worker\",\"th\":\"เพิ่มแรงงาน\",\"en\":\"Add Worker\",\"cb\":\"បន្ថែមកម្មករ\",\"lo\":\"ເພີ່ມແຮງງານ\",\"mm\":\"အလုပ်သမားထည့်ပါ\",\"vn\":\"Thêm lao động\"},{\"id\":78,\"key\":\"count_people\",\"th\":\"จำนวนคน\",\""
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://queue-be-uat.doe.go.th/doe-booking/api/v1/auth/get-decrypt",
+      "body": "{\"decrypted_data\":{\"type_id\":\"NORMAL\",\"group_id\":\"69123000064015\",\"workflowtype_id\":\"2\",\"last_date\":\"2027-03-02\",\"form_type\":\"มาตรา 55 (แบบ บต. 30)\",\"language\":\"th\",\"case_vvip\":\"N\",\"permission_appointment\":\"Y\",\"branch_codelists\":[{\"branch_code\":\"CPM-MB-S-001\"},{\"branch_code\":\"NYK-MB-S-001\"},{\"branch_code\":\"UBN-SC-S-001\"},{\"branch_code\":\"KKN-SC-S-001\"},{\"branch_code\":\"NKI-SC-S-001\"},{\"branch_code\":\"MDH-SC-S-001\"},{\"branch_code\":\"CMI-SC-M-001\"},{\"branch_code\":\"PRE-SC-S-001\"},{\"branch_code\":\"TAK-OB-L-001\"},{\"branch_code\":\"STI-MB-S-001\"},{\"branch_code\":\"TAK-SC-S-001\"},{\"branch_code\":\"NBP-MB-S-001\"},{\"branch_code\":\"UTT-MB-S-001\"},{\"branch_code\":\"ACR-MB-S-001\"},{\"branch_code\":\"SPB-SC-S-001\"},{\"branch_code\":\"SKN-SC-L-001\"},{\"branch_code\":\"PBI-SC-S-001\"},{\"branch_code\":\"PKN-SC-S-001\"},{\"branch_code\":\"PKT-SC-S-001\"},{\"branch_code\":\"RBR-SC-S-001\"},{\"branch_code\":\"RNG-OB-M-001\"},{\"branch_code\":\"RNG-SC-S-001\"},{\"branch_code\":\"SKA-SC-S-001\"},{\"branch_code\":\"KBI-MB-S-001\"},{\"branch_code\":\"KPT-MB-S-001\"},{\"branch_code\":\"MSN-MB-S-001\"},{\"branch_code\":\"YST-MB-S-001\"},{\"branch_code\":\"RET-MB-S-001\"},{\"branch_code\":\"LRI-MB-S-001\"},{\"branch_code\":\"PTE-SC-M-001\"},{\"branch_code\":\"LPN-MB-S-001\"},{\"branch_code\":\"LEI-MB-S-001\"},{\"branch_code\":\"SNK-MB-S-001\"},{\"branch_code\":\"STN-MB-S-001\"},{\"branch_code\":\"BKK-SC-M-002\"},{\"branch_code\":\"BKK-SC-S-001\"},{\"branch_code\":\"SPK-SC-M-001\"},{\"branch_code\":\"NBI-SC-M-001\"},{\"branch_code\":\"CBI-SC-M-001\"},{\"branch_code\":\"CTI-SC-S-001\"},{\"branch_code\":\"PRI-SC-S-001\"}"
+    },
+    {
+      "status": 200,
+      "method": "POST",
+      "url": "https://queue-be-uat.doe.go.th/doe-booking/api/v1/branch/by-codes",
+      "body": "[{\"branch_code_id\":\"MDH-OB-M-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดมุกดาหาร\",\"branch_name_en\":\"Post-Arrival and Reintegration Center for Migrant Workers in Mukdahan\",\"branchType\":\"MULTIPLE\",\"address_en\":\"The Mukdahan border checkpoint, Village No. 3, No.307/50, Bang Sai Yai Sub-District, Mueang District, Mukdahan 49000\",\"address_th\":\"ด่านพรมแดนมุกดาหาร เลขที่ 307/50 หมู่ที่ 3 ตำบลบางทรายใหญ่ อำเภอเมืองมุกดาหาร จังหวัดมุกดาหาร 49000\"},{\"branch_code_id\":\"NKI-OB-L-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดหนองคาย\",\"branch_name_en\":\"Post-Arrival and Reintegration Center for Migrant Workers in Nong Khai\",\"branchType\":\"MULTIPLE\",\"address_en\":\"Mittraphap Road, Nai Mueang Sub-District, Mueang District, Nong Khai 43000\",\"address_th\":\"ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองหนองคาย จังหวัดหนองคาย  43000\"},{\"branch_code_id\":\"TAK-OB-L-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดตาก\",\"branch_name_en\":\"Post-Arrival and Reintegration Center for Migrant Workers in Tak\",\"branchType\":\"MULTIPLE\",\"address_en\":\"Office building, No. 565, Village No. 2,  Tha Sai Luat Sub-District, Mae Sot District, Tak 63110\",\"address_th\":\"อาคารสำนักงาน เลขที่ 565 หมู่ 2 ตำบลท่าสายลวด อำเภอแม่สอด จังหวัดตาก 63110\"},{\"branch_code_id\":\"RNG-SC-S-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์บริการใบอนุญาตทำงานของคนต่างด้าว จังหวัดระนอง\",\"branch_name_en\":\"Foreigner Work Permit Service Cente"
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://queue-be-uat.doe.go.th/doe-booking/api/v1/dictionary/get-all",
+      "body": "[{\"id\":5,\"key\":\"person\",\"th\":\"คน\",\"en\":\"Person\",\"cb\":\"មនុស្ស\",\"lo\":\"ຄົນ\",\"mm\":\"လူ\",\"vn\":\"Người\"},{\"id\":1,\"key\":\"submit\",\"th\":\"ยืนยัน\",\"en\":\"Confirm\",\"cb\":\"បញ្ជាក់\",\"lo\":\"ຢືນຢັນ\",\"mm\":\"အတည်ပြုသည်\",\"vn\":\"Xác nhận\"},{\"id\":61,\"key\":\"august_mini\",\"th\":\"ส.ค.\",\"en\":\"Aug\",\"cb\":\"សីហា\",\"lo\":\"ສິງຫາ\",\"mm\":\"ဩဂုတ်\",\"vn\":\"Th8\"},{\"id\":67,\"key\":\"mon\",\"th\":\"จ\",\"en\":\"Mon\",\"cb\":\"ច\",\"lo\":\"ຈ\",\"mm\":\"တ.\",\"vn\":\"T2\"},{\"id\":74,\"key\":\"not_bookingdetail\",\"th\":\"กด 'เพิ่มวันนัดหมาย' เพื่อทำการนัดหมายการออกใบอนุญาต\",\"en\":\"Click \\\"Add Appointment\\\" to schedule a permit issuance appointment\",\"cb\":\"ចុច \\\"បន្ថែមការណាត់ជួប\\\" ដើម្បីកំណត់ការណាត់ជួបការផ្ដល់អាជ្ញាប័ណ្ណ\",\"lo\":\"ກົດ \\\"ເພີ່ມວັນນັດຫມາຍ\\\" ເພື່ອການນັດຫມາຍການອອກໃບອະນຸຍາດ\",\"mm\":\"\\\"ရက်ချိန်းထည့်ပါ\\\" ကိုနှိပ်၍ ခွင့်ပြုချက်ထုတ်ရန် ရက်ချိန်းပေးပါ\",\"vn\":\"Nhấp \\\"Thêm lịch hẹn\\\" để lên lịch hẹn cấp phép\"},{\"id\":75,\"key\":\"not_time\",\"th\":\"“กรุณาเลือก ‘สถานที่’ และ ‘วันนัดหมาย’ ก่อนเลือกช่วงเวลา”\",\"en\":\"Please select \\\"Location\\\" and \\\"Appointment Date\\\" before choosing a time slot\",\"cb\":\"សូមជ្រើសរើស \\\"ទីតាំង\\\" និង \\\"កាលបរិច្ឆេទការណាត់ជួប\\\" មុននឹងជ្រើសរើសម៉ោង\",\"lo\":\"ກະລຸນາເລືອກ \\\"ສະຖານທີ່\\\" ແລະ \\\"ວັນນັດຫມາຍ\\\" ກ່ອນເລືອກເວລາ\",\"mm\":\"\\\"နေရာ\\\" နှင့် \\\"ရက်ချိန်း\\\" ကိုရွေးချယ်ပါ၊ အချိန်တစ်ခုကိုရွေးချယ်ရန်မတိုင်မီ\",\"vn\":\"Vui lòng chọn \\\"Địa điểm\\\" và \\\"Ngày hẹn\\\" trước khi chọn giờ\"},{\"id\":76,\"key\":\"add_worker\",\"th\":\"เพิ่มแรงงาน\",\"en\":\"Add Worker\",\"cb\":\"បន្ថែមកម្មករ\",\"lo\":\"ເພີ່ມແຮງງານ\",\"mm\":\"အလုပ်သမားထည့်ပါ\",\"vn\":\"Thêm lao động\"},{\"id\":78,\"key\":\"count_people\",\"th\":\"จำนวนคน\",\""
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://queue-be-uat.doe.go.th/doe-booking/api/v1/auth/get-decrypt",
+      "body": "{\"decrypted_data\":{\"type_id\":\"NORMAL\",\"group_id\":\"69123000064015\",\"workflowtype_id\":\"2\",\"last_date\":\"2027-03-02\",\"form_type\":\"มาตรา 55 (แบบ บต. 30)\",\"language\":\"th\",\"case_vvip\":\"N\",\"permission_appointment\":\"Y\",\"branch_codelists\":[{\"branch_code\":\"CPM-MB-S-001\"},{\"branch_code\":\"NYK-MB-S-001\"},{\"branch_code\":\"UBN-SC-S-001\"},{\"branch_code\":\"KKN-SC-S-001\"},{\"branch_code\":\"NKI-SC-S-001\"},{\"branch_code\":\"MDH-SC-S-001\"},{\"branch_code\":\"CMI-SC-M-001\"},{\"branch_code\":\"PRE-SC-S-001\"},{\"branch_code\":\"TAK-OB-L-001\"},{\"branch_code\":\"STI-MB-S-001\"},{\"branch_code\":\"TAK-SC-S-001\"},{\"branch_code\":\"NBP-MB-S-001\"},{\"branch_code\":\"UTT-MB-S-001\"},{\"branch_code\":\"ACR-MB-S-001\"},{\"branch_code\":\"SPB-SC-S-001\"},{\"branch_code\":\"SKN-SC-L-001\"},{\"branch_code\":\"PBI-SC-S-001\"},{\"branch_code\":\"PKN-SC-S-001\"},{\"branch_code\":\"PKT-SC-S-001\"},{\"branch_code\":\"RBR-SC-S-001\"},{\"branch_code\":\"RNG-OB-M-001\"},{\"branch_code\":\"RNG-SC-S-001\"},{\"branch_code\":\"SKA-SC-S-001\"},{\"branch_code\":\"KBI-MB-S-001\"},{\"branch_code\":\"KPT-MB-S-001\"},{\"branch_code\":\"MSN-MB-S-001\"},{\"branch_code\":\"YST-MB-S-001\"},{\"branch_code\":\"RET-MB-S-001\"},{\"branch_code\":\"LRI-MB-S-001\"},{\"branch_code\":\"PTE-SC-M-001\"},{\"branch_code\":\"LPN-MB-S-001\"},{\"branch_code\":\"LEI-MB-S-001\"},{\"branch_code\":\"SNK-MB-S-001\"},{\"branch_code\":\"STN-MB-S-001\"},{\"branch_code\":\"BKK-SC-M-002\"},{\"branch_code\":\"BKK-SC-S-001\"},{\"branch_code\":\"SPK-SC-M-001\"},{\"branch_code\":\"NBI-SC-M-001\"},{\"branch_code\":\"CBI-SC-M-001\"},{\"branch_code\":\"CTI-SC-S-001\"},{\"branch_code\":\"PRI-SC-S-001\"}"
+    },
+    {
+      "status": 200,
+      "method": "POST",
+      "url": "https://queue-be-uat.doe.go.th/doe-booking/api/v1/branch/by-codes",
+      "body": "[{\"branch_code_id\":\"MDH-OB-M-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดมุกดาหาร\",\"branch_name_en\":\"Post-Arrival and Reintegration Center for Migrant Workers in Mukdahan\",\"branchType\":\"MULTIPLE\",\"address_en\":\"The Mukdahan border checkpoint, Village No. 3, No.307/50, Bang Sai Yai Sub-District, Mueang District, Mukdahan 49000\",\"address_th\":\"ด่านพรมแดนมุกดาหาร เลขที่ 307/50 หมู่ที่ 3 ตำบลบางทรายใหญ่ อำเภอเมืองมุกดาหาร จังหวัดมุกดาหาร 49000\"},{\"branch_code_id\":\"NKI-OB-L-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดหนองคาย\",\"branch_name_en\":\"Post-Arrival and Reintegration Center for Migrant Workers in Nong Khai\",\"branchType\":\"MULTIPLE\",\"address_en\":\"Mittraphap Road, Nai Mueang Sub-District, Mueang District, Nong Khai 43000\",\"address_th\":\"ถนนมิตรภาพ ตำบลในเมือง อำเภอเมืองหนองคาย จังหวัดหนองคาย  43000\"},{\"branch_code_id\":\"TAK-OB-L-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดตาก\",\"branch_name_en\":\"Post-Arrival and Reintegration Center for Migrant Workers in Tak\",\"branchType\":\"MULTIPLE\",\"address_en\":\"Office building, No. 565, Village No. 2,  Tha Sai Luat Sub-District, Mae Sot District, Tak 63110\",\"address_th\":\"อาคารสำนักงาน เลขที่ 565 หมู่ 2 ตำบลท่าสายลวด อำเภอแม่สอด จังหวัดตาก 63110\"},{\"branch_code_id\":\"RNG-SC-S-001\",\"status_open\":true,\"branch_name_th\":\"ศูนย์บริการใบอนุญาตทำงานของคนต่างด้าว จังหวัดระนอง\",\"branch_name_en\":\"Foreigner Work Permit Service Cente"
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "url": "https://eworkpermit.doe.go.th/Forms/DetailFormRequest44/69144400629422?id=RA17662449023455621",
+  "landedUrl": "https://eworkpermit.doe.go.th/Forms/DetailFormRequest44/69144400629422?id=RA17662449023455621",
+  "before_click": {
+    "tabLinks": [
+      {
+        "text": "สถานะคำขอ",
+        "href": "#tab-status",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "ข้อมูลคนต่างด้าว",
+        "href": "#tab-alien",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "คำขออนุญาต",
+        "href": "#tab-request",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "การชำระเงิน",
+        "href": "#tab-payment",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "การนัดหมาย",
+        "href": "#tab-appointment",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "เอกสารตอบรับจากระบบ",
+        "href": "#tab-response",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      }
+    ],
+    "iframeCountDoc": 1,
+    "panes": {
+      "tab-status": {
+        "exists": false
+      },
+      "tab-request": {
+        "exists": false
+      },
+      "tab-alien": {
+        "exists": false
+      }
+    }
+  },
+  "after_click_request": {
+    "tabLinks": [
+      {
+        "text": "สถานะคำขอ",
+        "href": "#tab-status",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "ข้อมูลคนต่างด้าว",
+        "href": "#tab-alien",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "คำขออนุญาต",
+        "href": "#tab-request",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "การชำระเงิน",
+        "href": "#tab-payment",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "การนัดหมาย",
+        "href": "#tab-appointment",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      },
+      {
+        "text": "เอกสารตอบรับจากระบบ",
+        "href": "#tab-response",
+        "dataToggle": "tab",
+        "target": "",
+        "tag": "A"
+      }
+    ],
+    "iframeCountDoc": 1,
+    "panes": {
+      "tab-status": {
+        "exists": false
+      },
+      "tab-request": {
+        "exists": false
+      },
+      "tab-alien": {
+        "exists": false
+      }
+    }
+  }
+}

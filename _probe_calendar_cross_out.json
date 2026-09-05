@@ -1,0 +1,88 @@
+{
+  "tests": [
+    {
+      "branch": "CCO-SC-S-001",
+      "name": "ฉะเชิงเทรา",
+      "year": 2026,
+      "month": 8,
+      "url": "/doe-booking/api/v2/calendar/get-data/CCO-SC-S-001/2026-08-01?month=8&year=2026",
+      "result": {
+        "status": 200,
+        "ok": true,
+        "textLen": 462,
+        "parsed": null
+      }
+    },
+    {
+      "branch": "CCO-SC-S-001",
+      "name": "ฉะเชิงเทรา (Dec)",
+      "year": 2026,
+      "month": 12,
+      "url": "/doe-booking/api/v2/calendar/get-data/CCO-SC-S-001/2026-12-01?month=12&year=2026",
+      "result": {
+        "status": 200,
+        "ok": true,
+        "textLen": 462,
+        "parsed": null
+      }
+    },
+    {
+      "branch": "PTE-SC-M-001",
+      "name": "ปทุมธานี",
+      "year": 2026,
+      "month": 8,
+      "url": "/doe-booking/api/v2/calendar/get-data/PTE-SC-M-001/2026-08-01?month=8&year=2026",
+      "result": {
+        "status": 200,
+        "ok": true,
+        "textLen": 462,
+        "parsed": null
+      }
+    },
+    {
+      "branch": "PTE-SC-M-001",
+      "name": "ปทุมธานี (Dec)",
+      "year": 2026,
+      "month": 12,
+      "url": "/doe-booking/api/v2/calendar/get-data/PTE-SC-M-001/2026-12-01?month=12&year=2026",
+      "result": {
+        "status": 200,
+        "ok": true,
+        "textLen": 462,
+        "parsed": null
+      }
+    },
+    {
+      "branch": "MDH-OB-M-001",
+      "name": "มุกดาหาร (แรกรับ)",
+      "year": 2026,
+      "month": 8,
+      "url": "/doe-booking/api/v2/calendar/get-data/MDH-OB-M-001/2026-08-01?month=8&year=2026",
+      "result": {
+        "status": 200,
+        "ok": true,
+        "textLen": 462,
+        "parsed": null
+      }
+    },
+    {
+      "branch": "BKK-SC-L-001",
+      "name": "กรุงเทพ (guess)",
+      "year": 2026,
+      "month": 8,
+      "url": "/doe-booking/api/v2/calendar/get-data/BKK-SC-L-001/2026-08-01?month=8&year=2026",
+      "result": {
+        "status": 200,
+        "ok": true,
+        "textLen": 462,
+        "parsed": null
+      }
+    }
+  ],
+  "branches": {
+    "status": 404,
+    "ok": false,
+    "textLen": 0,
+    "parsed": []
+  }
+}

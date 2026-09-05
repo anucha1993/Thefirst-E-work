@@ -1,0 +1,65 @@
+{
+  "li_info": [],
+  "select_info": {
+    "optionCount": 14,
+    "options": [
+      {
+        "text": "ม.ค.",
+        "value": "0"
+      },
+      {
+        "text": "ก.พ.",
+        "value": "1"
+      },
+      {
+        "text": "มี.ค.",
+        "value": "2"
+      },
+      {
+        "text": "เม.ย.",
+        "value": "3"
+      },
+      {
+        "text": "พ.ค.",
+        "value": "4"
+      },
+      {
+        "text": "มิ.ย.",
+        "value": "5"
+      },
+      {
+        "text": "ก.ค.",
+        "value": "6"
+      },
+      {
+        "text": "ส.ค.",
+        "value": "7"
+      },
+      {
+        "text": "ก.ย.",
+        "value": "8"
+      },
+      {
+        "text": "ต.ค.",
+        "value": "9"
+      },
+      {
+        "text": "พ.ย.",
+        "value": "10"
+      },
+      {
+        "text": "ธ.ค.",
+        "value": "11"
+      },
+      {
+        "text": "2026",
+        "value": "2026"
+      },
+      {
+        "text": "2027",
+        "value": "2027"
+      }
+    ]
+  },
+  "captured_all": []
+}

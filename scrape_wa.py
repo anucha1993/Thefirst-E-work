@@ -81,6 +81,14 @@ FORM_TYPE_ENDPOINTS: dict[str, str] = {
     "MT_63_2_1302_RENEWAL": "/Requtst63_2/DetailRequest63_2_13",
 }
 
+# form_type ที่ openDetail() สร้าง URL แบบ path (group_id ใน path, id เป็น query เดียว)
+# แทนที่จะเป็น query string ปกติ — ถ้าใช้แบบ query กับพวกนี้จะได้ 404
+PATH_STYLE_FORM_TYPES: frozenset[str] = frozenset({
+    "MT_13_EXIT", "MT_50_1", "MT_43",
+    "CHANGE_22", "CHANGE_44", "CHANGE_44_22", "CHANGE_45", "CHANGE_44_45",
+    "REPLACE_CARD_25", "REPLACE_CARD_MOU",
+})
+
 # Map form_type → edit endpoint (จาก openPageEdit()) — ใช้ดึงบันทึกเพิ่มเติม
 EDIT_ENDPOINTS: dict[str, str] = {
     "MT_59": "/RequestForm59/EditFormRequest59",
@@ -108,19 +116,38 @@ EDIT_ENDPOINTS: dict[str, str] = {
 
 
 def build_detail_url(row: dict) -> str:
-    """สร้าง URL หน้า detail ตาม form_type — ตามตรรกะของ openDetail()"""
+    """สร้าง URL หน้า detail ตาม form_type — ถอดตรรกะจาก openDetail() ฝั่งเว็บเป๊ะ ๆ
+
+    มี 2 รูปแบบ (ตาม openDetail):
+      • path-style — group_id อยู่ใน path, id เป็น query เดียว: {endpoint}/{group_id}?id={id}
+        ใช้กับ: MT_13_EXIT, MT_50_1, MT_43, CHANGE_22/44/44_22/45/44_45, REPLACE_CARD_25/MOU
+      • query-style (ที่เหลือ): {endpoint}?user_id=..&status=..&group_id=..&type=..&form_type=..&id=..
+    """
     ft = row.get("form_type", "")
     endpoint = FORM_TYPE_ENDPOINTS.get(ft)
     if not endpoint:
         # fallback — ลองใช้ endpoint ของ MT_41_4_59 ไปก่อน
         endpoint = "/RequestForm41/DetailRequest41"
+
+    group_id = row.get("group_id")
+    rid = row.get("id")
+
+    # path-style: group_id ต่อท้าย path, ใส่ ?id=... เฉพาะเมื่อมี id
+    if ft in PATH_STYLE_FORM_TYPES and group_id not in (None, "", "null", "undefined"):
+        from urllib.parse import quote
+        url = f"{DETAIL_BASE}{endpoint}/{quote(str(group_id))}"
+        if rid not in (None, "", "null", "undefined"):
+            url += f"?id={quote(str(rid))}"
+        return url
+
+    # query-style
     params = {
         "user_id": row.get("user_id"),
         "status": row.get("status"),
-        "group_id": row.get("group_id"),
+        "group_id": group_id,
         "type": row.get("institution_id"),
         "form_type": ft,
-        "id": row.get("id"),
+        "id": rid,
     }
     from urllib.parse import urlencode
     clean = {k: v for k, v in params.items() if v not in (None, "", "null", "undefined")}
@@ -334,7 +361,7 @@ def login(page: Page, cfg: dict) -> None:
     page.evaluate(
         "() => { const b = document.querySelector('#validate_login'); if (b) b.click(); }"
     )
-    page.wait_for_url(lambda u: "/Login" not in u, timeout=30_000)
+    page.wait_for_url(lambda u: "/Login" not in u, timeout=int(cfg.get("login_timeout_ms", 30_000)))
     try:
         page.wait_for_load_state("domcontentloaded", timeout=15_000)
     except PWTimeoutError:
@@ -1136,13 +1163,16 @@ def parse_alien_pane(text: str) -> dict[str, str]:
     return result
 
 
-def save_excel(rows: list[dict], out_path: Path, fast: bool = False) -> None:
+def save_excel(
+    rows: list[dict], out_path: Path, fast: bool = False, include_account: bool = False,
+) -> None:
     wb = Workbook()
     ws = wb.active
     ws.title = "WA Summary"
 
     base_cols = [
         "ลำดับ",
+        *(["บัญชี (Username)"] if include_account else []),
         "เลขที่คำขอ",
         "ผู้ยื่น",
         "วันที่ยื่นคำขอ",
@@ -1185,6 +1215,7 @@ def save_excel(rows: list[dict], out_path: Path, fast: bool = False) -> None:
         sf = r.get("structured_fields", {}) or {}
         row_values = [
             idx,
+            *([r.get("account_username", "")] if include_account else []),
             r.get("reqNo", ""),
             r.get("requester", ""),
             r.get("dateSubmit", ""),
@@ -1204,6 +1235,7 @@ def save_excel(rows: list[dict], out_path: Path, fast: bool = False) -> None:
 
     # ปรับความกว้างคอลัมน์ + wrap
     widths = {
+        "บัญชี (Username)": 26,
         "เลขที่คำขอ": 18, "ผู้ยื่น": 25, "วันที่ยื่นคำขอ": 22,
         "อัปเดตล่าสุด": 22, "สถานะ": 30, "หัวข้อแจ้งเตือน": 30,
         "หมายเหตุ": 60, "บันทึกเพิ่มเติม": 60, "รายการ": 50,
@@ -1333,8 +1365,13 @@ def run_scrape(
     log=print,
     progress=None,
     is_cancelled=None,
+    sink: list | None = None,
+    write_output: bool = True,
 ) -> tuple[int, Path]:
     """รัน scraping ทั้ง pipeline. ใช้ได้ทั้ง CLI/GUI
+
+    sink: ถ้าส่ง list มา จะ append ทุกแถวที่ดึงได้ (ติดแท็ก account_username) ลง list นี้ด้วย
+    write_output: False = ไม่เขียนไฟล์ Excel ของตัวเอง (ยังทำ checkpoint ปกติ) ใช้ตอนรวมไฟล์
 
     Args:
         cfg: dict ต้องมี username, password, user_type, method, headless
@@ -1479,7 +1516,7 @@ def run_scrape(
                 """เซฟ chunk ปัจจุบันลงไฟล์ part (หรือไฟล์เดียวถ้าไม่ได้แยก)
                 final=True → จัดรูปแบบเต็ม (ตอนปิดไฟล์), final=False → โหมดเบา
                 """
-                if not chunk_rows:
+                if not write_output or not chunk_rows:
                     return None
                 p = _chunk_path(out_path, chunk_index) if CHUNK_SIZE else out_path
                 save_excel(chunk_rows, p, fast=not final)
@@ -1532,6 +1569,9 @@ def run_scrape(
                         _append_progress(prog_path, row)
                     newly_done += 1
 
+                if sink is not None:
+                    row["account_username"] = cfg.get("username", "")
+                    sink.append(row)
                 scraped.append(row)
                 chunk_rows.append(row)
 
@@ -1609,16 +1649,19 @@ def run_scrape_multi(
     log=print,
     progress=None,
     is_cancelled=None,
+    combine: bool = False,
 ) -> tuple[int, Path]:
     """โหมด e-Tracking หลายบัญชี — วน login ทุกบัญชีใน UsernameLogin.xlsx
-    แล้วเรียก run_scrape ต่อบัญชี (แต่ละบัญชีได้ checkpoint/resume + แยกไฟล์ของตัวเอง)
+
+    combine=False (ค่าเริ่มต้น): แยกไฟล์ต่อบัญชี ({stem}_{username}{suffix}) แต่ละบัญชีมี checkpoint/resume
+    combine=True: รวมทุกบัญชีเป็นไฟล์เดียว (เพิ่มคอลัมน์ 'บัญชี (Username)' เพื่อแยกแถว)
 
     Args:
         cfg: ตัวเลือกรวม (headless, request_type, filter_status_ids, ฯลฯ) — ไม่ต้องมี username/password
         login_excel: ไฟล์ UsernameLogin.xlsx (คอลัมน์ Username, Password, Type)
-        out_path: ไฟล์ฐาน — จะถูกแตกเป็น {stem}_{username}{suffix} ต่อบัญชี
+        out_path: ไฟล์ฐาน
 
-    Returns: (จำนวนแถวรวมทุกบัญชี, โฟลเดอร์ผลลัพธ์)
+    Returns: (จำนวนแถวรวมทุกบัญชี, path ผลลัพธ์ — ไฟล์รวม ถ้า combine, ไม่งั้นเป็นโฟลเดอร์)
     """
     accounts = _read_login_accounts(login_excel)
     if not accounts:
@@ -1628,11 +1671,52 @@ def run_scrape_multi(
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = out_path.stem
     suffix = out_path.suffix or ".xlsx"
-
     n = len(accounts)
+
+    if combine:
+        # ── รวมทุกบัญชีเป็นไฟล์เดียว ──
+        combined_path = _timestamped_path(out_path)
+        all_rows: list[dict] = []
+        ok_accounts = 0
+        log(f"[Multi] เริ่มดึง e-Tracking จาก {n} บัญชี → รวมเป็นไฟล์เดียว: {combined_path.name}")
+        for gi, (_ukey, acct) in enumerate(accounts.items(), start=1):
+            if is_cancelled and is_cancelled():
+                log("[!] ผู้ใช้ยกเลิก — หยุด"); break
+            login_cfg = dict(cfg)
+            login_cfg["username"] = acct["username"]
+            login_cfg["password"] = acct["password"]
+            login_cfg["user_type"] = acct["type"]
+            if acct.get("method"):
+                login_cfg["method"] = acct["method"]
+            safe_user = (_receipt_safe_name(acct["username"]).strip() or f"user{gi}")
+            # ใช้ per-account path เพื่อแยก checkpoint (ไม่สร้างไฟล์ xlsx เพราะ write_output=False)
+            per_ckpt = out_dir / f"{stem}_{safe_user}{suffix}"
+            before = len(all_rows)
+            log(f"\n===== บัญชี {gi}/{n}: {acct['username']} ({acct['type']}) =====")
+            try:
+                run_scrape(
+                    login_cfg, per_ckpt, limit=limit,
+                    log=log, progress=progress, is_cancelled=is_cancelled,
+                    sink=all_rows, write_output=False,
+                )
+                ok_accounts += 1
+                log(f"      + บัญชีนี้ได้ {len(all_rows) - before} แถว (รวมสะสม {len(all_rows)} แถว)")
+                # เซฟไฟล์รวมหลังจบแต่ละบัญชี (กันข้อมูลหายถ้าบัญชีถัดไปพัง)
+                try:
+                    save_excel(all_rows, combined_path, include_account=True)
+                except Exception as e:
+                    log(f"      (เซฟไฟล์รวมระหว่างทางไม่สำเร็จ: {e})")
+            except Exception as e:
+                log(f"   ✗ บัญชี {acct['username']} ล้มเหลว: {e} — ข้ามไปบัญชีถัดไป")
+                continue
+        save_excel(all_rows, combined_path, include_account=True)
+        log(f"\n[Multi] เสร็จสิ้น — รวม {len(all_rows)} แถว จาก {ok_accounts}/{n} บัญชี → {combined_path}")
+        return len(all_rows), combined_path
+
+    # ── แยกไฟล์ต่อบัญชี (ค่าเริ่มต้นเดิม) ──
     total_rows = 0
     produced: list[Path] = []
-    log(f"[Multi] เริ่มดึง e-Tracking จาก {n} บัญชี (ไฟล์ login: {login_excel.name})")
+    log(f"[Multi] เริ่มดึง e-Tracking จาก {n} บัญชี (แยกไฟล์ต่อบัญชี, ไฟล์ login: {login_excel.name})")
     for gi, (_ukey, acct) in enumerate(accounts.items(), start=1):
         if is_cancelled and is_cancelled():
             log("[!] ผู้ใช้ยกเลิก — หยุด"); break
@@ -1658,6 +1742,758 @@ def run_scrape_multi(
             continue
     log(f"\n[Multi] เสร็จสิ้น — รวม {total_rows} แถว จาก {len(produced)} บัญชี (โฟลเดอร์: {out_dir})")
     return total_rows, out_dir
+
+
+# ─────────────────────────────────────────────────────────────────
+# โหมด — ดึงรายงาน "ข้อมูลการขออนุญาต"
+#   กรองสถานะคำขอ → เปิดหน้า detail ทีละรายการ → เก็บ:
+#     • Tab "สถานะคำขอ" (#tab_default_1)  → รายการ "อนุมัติคำขอ" (วันที่ + ผล)
+#     • Tab "คำขออนุญาต" (#tab_default_2) → บริษัท + จังหวัด จาก section
+#       "สถานประกอบการ" (ไม่ใช่ "ข้อมูลนายจ้าง")
+# ─────────────────────────────────────────────────────────────────
+
+# regex จับ timestamp ไทยในไทม์ไลน์ เช่น "16 ก.ค. 2026 , 10:06"
+_TH_FLOW_DATE_RE = re.compile(
+    r"(\d{1,2}\s+[\u0e01-\u0e59.]+\s+\d{4}\s*,?\s*\d{1,2}:\d{2})"
+)
+
+# JS ดึงคู่ label/value + ข้อความดิบ จากแท็บ "คำขออนุญาต" (#tab_default_2)
+# ใช้โครงสร้างจริงของหน้า: .head-step = หัวข้อ section, .label-form-info = label,
+# .form-info = value  (เหมือน extract_label_value_pairs)
+# คืนรายการแท็บทั้งหมดบนหน้า detail: [{label, pane}] — ใช้ map ชื่อแท็บ → id ของ pane
+# (ตำแหน่ง tab_default_N ไม่คงที่: 'คำขออนุญาต' เป็น #tab_default_2 บางฟอร์ม, #tab_default_3 บางฟอร์ม)
+_DETAIL_TABS_JS = r"""() => {
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+  const links = Array.from(document.querySelectorAll(
+    'a[href^="#tab_default"], a[data-toggle="tab"][href^="#"], a[role="tab"][href^="#"]'
+  ));
+  const out = [];
+  const seen = new Set();
+  for (const a of links) {
+    const href = (a.getAttribute('href') || '').replace(/^#/, '');
+    if (!href || seen.has(href)) continue;
+    seen.add(href);
+    // index = ลำดับแท็บ (0-based) → ใช้ fallback อ่าน .tab-pane ตำแหน่งเดียวกัน
+    // เมื่อ pane ไม่มี id (ฟอร์ม Change/Forms: nav ชี้ #tab-request แต่ pane ไม่มี id)
+    out.push({label: norm(a.innerText || a.textContent || ''), pane: href, index: out.length});
+  }
+  return out;
+}"""
+
+# ดึง label/value pairs จาก pane ที่ระบุ (paneId) — selector ตาม pattern จริงของ e-WorkPermit
+# (.head-step = หัวข้อ section, .label-form-info = label, .form-info = value) — ยืนยันจาก probe DOM
+_PERMIT_TAB_JS = r"""(args) => {
+  const paneId = (args && args.paneId) || '';
+  const index = (args && args.index != null) ? args.index : -1;
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+  // หา pane: ตาม id ก่อน (ฟอร์มเก่า) ถ้าไม่มี ใช้ .tab-pane ตำแหน่ง index (ฟอร์ม Change)
+  let pane = paneId ? document.getElementById(paneId) : null;
+  if (!pane && index >= 0) {
+    const panes = document.querySelectorAll('.tab-pane');
+    if (index < panes.length) pane = panes[index];
+  }
+  if (!pane) return {raw: '', pairs: [], paneRef: ''};
+  // เปิด accordion ที่พับอยู่ (ปุ่ม 'แสดงทั้งหมด') — best-effort, ไม่คลิกลิงก์ที่นำทางออก
+  try {
+    Array.from(pane.querySelectorAll('a,button,span,div,i')).forEach(b => {
+      if (norm(b.textContent || '') === 'แสดงทั้งหมด') {
+        const href = b.getAttribute('href');
+        if (b.tagName !== 'A' || !href || href === '#') { try { b.click(); } catch (e) {} }
+      }
+    });
+  } catch (e) {}
+  const all = Array.from(pane.querySelectorAll('.head-step, .label-form-info, .form-info, [data-id="employerAddr.title"], [data-id="employerAddr.address"]'));
+  const pairs = [];
+  let cur = '';
+  let pendingAddrLabel = '';
+  for (let i = 0; i < all.length; i++) {
+    const el = all[i];
+    const cls = el.className || '';
+    const did = el.getAttribute('data-id') || '';
+    const text = norm(el.innerText || el.textContent || '');
+    if (!text && did !== 'employerAddr.address') continue;
+    if (cls.includes('head-step')) { cur = text; continue; }
+    // บล็อกที่อยู่สถานประกอบการ (data-id="employerAddr.*") — โครงสร้างต่างจาก label/form-info
+    // ที่อยู่จริงอยู่ใน attribute data_th (เช่น '...จังหวัด ชลบุรี...')
+    if (did === 'employerAddr.title') { pendingAddrLabel = text; continue; }
+    if (did === 'employerAddr.address') {
+      const aval = norm(el.getAttribute('data_th') || el.innerText || el.textContent || '');
+      if (aval) pairs.push({section: cur, label: pendingAddrLabel || 'สถานประกอบการ', value: aval});
+      pendingAddrLabel = '';
+      continue;
+    }
+    if (cls.includes('label-form-info')) {
+      let val = '';
+      for (let j = i + 1; j < all.length; j++) {
+        const n = all[j];
+        const nc = n.className || '';
+        const ndid = n.getAttribute('data-id') || '';
+        if (nc.includes('head-step') || nc.includes('label-form-info')) break;
+        if (ndid === 'employerAddr.title' || ndid === 'employerAddr.address') break;
+        if (nc.includes('form-info')) { val = norm(n.innerText || n.textContent || ''); break; }
+      }
+      pairs.push({section: cur, label: text, value: val});
+    }
+  }
+  const raw = norm(pane.innerText || pane.textContent || '').slice(0, 12000);
+  const paneRef = (paneId && document.getElementById(paneId)) ? ('#' + paneId) : ('.tab-pane[' + index + ']');
+  return {raw, pairs, paneRef};
+}"""
+
+
+def parse_status_flow(raw: str) -> list[dict]:
+    """แยกข้อความไทม์ไลน์ 'สถานะคำขอ' → รายการ [{date, text, step, result}] เรียงตามที่พบ
+    ข้อความดิบมักเป็น: '<date>\nขั้นตอน\nผล\n<date>\nขั้นตอน\nผล...'
+      • text   = ขั้นตอน + ผล (รวมเป็นช่องว่างเดียว) — ใช้ค้นหา 'อนุมัติคำขอ'
+      • step   = บรรทัดแรกของ body (ชื่อขั้นตอน เช่น 'อนุมัติคำขอ')
+      • result = บรรทัดที่เหลือ (ผล เช่น 'ผ่านการอนุมัติคำขอ')
+    """
+    if not raw:
+        return []
+    parts = _TH_FLOW_DATE_RE.split(raw.strip())
+    # parts = [prefix, date1, body1, date2, body2, ...]
+    entries: list[dict] = []
+    i = 1
+    while i < len(parts) - 1:
+        date_txt = (parts[i] or "").strip()
+        body_raw = (parts[i + 1] or "").strip(" :\n")
+        body = re.sub(r"\s+", " ", body_raw).strip(" :\n")
+        seg = [ln.strip() for ln in body_raw.splitlines() if ln.strip()]
+        step = seg[0] if seg else body
+        result = " ".join(seg[1:]).strip() if len(seg) > 1 else ""
+        if date_txt:
+            entries.append({"date": date_txt, "text": body, "step": step, "result": result})
+        i += 2
+    return entries
+
+
+def _format_status_all(entries: list[dict]) -> str:
+    """รวมทุกสถานะเป็นข้อความหลายบรรทัด — บรรทัดละ 'วันที่ -> ขั้นตอน -> ผล'
+    (เรียงตามที่เว็บแสดง = ใหม่ไปเก่า). ช่องที่ว่างจะถูกข้าม"""
+    lines: list[str] = []
+    for e in entries:
+        parts = [
+            (e.get("date", "") or "").strip(),
+            (e.get("step", "") or "").strip(),
+            (e.get("result", "") or "").strip(),
+        ]
+        parts = [p for p in parts if p]
+        if parts:
+            lines.append(" -> ".join(parts))
+    return "\n".join(lines)
+
+
+def _find_approve_entry(entries: list[dict]) -> dict | None:
+    """หา entry ของขั้นตอน 'อนุมัติคำขอ' (ไม่ใช่ 'พิจารณาคำขอ'/'รออนุมัติ')"""
+    for e in entries:
+        t = e.get("text", "") or ""
+        # ต้องมีคำว่า 'อนุมัติคำขอ' และไม่ใช่ขั้น 'รออนุมัติ...' (ยังไม่อนุมัติ)
+        if "อนุมัติคำขอ" in t and not t.strip().startswith("รอ"):
+            return e
+    return None
+
+
+def _label_is_company(lab: str) -> bool:
+    lab = (lab or "").strip().rstrip(":").strip()
+    return (
+        "ชื่อสถานประกอบการ" in lab
+        or "ชื่อบริษัท" in lab
+        or "ชื่อสถานที่" in lab
+        or "ชื่อผู้ประกอบการ" in lab
+        or "ชื่อนิติบุคคล" in lab
+        # นิติบุคคล → ชื่อจริงอยู่ใต้ 'ชื่อหน่วยงาน' ; สมาคม/มูลนิธิ → 'ชื่อสมาคม...'
+        or "ชื่อหน่วยงาน" in lab
+        or "ชื่อสมาคม" in lab
+        or "ชื่อมูลนิธิ" in lab
+        or lab in ("บริษัท", "สถานประกอบการ", "ชื่อสถานประกอบการ")
+    )
+
+
+def _label_is_province(lab: str) -> bool:
+    """label ที่เป็น 'จังหวัด' ของสถานประกอบการจริง ๆ — ไม่เอา
+    'จังหวัดที่เข้ารับการอบรม...', 'ด่านเข้าเมือง...' ฯลฯ"""
+    lab = (lab or "").strip().rstrip(":").strip()
+    return lab in ("จังหวัด", "จังหวัด/เขต", "จังหวัดที่ตั้ง", "จังหวัดสถานประกอบการ")
+
+
+def _province_from_addr(val: str) -> str:
+    """ดึงชื่อจังหวัดจากสตริงที่อยู่ เช่น
+    '... เขต/อำเภอ วังทองหลาง จังหวัด กรุงเทพมหานคร รหัสไปรษณีย์ 10310' → 'กรุงเทพมหานคร'
+    (ชื่อจังหวัดไทยเป็นคำเดียวไม่มีช่องว่าง)"""
+    if not val or "จังหวัด" not in val:
+        return ""
+    m = re.search(r"จังหวัด\s*([^\s]+)", val)
+    if not m:
+        return ""
+    return m.group(1).strip(" :\u200b")
+
+
+def _pick_establishment(pairs: list[dict]) -> tuple[str, str, str]:
+    """เลือก บริษัท + จังหวัด จาก section สถานประกอบการ/สถานที่ทำงาน/ผู้รับอนุญาต
+    โดยตัด 'ข้อมูลนายจ้าง' ออกเสมอ. คืน (company, province, section_used)
+
+    รองรับหลาย form_type ตามที่ probe DOM จริงเจอ:
+      • MOU renewal → section 'ข้อมูลผู้รับอนุญาตให้นำคนต่างด้าวมาทำงาน'
+        (ชื่อสถานประกอบการ(ไทย) + จังหวัดฝังใน 'ที่อยู่สถานที่ทำงาน/สาขา')
+      • Name List/นำเข้า → section 'สถานที่ทำงานของคนต่างด้าว' (label 'จังหวัด' แยกช่อง)
+      • ฟอร์มนายจ้างตรง → section 'สถานประกอบการ'
+    """
+    def is_estab(sec: str) -> bool:
+        s = sec or ""
+        return any(
+            k in s
+            for k in (
+                "สถานประกอบการ", "สถานที่ทำงาน", "สถานที่ประกอบการ",
+                "สถานที่ตั้ง", "ผู้รับอนุญาต",
+            )
+        )
+
+    def is_employer(sec: str) -> bool:
+        return "นายจ้าง" in (sec or "")
+
+    company = province = used_section = ""
+
+    def scan(strict: bool) -> None:
+        nonlocal company, province, used_section
+        for p in pairs:
+            sec = p.get("section", "") or ""
+            lab = p.get("label", "") or ""
+            val = (p.get("value", "") or "").strip()
+            if not val:
+                continue
+            if is_employer(sec):
+                continue  # ข้าม section 'ข้อมูลนายจ้าง' เสมอ
+            if strict and not is_estab(sec):
+                continue
+            if not company and _label_is_company(lab):
+                company, used_section = val, sec
+            if not province and _label_is_province(lab):
+                province, used_section = val, (used_section or sec)
+            if not province and ("ที่อยู่" in lab or "สาขา" in lab or "สถานที่" in lab):
+                prov = _province_from_addr(val)
+                if prov:
+                    province, used_section = prov, (used_section or sec)
+
+    scan(strict=True)       # PASS 1: เฉพาะ section สถานประกอบการชัดเจน
+    if not company or not province:
+        scan(strict=False)  # PASS 2: ผ่อน — ทุก section ที่ไม่ใช่ 'นายจ้าง'
+    return company.strip(), province.strip(), used_section.strip()
+
+
+def _pick_employer(pairs: list[dict]) -> tuple[str, str]:
+    """ดึงชื่อบริษัท + จังหวัด จาก section 'ข้อมูลนายจ้าง' โดยเฉพาะ
+    (แยกคอลัมน์จากผู้รับอนุญาต/สถานประกอบการ ให้ผู้ใช้เลือกเองใน Excel).
+    คืน (employer_company, employer_province)
+
+    บาง form_type (เช่น MOU renewal ที่ 'ผู้รับอนุญาต' ว่าง) ชื่อบริษัทจริง
+    อยู่ใต้ 'ข้อมูลนายจ้าง' เท่านั้น — เก็บไว้คนละช่องเผื่อผู้ใช้ต้องการ
+    """
+    company = province = ""
+    for p in pairs:
+        sec = p.get("section", "") or ""
+        if "นายจ้าง" not in sec:
+            continue
+        lab = p.get("label", "") or ""
+        val = (p.get("value", "") or "").strip()
+        if not val:
+            continue
+        # ใน section 'ข้อมูลนายจ้าง' กรณีบุคคลธรรมดา ชื่ออยู่ใต้ 'ชื่อนายจ้าง (ไทย)'
+        if not company and (_label_is_company(lab) or "ชื่อนายจ้าง" in lab):
+            company = val
+        if not province and _label_is_province(lab):
+            province = val
+        if not province and ("ที่อยู่" in lab or "สาขา" in lab or "สถานที่" in lab):
+            prov = _province_from_addr(val)
+            if prov:
+                province = prov
+    return company.strip(), province.strip()
+
+
+def _pick_workplace_province(pairs: list[dict]) -> str:
+    """จังหวัดจาก section 'ข้อมูลการขออนุญาต' (ที่อยู่สถานประกอบการ/สถานที่ทำงาน) เท่านั้น
+    ตามที่ผู้ใช้กำหนด — ไม่ดึงจาก 'ข้อมูลนายจ้าง'. คืนชื่อจังหวัด ('' ถ้าไม่มี)
+
+    • MOU renewal: section 'ข้อมูลการขออนุญาต' → label 'สถานที่ทำงาน/สาขา'
+      (จังหวัดฝังในที่อยู่ '...จังหวัด พระนครศรีอยุธยา รหัสไปรษณีย์...')
+    • Name List: section 'ข้อมูลการขออนุญาต'/'สถานที่ทำงานของคนต่างด้าว' → label 'จังหวัด' แยกช่อง
+    • ฟอร์ม Change ที่ไม่มี section นี้ → คืน '' (จังหวัดว่าง ตามที่ผู้ใช้ระบุ 'เท่านั้น')
+    """
+    def want_section(sec: str) -> bool:
+        s = sec or ""
+        if "นายจ้าง" in s:
+            return False
+        return any(k in s for k in ("ข้อมูลการขออนุญาต", "สถานประกอบการ", "สถานที่ทำงาน"))
+
+    # PASS 1: label 'จังหวัด' แยกช่อง ใน section ที่ต้องการ
+    for p in pairs:
+        if not want_section(p.get("section", "")):
+            continue
+        if _label_is_province(p.get("label", "")):
+            val = (p.get("value", "") or "").strip(" :\u200b")
+            if val:
+                return val
+    # PASS 2: จังหวัดฝังในค่าที่อยู่ — สแกน 'ค่า' ทุกช่องใน section ที่ต้องการ
+    #         (รองรับกรณี label ไม่สื่อความ เช่น '-' หรือว่าง: บางฟอร์มแสดงที่อยู่
+    #          สถานประกอบการเป็นบรรทัดเดียว label='-' → เดิม PASS2 ที่เช็คเฉพาะ label จะข้ามไป)
+    #         _province_from_addr คืนค่าเฉพาะเมื่อพบ 'จังหวัด <ชื่อ>' จึงปลอดภัยกับช่องที่ไม่ใช่ที่อยู่
+    for p in pairs:
+        if not want_section(p.get("section", "")):
+            continue
+        prov = _province_from_addr((p.get("value", "") or "").strip())
+        if prov:
+            return prov
+    return ""
+
+
+def _resolve_detail_tabs(page: Page) -> list[dict]:
+    """คืนรายการแท็บบนหน้า detail: [{label, pane}] — ใช้ map ชื่อแท็บ → id ของ pane
+    (ตำแหน่ง tab_default_N ไม่คงที่ แต่ละ form_type ต่างกัน)"""
+    try:
+        tabs = page.evaluate(_DETAIL_TABS_JS) or []
+    except Exception:
+        tabs = []
+    return [t for t in tabs if isinstance(t, dict) and t.get("pane")]
+
+
+def _find_pane_id(tabs: list[dict], *needles: str) -> str:
+    """หา pane id จาก label ของแท็บ — 'ตรงเป๊ะ' ก่อน แล้วค่อย 'มีคำนั้นอยู่'"""
+    for n in needles:
+        for t in tabs:
+            if (t.get("label") or "").strip() == n:
+                return t.get("pane") or ""
+    for n in needles:
+        for t in tabs:
+            if n in (t.get("label") or ""):
+                return t.get("pane") or ""
+    return ""
+
+
+def _find_tab(tabs: list[dict], *needles: str) -> dict:
+    """หา tab dict {label, pane, index} จาก label — 'ตรงเป๊ะ' ก่อน แล้วค่อย 'มีคำนั้นอยู่'.
+    คืนทั้ง dict เพื่อให้ได้ทั้ง pane id และ index (ใช้ fallback เมื่อ pane ไม่มี id)"""
+    for n in needles:
+        for t in tabs:
+            if (t.get("label") or "").strip() == n:
+                return t
+    for n in needles:
+        for t in tabs:
+            if n in (t.get("label") or ""):
+                return t
+    return {}
+
+
+def scrape_permit_detail(page: Page, row: dict, cfg: dict | None = None, log=print) -> dict:
+    """เปิดหน้า detail แล้วเก็บ:
+      • Tab 'สถานะคำขอ'   → รายการ 'อนุมัติคำขอ' (วันที่ + ผล)
+      • Tab 'คำขออนุญาต'  → บริษัท + จังหวัด จาก 'สถานประกอบการ' (ไม่เอา 'ข้อมูลนายจ้าง')
+    หมายเหตุ: id ของ pane (#tab_default_N) ไม่คงที่ — 'คำขออนุญาต' เป็น #tab_default_2 บางฟอร์ม,
+    #tab_default_3 บางฟอร์ม จึง resolve จาก 'ชื่อแท็บ' แทนการ hard-code id
+    แต่ละ step มี try/except แยก — ถ้าหน้านี้ไม่มี tab/section ที่คาดหวัง จะข้ามเฉพาะส่วนนั้น
+    """
+    result: dict = {
+        "approve_found": "",
+        "approve_date": "",
+        "approve_result": "",
+        "status_all": "",
+        "status_flow_raw": "",
+        "company_main": "",
+        "estab_company": "",
+        "employer_company": "",
+        "estab_province": "",
+        "estab_section": "",
+        "permit_raw": "",
+        "tabs_read": "",
+        "scrape_errors": "",
+    }
+    errors: list[str] = []
+
+    # ---- นำทางเข้าหน้า detail (navigate ตรงผ่าน URL, fallback คลิกแถว/openDetail) ----
+    ok = _open_detail_direct(page, row)
+    if not ok and cfg is not None and _is_logged_out(page):
+        if ensure_session(page, cfg, log=log):
+            ok = _open_detail_direct(page, row)
+    if not ok:
+        errors.append("open_detail_failed")
+        result["scrape_errors"] = " | ".join(errors)
+        return result
+
+    # ---- resolve ชื่อแท็บ → pane (id หรือ index) — โครงสร้างต่างกันตาม form_type ----
+    #   ฟอร์มเก่า (MOU/MT_41): pane มี id #tab_default_N
+    #   ฟอร์ม Change/Forms: pane ไม่มี id → map จากตำแหน่ง (index) ของ nav link
+    tabs = _resolve_detail_tabs(page)
+    status_tab = _find_tab(tabs, "สถานะคำขอ")
+    permit_tab = _find_tab(tabs, "คำขออนุญาต")
+    status_pane = status_tab.get("pane") or "tab_default_1"
+    status_index = status_tab.get("index", 0)
+    permit_pane = permit_tab.get("pane") or "tab_default_2"
+    permit_index = permit_tab.get("index", -1)
+    result["tabs_read"] = (
+        f"สถานะคำขอ→#{status_pane}[{status_index}] | "
+        f"คำขออนุญาต→#{permit_pane}[{permit_index}]"
+    )
+
+    # คลิกแท็บ: หา nav link จาก href=id ก่อน ถ้าไม่มีใช้ nav link ตำแหน่ง index
+    _click_tab_js = r"""(args) => {
+      let a = args.paneId ? document.querySelector('a[href="#' + args.paneId + '"]') : null;
+      if (!a && args.index != null && args.index >= 0) {
+        const links = Array.from(document.querySelectorAll(
+          'a[href^="#tab_default"], a[data-toggle="tab"][href^="#"], a[role="tab"][href^="#"]'
+        ));
+        const seen = new Set(); const navs = [];
+        for (const x of links) {
+          const h = (x.getAttribute('href') || '').replace(/^#/, '');
+          if (!h || seen.has(h)) continue; seen.add(h); navs.push(x);
+        }
+        if (args.index < navs.length) a = navs[args.index];
+      }
+      if (a) a.click();
+    }"""
+
+    # ---- 1) แท็บ 'สถานะคำขอ' → ไทม์ไลน์ → 'อนุมัติคำขอ' ----
+    try:
+        page.evaluate(_click_tab_js, {"paneId": status_pane, "index": status_index})
+        page.wait_for_timeout(800)
+        raw_flow = page.evaluate(
+            r"""(args) => {
+              let pane = args.paneId ? document.getElementById(args.paneId) : null;
+              if (!pane && args.index != null && args.index >= 0) {
+                const panes = document.querySelectorAll('.tab-pane');
+                if (args.index < panes.length) pane = panes[args.index];
+              }
+              if (!pane) return '';
+              return (pane.innerText || pane.textContent || '')
+                .replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim().slice(0, 8000);
+            }""",
+            {"paneId": status_pane, "index": status_index},
+        ) or ""
+        result["status_flow_raw"] = raw_flow
+        entries = parse_status_flow(raw_flow)
+        result["status_all"] = _format_status_all(entries)
+        appr = _find_approve_entry(entries)
+        if appr:
+            result["approve_found"] = "พบ"
+            result["approve_date"] = appr.get("date", "")
+            t = appr.get("text", "") or ""
+            m = re.match(r"\s*อนุมัติคำขอ\s*(.*)$", t)
+            result["approve_result"] = (m.group(1).strip() if m else t) or t
+        else:
+            result["approve_found"] = "ไม่พบ"
+    except Exception as e:
+        errors.append(f"tab_status:{str(e).splitlines()[0][:120]}")
+
+    # ---- 2) แท็บ 'คำขออนุญาต' → สถานประกอบการ (บริษัท/จังหวัด) ----
+    try:
+        page.evaluate(_click_tab_js, {"paneId": permit_pane, "index": permit_index})
+        page.wait_for_timeout(1000)
+        data = page.evaluate(_PERMIT_TAB_JS, {"paneId": permit_pane, "index": permit_index}) or {}
+        result["permit_raw"] = data.get("raw", "") or ""
+        pairs = data.get("pairs") or []
+        company, province, section = _pick_establishment(pairs)
+        emp_company, emp_province = _pick_employer(pairs)
+        result["estab_company"] = company
+        result["employer_company"] = emp_company
+        # บริษัทหลัก: ใช้ชื่อจาก 'นายจ้าง' ก่อน (ข้อมูลจริงชื่อบริษัทอยู่ใต้ section นายจ้าง)
+        # ถ้าว่างจริง ๆ ค่อย fallback ไปผู้รับอนุญาต/สถานประกอบการ
+        result["company_main"] = emp_company or company
+        # จังหวัด: เอาเฉพาะจาก section 'ข้อมูลการขออนุญาต' (สถานประกอบการ/สถานที่ทำงาน) เท่านั้น
+        # ไม่ดึงจาก 'ข้อมูลนายจ้าง' (อาจคนละจังหวัดกับที่ตั้งสถานประกอบการจริง)
+        result["estab_province"] = _pick_workplace_province(pairs)
+        result["estab_section"] = section
+    except Exception as e:
+        errors.append(f"tab_permit:{str(e).splitlines()[0][:120]}")
+
+    if errors:
+        result["scrape_errors"] = " | ".join(errors)
+    return result
+
+
+def save_excel_permit_report(rows: list[dict], out_path: Path) -> None:
+    """บันทึกรายงาน 'ข้อมูลการขออนุญาต' ลง Excel (1 แถว/คำขอ)
+    คอลัมน์ตามที่ผู้ใช้กำหนด: บริษัท | จังหวัด | เลขคำขอ | สถานะคำขอ | หมายเหตุ
+      • สถานะคำขอ = ทุกสถานะที่แสดงบนไทม์ไลน์ (วันที่ -> ขั้นตอน -> ผล) บรรทัดละสถานะ
+      • หมายเหตุ  = เว้นว่าง (ข้อมูลสถานะรวมอยู่ในช่อง 'สถานะคำขอ' แล้ว)
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ข้อมูลการขออนุญาต"
+
+    cols = ["บริษัท", "จังหวัด", "เลขคำขอ", "สถานะคำขอ", "หมายเหตุ"]
+    ws.append(cols)
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="C2185B")
+    for c in range(1, len(cols) + 1):
+        cell = ws.cell(row=1, column=c)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+    for r in rows:
+        company = r.get("company_main", "") or r.get("employer_company", "")
+        province = r.get("estab_province", "")
+        req_no = r.get("reqNo", "")
+        # สถานะคำขอ = ทุกสถานะบนไทม์ไลน์ (วันที่ -> ขั้นตอน -> ผล) บรรทัดละสถานะ
+        status_val = (r.get("status_all", "") or "").strip()
+        if not status_val:
+            # fallback: ใช้ข้อความดิบ (ตัดหัว 'สถานะคำขอ') เผื่อ parse ไม่ได้
+            raw = (r.get("status_flow_raw", "") or "").strip()
+            if raw.startswith("สถานะคำขอ"):
+                raw = raw[len("สถานะคำขอ"):].strip()
+            status_val = raw
+        remark_val = ""
+        ws.append([company, province, req_no, status_val, remark_val])
+
+    widths = {
+        "บริษัท": 40, "จังหวัด": 16, "เลขคำขอ": 18,
+        "สถานะคำขอ": 90, "หมายเหตุ": 20,
+    }
+    for c_idx, name in enumerate(cols, start=1):
+        ws.column_dimensions[get_column_letter(c_idx)].width = widths.get(name, 20)
+    for r_idx in range(2, ws.max_row + 1):
+        for c_idx in range(1, ws.max_column + 1):
+            ws.cell(row=r_idx, column=c_idx).alignment = Alignment(
+                vertical="top", wrap_text=True
+            )
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    wb.save(out_path)
+
+
+def run_permit_report(
+    cfg: dict,
+    out_path: Path,
+    limit: int = 0,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด 'ดึงรายงานข้อมูลการขออนุญาต'
+    กรองสถานะ (+ รายการคำขอ + วันที่) → เปิด detail ทีละรายการ → เก็บ
+    'อนุมัติคำขอ' (สถานะคำขอ) + บริษัท/จังหวัด (สถานประกอบการ) → Excel
+
+    Returns: (จำนวนแถวที่ดึง, path ไฟล์ที่บันทึก)
+    """
+    out_path = _timestamped_path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    log(f"      ไฟล์รายงาน: {out_path.name}")
+    scraped = _permit_report_collect(
+        cfg, limit=limit, log=log, progress=progress,
+        is_cancelled=is_cancelled, save_path=out_path,
+    )
+    save_excel_permit_report(scraped, out_path)
+    log(f"[4/4] บันทึกไฟล์ Excel: {out_path}")
+    log(f"[เสร็จสิ้น] รวม {len(scraped)} แถว")
+    return len(scraped), out_path
+
+
+def _permit_report_collect(
+    cfg: dict,
+    limit: int = 0,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+    save_path=None,
+) -> list[dict]:
+    """เปิดเบราว์เซอร์ + login + กรองสถานะ/รายการคำขอ/วันที่ → เปิด detail ทีละรายการ
+    → คืน list ของแถวที่ดึงได้ (ยังไม่เขียน Excel นอกจากระบุ save_path เพื่อเซฟระหว่างทาง)
+    ใช้ร่วมกันทั้งโหมดบัญชีเดียว (run_permit_report) และหลายบัญชีรวมไฟล์เดียว
+    (run_permit_report_multi)
+    """
+    def _cancelled() -> bool:
+        return bool(is_cancelled and is_cancelled())
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--disable-blink-features=AutomationControlled"])
+        ctx = browser.new_context(
+            locale="th-TH", timezone_id="Asia/Bangkok",
+            viewport={"width": 1500, "height": 900},
+        )
+        page = ctx.new_page()
+        try:
+            log("[1/4] กำลังเข้าสู่ระบบ...")
+            login(page, cfg)
+            log(f"      ล็อกอินสำเร็จ ({page.url})")
+
+            log("[2/4] กำลังเปิดหน้า e-Tracking และตั้งค่าฟิลเตอร์...")
+            goto_tracking(page)
+            if _is_logged_out(page):
+                ensure_session(page, cfg, log=log)
+                goto_tracking(page)
+
+            # รวบรวมรายการคำขอที่จะกรอง (multi-select > single)
+            req_types_list: list[str] = []
+            for c in (cfg.get("request_types") or []):
+                s = (c or "").strip()
+                if s and s not in {"0", "ALL", "all"} and s not in req_types_list:
+                    req_types_list.append(s)
+            if not req_types_list:
+                single = (cfg.get("request_type") or "").strip()
+                if single and single not in {"0", "ALL", "all"}:
+                    req_types_list = [single]
+            if not req_types_list:
+                log("      ฟิลเตอร์รายการคำขอ: ทั้งหมด (ไม่กรอง)")
+            elif len(req_types_list) == 1:
+                log(f"      ฟิลเตอร์รายการคำขอ: {req_types_list[0]}")
+            else:
+                log(f"      ฟิลเตอร์รายการคำขอ ({len(req_types_list)} รายการ): "
+                    + ", ".join(req_types_list))
+            req_type = req_types_list[0] if req_types_list else ""
+
+            # สถานะที่ติ๊กจาก UI — ถ้าไม่ติ๊กเลย ดึงทุกสถานะ (กันตกหล่น)
+            status_ids = cfg.get("filter_status_ids") or ["WP", "WCOSNA", "WA", "AP", "SS"]
+            log(f"      ติ๊ก checkbox สถานะ: {', '.join(status_ids)}")
+            date_from = (cfg.get("date_from") or "").strip()
+            date_to = (cfg.get("date_to") or "").strip()
+            if date_from or date_to:
+                log(f"      วันที่ยื่นคำขอ: {date_from or '(ต้นสุด)'} → {date_to or '(ล่าสุด)'}")
+
+            def _fetch_rows_for(rt_code: str) -> list[dict]:
+                apply_wa_filter(
+                    page, rt_code, status_ids=status_ids,
+                    date_from=date_from, date_to=date_to,
+                )
+                out_rows = collect_all_wa_rows(page, log=log)
+                if not out_rows and _is_logged_out(page):
+                    if ensure_tracking_ready(page, cfg, rt_code, log=log):
+                        out_rows = collect_wa_rows(page)
+                return out_rows
+
+            if len(req_types_list) <= 1:
+                rows = _fetch_rows_for(req_type)
+            else:
+                merged: list[dict] = []
+                seen: set = set()
+                for _i, _code in enumerate(req_types_list, 1):
+                    if _cancelled():
+                        break
+                    log(f"      [{_i}/{len(req_types_list)}] กำลังดึงรายการคำขอ: {_code}")
+                    chunk = _fetch_rows_for(_code)
+                    added = 0
+                    for r in chunk:
+                        k = str(r.get("reqNo") or "")
+                        if k and k in seen:
+                            continue
+                        if k:
+                            seen.add(k)
+                        merged.append(r)
+                        added += 1
+                    log(f"          ← ได้ {len(chunk)} แถว (ใหม่ {added}, รวม {len(merged)})")
+                rows = merged
+            total_collected = len(rows)
+
+            # กรองตาม whitelist สถานะ (ถ้ามี) — เก็บ detail เฉพาะสถานะที่เลือก
+            whitelist = cfg.get("status_whitelist")
+            if whitelist:
+                before = len(rows)
+                rows = [r for r in rows if row_matches_whitelist(r, whitelist)]
+                if before != len(rows):
+                    log(f"      กรองตาม whitelist สถานะ: {before} → {len(rows)} รายการ")
+
+            log(f"[3/4] พบรายการที่ตรงเงื่อนไข: {len(rows)} / {total_collected} รายการ")
+            if limit and limit > 0:
+                rows = rows[:limit]
+                log(f"      จำกัดเฉพาะ {len(rows)} รายการแรก")
+
+            total = len(rows)
+            if progress:
+                progress(0, total)
+
+            scraped: list[dict] = []
+            SAVE_EVERY = max(1, int(cfg.get("save_every") or 50))
+            for i, row in enumerate(rows, 1):
+                if _cancelled():
+                    log("[!] ยกเลิกโดยผู้ใช้ — กำลังบันทึกสิ่งที่ดึงได้แล้ว")
+                    break
+                log(f"  [{i}/{total}] {row.get('reqNo', '')} - {row.get('requester', '')}")
+                try:
+                    detail = scrape_permit_detail(page, row, cfg=cfg, log=log)
+                    # เปิด detail ไม่ได้ + session หลุด → ฟื้น tracking แล้วลองใหม่ 1 ครั้ง
+                    if "open_detail_failed" in (detail.get("scrape_errors") or ""):
+                        if ensure_tracking_ready(page, cfg, req_type, log=log):
+                            log("      ↻ ลองดึงรายการนี้อีกครั้งหลังฟื้น session...")
+                            detail = scrape_permit_detail(page, row, cfg=cfg, log=log)
+                    row.update(detail)
+                    if detail.get("scrape_errors"):
+                        log(f"      ! ดึงบางส่วนไม่ได้ (ข้าม): {detail['scrape_errors']}")
+                except Exception as e:
+                    log(f"      !! ผิดพลาดร้ายแรง (ข้ามรายการนี้): {e}")
+                    row.setdefault("scrape_errors", str(e))
+
+                scraped.append(row)
+                if save_path and len(scraped) % SAVE_EVERY == 0:
+                    try:
+                        save_excel_permit_report(scraped, save_path)
+                        log(f"      💾 บันทึกความคืบหน้า: {len(scraped)} รายการ")
+                    except Exception as e:
+                        log(f"      (เซฟระหว่างทางไม่สำเร็จ: {e})")
+                if progress:
+                    progress(i, total)
+
+            return scraped
+        finally:
+            ctx.close(); browser.close()
+
+
+def run_permit_report_multi(
+    cfg: dict,
+    login_excel: Path,
+    out_path: Path,
+    limit: int = 0,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด 'ดึงรายงานข้อมูลการขออนุญาต' หลายบัญชี — วน login ทุกบัญชีใน
+    UsernameLogin.xlsx แล้ว รวมทุกแถวเข้าเป็นไฟล์ Excel เดียว (ไม่แยกไฟล์ต่อบัญชี)
+
+    Args:
+        cfg: ตัวเลือกรวม (headless, request_type(s), filter_status_ids, date ฯลฯ)
+             — ไม่ต้องมี username/password (จะเติมจากไฟล์ Excel ต่อบัญชี)
+        login_excel: ไฟล์ UsernameLogin.xlsx (คอลัมน์ Username, Password, Type[, ระบบ])
+        out_path: ไฟล์ผลลัพธ์รวม (ไฟล์เดียวทุกบัญชี)
+
+    Returns: (จำนวนแถวรวมทุกบัญชี, path ไฟล์รวม)
+    """
+    accounts = _read_login_accounts(login_excel)
+    if not accounts:
+        raise ValueError("ไม่พบบัญชีในไฟล์ UsernameLogin.xlsx")
+    out_path = _timestamped_path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    n = len(accounts)
+    all_rows: list[dict] = []
+    ok_accounts = 0
+    log(f"[Multi] เริ่มดึงรายงานข้อมูลการขออนุญาตจาก {n} บัญชี → รวมเป็นไฟล์เดียว: {out_path.name}")
+    for gi, (_ukey, acct) in enumerate(accounts.items(), start=1):
+        if is_cancelled and is_cancelled():
+            log("[!] ผู้ใช้ยกเลิก — หยุด"); break
+        login_cfg = dict(cfg)
+        login_cfg["username"] = acct["username"]
+        login_cfg["password"] = acct["password"]
+        login_cfg["user_type"] = acct["type"]
+        # ระบบ login ต่อบัญชีจากคอลัมน์ 'ระบบ' ใน Excel (ถ้าระบุ)
+        if acct.get("method"):
+            login_cfg["method"] = acct["method"]
+        log(f"\n===== บัญชี {gi}/{n}: {acct['username']} ({acct['type']}) =====")
+        try:
+            rows = _permit_report_collect(
+                login_cfg, limit=limit, log=log, progress=progress,
+                is_cancelled=is_cancelled, save_path=None,
+            )
+            all_rows.extend(rows)
+            ok_accounts += 1
+            log(f"      + บัญชีนี้ได้ {len(rows)} แถว (รวมสะสม {len(all_rows)} แถว)")
+            # เซฟไฟล์รวมหลังจบแต่ละบัญชี (กันข้อมูลหายถ้าบัญชีถัดไปพัง)
+            try:
+                save_excel_permit_report(all_rows, out_path)
+            except Exception as e:
+                log(f"      (เซฟไฟล์รวมระหว่างทางไม่สำเร็จ: {e})")
+        except Exception as e:
+            log(f"   ✗ บัญชี {acct['username']} ล้มเหลว: {e} — ข้ามไปบัญชีถัดไป")
+            continue
+    save_excel_permit_report(all_rows, out_path)
+    log(f"\n[Multi] เสร็จสิ้น — รวม {len(all_rows)} แถว จาก {ok_accounts}/{n} บัญชี → {out_path}")
+    return len(all_rows), out_path
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -4728,12 +5564,14 @@ def _is_detail_loaded(page: Page) -> bool:
         url = (page.url or "").lower()
     except Exception:
         url = ""
-    if "detailrequest" not in url:
+    # endpoint หน้า detail มีหลายชื่อตาม form_type แต่ทุกอันมีคำว่า 'detail'
+    # (DetailTracking, DetailRequest41, DetailFormRenewMOU, DetailFormRenew59, ...)
+    if "detail" not in url:
         return False
     try:
         return bool(page.evaluate(
             r"""() => !![...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a')]
-                .find(a => /เอกสารตอบรับ|ข้อมูลคนต่างด้าว/.test(a.innerText || ''))"""
+                .find(a => /เอกสารตอบรับ|ข้อมูลคนต่างด้าว|คำขออนุญาต|สถานะคำขอ/.test(a.innerText || ''))"""
         ))
     except Exception:
         return False
@@ -14676,6 +15514,90 @@ def _appt_case2_download(
     return body, fname, ""
 
 
+def _bt30_ctn_receipt_fee_kind(pdf_bytes: bytes) -> str:
+    """ตรวจประเภทค่าธรรมเนียมจากเนื้อ PDF ใบเสร็จ
+    → 'workpermit'  = ค่าธรรมเนียมใบอนุญาตทำงาน (ใบที่ต้องการ)
+    → 'submission'  = ค่ายื่นคำขอ (Submission Fee)
+    → 'unknown'     = ระบุไม่ได้
+    """
+    try:
+        import io
+        from pypdf import PdfReader
+        text = "\n".join((pg.extract_text() or "") for pg in PdfReader(io.BytesIO(pdf_bytes)).pages)
+    except Exception:
+        return "unknown"
+    if re.search(r"ค่าธรรมเนียม.{0,12}ใบอนุญาตทำงาน|Work\s*Permit\s*Fee", text):
+        return "workpermit"
+    if re.search(r"ค่ายื่นคำขอ|Submission\s*Fee", text):
+        return "submission"
+    return "unknown"
+
+
+def _bt30_ctn_grab_receipt_case1(
+    page: Page, log=print,
+) -> tuple[bytes, str, str, str]:
+    """Case 1: วนคลิกปุ่ม 'หลักฐานการชำระเงิน' ทุกปุ่มบนหน้ารายละเอียด → ดาวน์โหลดใบเสร็จแต่ละใบ
+    → อ่านยอดเงิน + ประเภทค่าธรรมเนียมจากเนื้อ PDF → เลือกใบ 'ค่าธรรมเนียมใบอนุญาตทำงาน'
+    (ถ้าไม่พบประเภทนี้ → fallback ใช้ใบที่ยอดเงินมากสุด — ค่าธรรมเนียมใบอนุญาตมักสูงกว่าค่ายื่นคำขอ)
+
+    คืน (pdf_bytes, amount, fee_kind, error)
+      - amount   : สตริงยอดเงิน เช่น '1800' (ว่าง = อ่านไม่ได้)
+      - fee_kind : 'workpermit' | 'submission' | 'unknown'
+    """
+    n = int(page.evaluate(
+        r"""() => {
+            const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+            return Array.from(document.querySelectorAll('button,a'))
+                .filter(b => vis(b) && /หลักฐานการชำระเงิน/.test((b.textContent||'').trim())).length;
+        }"""
+    ) or 0)
+    if n <= 0:
+        return b"", "", "", "ไม่พบปุ่ม 'หลักฐานการชำระเงิน' บนหน้ารายละเอียด"
+
+    def _click_idx(idx: int):
+        page.evaluate(
+            r"""(idx) => {
+                const vis = el => { try { const r = el.getBoundingClientRect(); return r.width>0 && r.height>0; } catch(e){ return false; } };
+                const btns = Array.from(document.querySelectorAll('button,a'))
+                    .filter(b => vis(b) && /หลักฐานการชำระเงิน/.test((b.textContent||'').trim()));
+                if (btns[idx]) btns[idx].click();
+            }""", idx,
+        )
+
+    found: list[tuple[bytes, str, str]] = []  # (pdf_bytes, amount, fee_kind)
+    for i in range(n):
+        body = b""
+        for _attempt in range(1, 3):
+            b, _err = _grab_pdf_after_click(page, lambda i=i: _click_idx(i), log=lambda *a: None)
+            if b and len(b) >= 500 and b[:5] == b"%PDF-":
+                body = b
+                break
+            page.wait_for_timeout(1200)
+        if not body:
+            log(f"      · ⚠ ใบเสร็จปุ่มที่ {i + 1}/{n} โหลดไม่สำเร็จ")
+            continue
+        amount = _extract_pdf_amount(body)
+        kind = _bt30_ctn_receipt_fee_kind(body)
+        found.append((body, amount, kind))
+        log(f"      · ใบเสร็จ {i + 1}/{n}: ยอด={amount or '-'} ประเภท={kind}")
+
+    if not found:
+        return b"", "", "", "ดาวน์โหลดใบเสร็จไม่สำเร็จทุกปุ่ม"
+
+    wp = [f for f in found if f[2] == "workpermit"]
+    if wp:
+        chosen = wp[0]
+    else:
+        def _amt(a: str) -> float:
+            try:
+                return float((a or "0").replace("_", "."))
+            except Exception:
+                return 0.0
+        chosen = max(found, key=lambda f: _amt(f[1]))
+        log("      · ⚠ ไม่พบใบ 'ค่าธรรมเนียมใบอนุญาตทำงาน' → ใช้ใบยอดเงินสูงสุดแทน")
+    return chosen[0], chosen[1], chosen[2], ""
+
+
 def _appt_extract_address_for_req(body: bytes, req_no: str) -> tuple[str, str, str]:
     """อ่าน PDF (อาจหลายหน้า) → หา page ที่ตรงกับ req_no → คืน (จังหวัด, อำเภอ, raw_text_of_matched_page)
     ถ้าไม่พบ exact match → ใช้ page แรก
@@ -14924,18 +15846,31 @@ def _extract_passport_from_pdf(pdf_text: str) -> str:
     return ""
 
 
+def _uniq_pdf_path(path: Path) -> Path:
+    """ถ้าไฟล์ชนกัน → เพิ่ม _2, _3, ... ท้ายชื่อ (ก่อนนามสกุล)"""
+    if not path.exists():
+        return path
+    n = 2
+    while True:
+        alt = path.parent / f"{path.stem}_{n}{path.suffix}"
+        if not alt.exists():
+            return alt
+        n += 1
+
+
 def _bt30_ctn_download(
-    page: Page, log=print,
+    page: Page, log=print, pat: str = r"บต\.?\s*30", doc_name: str = "บต.30",
 ) -> tuple[bytes, str, str]:
-    """ดาวน์โหลดเอกสาร 'แบบ บต.30' จาก tab 'เอกสารตอบรับจากระบบ' บนหน้า detail
+    r"""ดาวน์โหลดเอกสารในแท็บ 'เอกสารตอบรับจากระบบ' บนหน้า detail (default: แบบ บต.30)
     (สมมติ page อยู่บนหน้า detail ของคำขอแล้ว)
+    Args:
+        pat: regex ของป้ายเอกสารที่ต้องการ (เช่น r"บต\.?\s*30" หรือ r"บต\.?\s*25")
+        doc_name: ชื่อเอกสารสำหรับข้อความ log/error (เช่น "บต.30", "บต.25")
     คืน (pdf_bytes, matched_label, error_msg)
-      - pdf_bytes: bytes ของ PDF (v่าง = ล้มเหลว)
+      - pdf_bytes: bytes ของ PDF (ว่าง = ล้มเหลว)
       - matched_label: ข้อความ label ของแถวที่คลิก (เช่น 'แบบ บต.30 คำขอต่ออายุ...')
       - error_msg: '' ถ้าสำเร็จ, มิฉะนั้นข้อความ error
     """
-    pat = r"บต\.?\s*30"
-
     # 1) คลิกแท็บเอกสารตอบรับ
     clicked = page.evaluate(
         r"""() => {
@@ -14984,7 +15919,7 @@ def _bt30_ctn_download(
     except Exception:
         pass
     if not matched_label:
-        return b"", "", "ไม่พบเอกสาร บต.30 ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"
+        return b"", "", f"ไม่พบเอกสาร {doc_name} ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"
 
     # 3) ลอง prefetch URL — เร็วกว่าเปิด popup
     prefetch_url = ""
@@ -15208,6 +16143,607 @@ def _bt30_ctn_download_appointment(
     return pdf_bytes, passport, name_eng, err
 
 
+# ─────────────────────────────────────────────────────────────────
+# โหมด: ตรวจวันว่างจอง (คิวถ่ายบัตร)
+# - login → เปิด iframe ของ 1 record ที่มี booking (AP/APSS) → ดึง Bearer token
+# - เรียก /branch/by-codes → รายชื่อทุกสาขา
+# - เรียก /calendar/get-data/{branch}/{date}?month=X&year=Y → วันว่าง+slot เหลือ
+# - รวบ Excel: (สาขา, วัน, เปิด, เต็มวัน, เหลือ, %) — พร้อม sheet สรุป
+# ─────────────────────────────────────────────────────────────────
+QUEUE_FE_ORIGIN = "https://queue-fe-uat.doe.go.th"
+QUEUE_BE_ORIGIN = "https://queue-be-uat.doe.go.th"
+
+
+def _booking_extract_token_from_iframe_src(iframe_src: str) -> str:
+    """สกัด Bearer token จาก iframe src ของ #link_appointment
+    รูปแบบ: https://queue-fe-uat.doe.go.th/doe/bookingdate/{TOKEN}?t=...
+    """
+    if not iframe_src:
+        return ""
+    # ตัด query string
+    src = iframe_src.split("?", 1)[0]
+    # เอาส่วนสุดท้ายของ path
+    return src.rsplit("/", 1)[-1] if "/" in src else ""
+
+
+def _booking_get_token(page: Page, log=print) -> str:
+    """ค้นหา 1 record ที่มี booking iframe (AP/APSS ที่จองแล้ว) → ดึง token
+    return "" ถ้าหาไม่เจอ (ต้องมี record ที่จองการนัดหมายไว้แล้วอย่างน้อย 1)
+    """
+    goto_tracking(page)
+    apply_wa_filter(page, "", status_ids=["AP", "SS"])
+    rows = collect_all_wa_rows(page, log=lambda *a: None)
+    log(f"      [token] มี {len(rows)} คำขอสถานะ AP/SS")
+
+    # priority: APSS ก่อน (จองแล้ว) → AP (อาจยังไม่จอง)
+    prio = sorted(rows, key=lambda r: 0 if str(r.get("status") or "").upper() == "APSS" else 1)
+    for i, row in enumerate(prio[:20], 1):  # ลอง 20 records แรก
+        req_no = row.get("reqNo") or ""
+        if not req_no:
+            continue
+        try:
+            url = build_detail_url(row)
+            if not url:
+                continue
+            page.goto(url, wait_until="domcontentloaded", timeout=25_000)
+            page.wait_for_timeout(2200)
+            # trigger tab นัดหมาย
+            page.evaluate(r"""() => {
+                if (window.jQuery) { try { jQuery('a[href="#tab_default_5"]').tab('show'); } catch(e){} }
+                const a = document.querySelector('a[href="#tab_default_5"]');
+                if (a) a.click();
+            }""")
+            page.wait_for_timeout(2200)
+
+            iframe_src = page.evaluate(
+                "() => (document.querySelector('#link_appointment') || {}).src || ''"
+            ) or ""
+            token = _booking_extract_token_from_iframe_src(iframe_src)
+            if token and len(token) > 40:
+                log(f"      [token] ✓ ได้ token จาก {req_no} (status={row.get('status')})")
+                return token
+        except Exception as _e:
+            continue
+    log("      [token] ✗ หา token ไม่เจอใน 20 records แรก")
+    return ""
+
+
+# สาขาที่รู้จัก — จาก probe ก่อนหน้า (fallback ถ้า API /branch/by-codes ล่ม)
+_KNOWN_BRANCHES: list[dict[str, str]] = [
+    {"code": "MDH-OB-M-001", "name": "ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดมุกดาหาร"},
+    {"code": "NKI-OB-L-001", "name": "ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดหนองคาย"},
+    {"code": "TAK-OB-L-001", "name": "ศูนย์แรกรับเข้าทำงานและสิ้นสุดการจ้าง จังหวัดตาก"},
+    {"code": "RNG-SC-S-001", "name": "ศูนย์บริการใบอนุญาตทำงานของคนต่างด้าว จังหวัดระนอง"},
+    {"code": "CPN-SC-S-001", "name": "ศูนย์บริการใบอนุญาตทำงานของคนต่างด้าว จังหวัดชุมพร"},
+    {"code": "CCO-SC-S-001", "name": "ศูนย์บริการใบอนุญาตทำงานของคนต่างด้าว จังหวัดฉะเชิงเทรา"},
+    {"code": "PTE-SC-M-001", "name": "ศูนย์บริการใบอนุญาตทำงานของคนต่างด้าว จังหวัดปทุมธานี"},
+]
+
+
+def _booking_fetch_branches(page: Page, token: str, log=print) -> list[dict[str, str]]:
+    """ดึงรายชื่อสาขาทั้งประเทศ
+
+    วิธี:
+      1. เปิด iframe URL ใน tab ใหม่ (fresh session)
+      2. รอ FE call /branch/by-codes อัตโนมัติ + capture response ผ่าน network listener
+      3. Parse JSON → return list [{code, name}, ...]
+    ถ้าล้มเหลว → fallback ไปใช้ _KNOWN_BRANCHES
+    """
+    # หา iframe src ล่าสุด (ต้องมี token ในนั้น — สร้างจาก token args)
+    # แต่เราไม่ได้เก็บ src ไว้ — ให้เปิดจาก page.evaluate() หา iframe ปัจจุบัน (ถ้ามี)
+    iframe_src = ""
+    try:
+        iframe_src = page.evaluate(
+            "() => (document.querySelector('#link_appointment') || {}).src || ''"
+        ) or ""
+    except Exception:
+        iframe_src = ""
+    if not iframe_src:
+        log("      [branches] ⚠ ไม่พบ iframe src — ใช้ list fallback")
+        return list(_KNOWN_BRANCHES)
+
+    # เปิด iframe ใน new page + capture branch response
+    ctx = page.context
+    branch_response: list[dict[str, Any]] = []
+
+    def _on_response(res):
+        u = res.url or ""
+        if "/branch/by-codes" in u:
+            try:
+                data = res.json()
+                if isinstance(data, list) and data:
+                    branch_response.extend(data)
+            except Exception:
+                pass
+
+    ctx.on("response", _on_response)
+    qp = None
+    try:
+        qp = ctx.new_page()
+        qp.goto(iframe_src, wait_until="networkidle", timeout=30_000)
+        qp.wait_for_timeout(4000)  # รอ FE call APIs ให้เสร็จ
+    except Exception as e:
+        log(f"      [branches] ⚠ เปิด iframe fresh ไม่สำเร็จ: {str(e)[:100]}")
+    finally:
+        try: ctx.remove_listener("response", _on_response)
+        except Exception: pass
+        if qp is not None:
+            try: qp.close()
+            except Exception: pass
+
+    if not branch_response:
+        log("      [branches] ⚠ ไม่ได้ response จาก /branch/by-codes — ใช้ list fallback")
+        return list(_KNOWN_BRANCHES)
+
+    # unique + normalize
+    seen: set[str] = set()
+    result: list[dict[str, str]] = []
+    for b in branch_response:
+        code = (b.get("branch_code_id") or "").strip()
+        if not code or code in seen:
+            continue
+        seen.add(code)
+        result.append({
+            "code": code,
+            "name": (b.get("branch_name_th") or b.get("branch_name_en") or code).strip(),
+        })
+    log(f"      [branches] ✓ ได้ {len(result)} สาขา (unique)")
+    return result if result else list(_KNOWN_BRANCHES)
+
+
+def _booking_fetch_calendar(
+    page: Page, token: str, branch_code: str, year: int, month: int,
+    log=print,
+) -> list[dict]:
+    """เรียก /calendar/get-data/{branch}/{YYYY-MM-01}?month=X&year=Y
+    return list ของ {date, open, maxNormal, count_left_Normal, ...}
+    ถ้า error → return []
+    """
+    date_str = f"{year}-{month:02d}-01"
+    api_url = (
+        f"{QUEUE_BE_ORIGIN}/doe-booking/api/v2/calendar/get-data/"
+        f"{branch_code}/{date_str}?month={month}&year={year}"
+    )
+    try:
+        res = page.context.request.get(
+            api_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Origin": QUEUE_FE_ORIGIN,
+                "Referer": QUEUE_FE_ORIGIN + "/",
+            },
+            timeout=30_000,
+        )
+        if not res.ok:
+            return []
+        parsed = res.json()
+        if isinstance(parsed, dict) and isinstance(parsed.get("data"), list):
+            return parsed["data"]
+        return []
+    except Exception:
+        return []
+
+
+def _booking_fetch_rounds(
+    page: Page, token: str, branch_code: str, date_str: str,
+    log=print,
+) -> list[dict]:
+    """เรียก /v1/round/get-rounds/?b_id={branch}&date_string={YYYY-MM-DD}
+
+    return list ของ {round: "09:00 - 09:30", roundId: int, capacity: int, left: int}
+    - 200 [] = เปิดวันแต่ไม่มี round data (สาขา MULTIPLE จะเป็นแบบนี้)
+    - 400 = วัน/สาขาไม่มีสิทธิ์จอง → return []
+    - อื่น ๆ error → return []
+    """
+    api_url = (
+        f"{QUEUE_BE_ORIGIN}/doe-booking/api/v1/round/get-rounds/"
+        f"?b_id={branch_code}&date_string={date_str}"
+    )
+    try:
+        res = page.context.request.get(
+            api_url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Origin": QUEUE_FE_ORIGIN,
+                "Referer": QUEUE_FE_ORIGIN + "/",
+                "Accept": "application/json, text/plain, */*",
+            },
+            timeout=15_000,
+        )
+        if not res.ok:
+            return []
+        parsed = res.json()
+        if isinstance(parsed, list):
+            return parsed
+        return []
+    except Exception:
+        return []
+
+
+def booking_scan_once(
+    page: Page, token: str,
+    branches: list[dict],
+    year_month_pairs: list[tuple[int, int]],
+    log=print, is_cancelled=None,
+    include_full: bool = False,
+    on_progress=None,
+) -> list[dict]:
+    """สแกน 1 รอบ: calendar + rounds ของทุกสาขา×เดือน
+
+    Args:
+        branches: [{code, name}, ...]
+        year_month_pairs: [(2026, 8), (2026, 9), ...]
+        include_full: True = รวมรอบที่เต็มแล้วด้วย (left=0), False = เฉพาะรอบที่มีที่ว่าง
+        on_progress: callback(done, total, branch_code, branch_name, month_str) — ถ้ามี
+
+    Returns: list of {branch_code, branch_name, date, round, capacity, left}
+        เรียงตาม date → branch → round
+    """
+    slots: list[dict] = []
+    total_iters = len(branches) * len(year_month_pairs)
+    done_iters = 0
+    for br in branches:
+        if is_cancelled and is_cancelled():
+            break
+        code = br.get("code", "")
+        name = br.get("name", "")
+        if not code:
+            continue
+        for (yy, mm) in year_month_pairs:
+            if is_cancelled and is_cancelled():
+                break
+            if on_progress:
+                try:
+                    on_progress(done_iters, total_iters, code, name, f"{yy}-{mm:02d}")
+                except Exception:
+                    pass
+            days = _booking_fetch_calendar(page, token, code, yy, mm, log=log)
+            for d in days:
+                left_day = int(d.get("count_left_Normal") or 0)
+                date_str = d.get("date", "")
+                if not (d.get("open") and date_str):
+                    continue
+                if not include_full and left_day <= 0:
+                    continue
+                rounds = _booking_fetch_rounds(page, token, code, date_str, log=log)
+                for rd in rounds:
+                    try:
+                        cap = int(rd.get("capacity") or 0)
+                        r_left = int(rd.get("left") or 0)
+                    except Exception:
+                        cap, r_left = 0, 0
+                    if not include_full and r_left <= 0:
+                        continue
+                    slots.append({
+                        "branch_code": code,
+                        "branch_name": name,
+                        "date": date_str,
+                        "round": str(rd.get("round") or ""),
+                        "roundId": rd.get("roundId"),
+                        "capacity": cap,
+                        "left": r_left,
+                    })
+            done_iters += 1
+    if on_progress:
+        try:
+            on_progress(done_iters, total_iters, "", "", "")
+        except Exception:
+            pass
+    slots.sort(key=lambda s: (s["date"], s["branch_code"], s["round"]))
+    return slots
+
+
+
+def run_booking_availability(
+    cfg: dict,
+    login_excel: Path | None,
+    out_path: Path,
+    months_ahead: int = 3,
+    branch_filter: list[str] | None = None,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด 'ตรวจวันว่างจอง (คิวถ่ายบัตร)'
+
+    Args:
+        cfg: {username, password, user_type, method, headless, hide_window}
+        login_excel: UsernameLogin.xlsx (ถ้ามี — ใช้บัญชีแรก) หรือ None (fallback cfg)
+        out_path: Excel report
+        months_ahead: จำนวนเดือนที่จะดูจาก 'เดือนปัจจุบัน' (เช่น 3 = เดือนนี้ + 2 เดือนถัดไป)
+        branch_filter: list ของ branch_code_id ที่สนใจ — None = ทุกสาขา
+    Returns: (rows_written, out_path)
+
+    Flow:
+        1. login → หา 1 record ที่มี booking iframe → ดึง Bearer token
+        2. /branch/by-codes → รายชื่อทุกสาขา
+        3. Loop branch × months → /calendar/get-data → เก็บ
+        4. Save Excel: sheet='ตารางว่างจอง' (สาขา × วัน × slot)
+    """
+    from datetime import date as _date
+    out_path = _timestamped_path(out_path)
+
+    # ---- อ่านบัญชี ----
+    acct: dict[str, str] | None = None
+    if login_excel and Path(login_excel).exists():
+        accounts = _read_login_accounts(Path(login_excel))
+        if accounts:
+            acct = next(iter(accounts.values()))
+    if not acct:
+        _u = (cfg.get("username") or "").strip()
+        _p = cfg.get("password") or ""
+        if _u and _p:
+            acct = {
+                "username": _u, "password": _p,
+                "type": cfg.get("user_type") or "ผู้กระทำการแทน",
+                "method": cfg.get("method") or "E-Workpermit",
+            }
+    if not acct:
+        raise ValueError(
+            "ไม่มีบัญชี login — ต้องมี UsernameLogin.xlsx หรือ กรอก Username/Password ในช่อง 'ข้อมูลเข้าสู่ระบบ'"
+        )
+
+    log(f"[1/4] Login: {acct['username']} ({acct['type']})")
+    log(f"      เดือนที่ตรวจ: {months_ahead} เดือนถัดไป (จากเดือนปัจจุบัน)")
+
+    results: list[dict[str, Any]] = []
+
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--ignore-certificate-errors", "--start-maximized"])
+        ctx = browser.new_context(
+            locale="th-TH", ignore_https_errors=True,
+            viewport={"width": 1600, "height": 1000},
+        )
+        page = ctx.new_page()
+        try:
+            login(page, {
+                "username": acct["username"], "password": acct["password"],
+                "user_type": acct["type"],
+                "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+            })
+            page.wait_for_timeout(1200)
+
+            # 2/4: ดึง token
+            log(f"[2/4] หา Bearer token จาก 1 record ที่มี booking iframe...")
+            token = _booking_get_token(page, log=log)
+            if not token:
+                raise RuntimeError(
+                    "ไม่พบ record ที่มี booking iframe — บัญชีนี้อาจไม่มีคำขอสถานะ AP/APSS"
+                )
+
+            # 3/4: fetch branches
+            log(f"[3/4] ดึงรายชื่อสาขา...")
+            branches = _booking_fetch_branches(page, token, log=log)
+            if branch_filter:
+                bf = set(b.strip().upper() for b in branch_filter if b)
+                before = len(branches)
+                branches = [b for b in branches if (b["code"] or "").upper() in bf]
+                log(f"      filter สาขา: {len(branches)}/{before}")
+            if not branches:
+                raise RuntimeError("ไม่มีสาขาให้ตรวจ (branch_filter อาจไม่ตรง)")
+
+            # 4/4: loop calendar
+            today = _date.today()
+            year_month_pairs: list[tuple[int, int]] = []
+            y, m = today.year, today.month
+            for _ in range(max(1, int(months_ahead))):
+                year_month_pairs.append((y, m))
+                m += 1
+                if m > 12:
+                    m = 1; y += 1
+
+            total_iterations = len(branches) * len(year_month_pairs)
+            done = 0
+            log(f"[4/4] ตรวจ calendar × {len(branches)} สาขา × {len(year_month_pairs)} เดือน = {total_iterations} calls")
+            if progress:
+                try: progress(0, total_iterations)
+                except Exception: pass
+
+            for br in branches:
+                if is_cancelled and is_cancelled():
+                    log("[!] ผู้ใช้ยกเลิก — หยุด"); break
+                code = br["code"]
+                name = br["name"]
+                for (yy, mm) in year_month_pairs:
+                    if is_cancelled and is_cancelled():
+                        break
+                    days = _booking_fetch_calendar(page, token, code, yy, mm, log=log)
+                    for d in days:
+                        max_normal = int(d.get("maxNormal") or 0)
+                        left = int(d.get("count_left_Normal") or 0)
+                        date_str = d.get("date", "")
+                        is_open = bool(d.get("open", False))
+                        # fetch rounds เฉพาะวันที่เปิดและมีที่ว่าง (ประหยัด calls)
+                        rounds: list[dict] = []
+                        if is_open and left > 0 and date_str:
+                            rounds = _booking_fetch_rounds(page, token, code, date_str, log=log)
+                        results.append({
+                            "branch_code": code,
+                            "branch_name": name,
+                            "year_month": f"{yy}-{mm:02d}",
+                            "date": date_str,
+                            "open": is_open,
+                            "max_normal": max_normal,
+                            "count_left_normal": left,
+                            "used": max(max_normal - left, 0),
+                            "left_pct": round((left / max_normal * 100), 1) if max_normal else 0,
+                            "rounds": rounds,
+                        })
+                    done += 1
+                    if done % 5 == 0:
+                        log(f"      progress: {done}/{total_iterations}")
+                    if progress:
+                        try: progress(done, total_iterations)
+                        except Exception: pass
+        finally:
+            ctx.close(); browser.close()
+
+    # เขียน Excel report
+    _save_booking_availability_report(results, out_path, log=log)
+    return len(results), out_path
+
+
+def _save_booking_availability_report(
+    rows: list[dict[str, Any]], out_path: Path, log=print,
+) -> None:
+    """เซฟรายงาน 2 sheets:
+    - 'ตารางว่างจอง' (detail): สาขา × วัน × slot
+    - 'สรุปตามสาขา' (summary): สาขา × (จำนวน slot รวม, เหลือรวม, %)
+    """
+    wb = Workbook()
+
+    # Sheet 1: Detail
+    ws = wb.active
+    ws.title = "ตารางว่างจอง"
+    headers = [
+        "รหัสสาขา", "ชื่อสาขา", "ปี-เดือน", "วันที่", "เปิด",
+        "เต็มวัน (max)", "จองไปแล้ว", "ที่เหลือ", "% เหลือ",
+    ]
+    ws.append(headers)
+    head_fill = PatternFill("solid", fgColor="305496")
+    ok_fill = PatternFill("solid", fgColor="C6EFCE")     # เขียวอ่อน = เหลือเยอะ
+    low_fill = PatternFill("solid", fgColor="FFEB9C")    # เหลืองอ่อน = เหลือน้อย
+    full_fill = PatternFill("solid", fgColor="FFC7CE")   # แดงอ่อน = เต็ม
+    for cell in ws[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # sort: ตามวันที่ (ใกล้สุดก่อน)
+    rows_sorted = sorted(rows, key=lambda r: (r.get("date") or "", r.get("branch_code") or ""))
+    for r in rows_sorted:
+        ws.append([
+            r["branch_code"], r["branch_name"], r["year_month"], r["date"],
+            "เปิด" if r["open"] else "ปิด",
+            r["max_normal"], r["used"], r["count_left_normal"],
+            f"{r['left_pct']}%",
+        ])
+        # ไฮไลต์แถวตาม slot ที่เหลือ
+        row_idx = ws.max_row
+        left = r["count_left_normal"]
+        max_n = r["max_normal"]
+        if not r["open"]:
+            pass  # ปิดไม่ไฮไลต์
+        elif left == 0:
+            for c in range(1, len(headers) + 1):
+                ws.cell(row=row_idx, column=c).fill = full_fill
+        elif max_n > 0 and left <= max_n * 0.2:  # เหลือ ≤ 20%
+            for c in range(1, len(headers) + 1):
+                ws.cell(row=row_idx, column=c).fill = low_fill
+        elif max_n > 0 and left > 0:
+            for c in range(1, len(headers) + 1):
+                ws.cell(row=row_idx, column=c).fill = ok_fill
+
+    widths = [16, 55, 12, 14, 10, 14, 14, 12, 12]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    ws.freeze_panes = "A2"
+    if ws.max_row > 1:
+        ws.auto_filter.ref = ws.dimensions
+
+    # Sheet 2: สรุปตามสาขา
+    ws2 = wb.create_sheet("สรุปตามสาขา")
+    ws2.append([
+        "รหัสสาขา", "ชื่อสาขา",
+        "จำนวนวันที่เก็บได้", "วันที่เปิด", "วันที่เต็มแล้ว",
+        "slot รวม (max)", "จองไปรวม", "ที่เหลือรวม", "% เหลือ",
+    ])
+    for cell in ws2[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # aggregate per branch
+    by_branch: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        k = r["branch_code"]
+        if k not in by_branch:
+            by_branch[k] = {
+                "code": r["branch_code"], "name": r["branch_name"],
+                "days": 0, "days_open": 0, "days_full": 0,
+                "max": 0, "used": 0, "left": 0,
+            }
+        b = by_branch[k]
+        b["days"] += 1
+        if r["open"]:
+            b["days_open"] += 1
+        if r["open"] and r["count_left_normal"] == 0:
+            b["days_full"] += 1
+        b["max"] += r["max_normal"]
+        b["used"] += r["used"]
+        b["left"] += r["count_left_normal"]
+    for b in sorted(by_branch.values(), key=lambda x: x["code"]):
+        pct = round(b["left"] / b["max"] * 100, 1) if b["max"] else 0
+        ws2.append([
+            b["code"], b["name"],
+            b["days"], b["days_open"], b["days_full"],
+            b["max"], b["used"], b["left"], f"{pct}%",
+        ])
+    widths2 = [16, 55, 18, 14, 16, 16, 14, 14, 12]
+    for i, w in enumerate(widths2, start=1):
+        ws2.column_dimensions[get_column_letter(i)].width = w
+    ws2.freeze_panes = "A2"
+    if ws2.max_row > 1:
+        ws2.auto_filter.ref = ws2.dimensions
+
+    # Sheet 3: ช่วงเวลาที่ว่าง (rounds)
+    ws3 = wb.create_sheet("ช่วงเวลาที่ว่าง")
+    ws3.append([
+        "รหัสสาขา", "ชื่อสาขา", "วันที่", "ช่วงเวลา",
+        "รอบ ID", "ที่นั่งรวม (max)", "ที่เหลือ", "% เหลือ",
+    ])
+    for cell in ws3[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = head_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    round_rows: list[tuple] = []
+    for r in rows:
+        rounds = r.get("rounds") or []
+        for rd in rounds:
+            try:
+                cap = int(rd.get("capacity") or 0)
+                left = int(rd.get("left") or 0)
+            except Exception:
+                cap, left = 0, 0
+            pct = round(left / cap * 100, 1) if cap else 0
+            round_rows.append((
+                r["branch_code"], r["branch_name"], r["date"],
+                str(rd.get("round") or ""), rd.get("roundId"),
+                cap, left, pct,
+            ))
+    # sort: วันที่ → สาขา → เวลา
+    round_rows.sort(key=lambda t: (t[2], t[0], t[3]))
+    for tup in round_rows:
+        code, name, date, round_str, rid, cap, left, pct = tup
+        ws3.append([code, name, date, round_str, rid, cap, left, f"{pct}%"])
+        row_idx = ws3.max_row
+        if cap == 0:
+            pass
+        elif left == 0:
+            for c in range(1, 9):
+                ws3.cell(row=row_idx, column=c).fill = full_fill
+        elif left <= cap * 0.2:
+            for c in range(1, 9):
+                ws3.cell(row=row_idx, column=c).fill = low_fill
+        else:
+            for c in range(1, 9):
+                ws3.cell(row=row_idx, column=c).fill = ok_fill
+    widths3 = [16, 55, 14, 18, 12, 16, 12, 10]
+    for i, w in enumerate(widths3, start=1):
+        ws3.column_dimensions[get_column_letter(i)].width = w
+    ws3.freeze_panes = "A2"
+    if ws3.max_row > 1:
+        ws3.auto_filter.ref = ws3.dimensions
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        wb.save(out_path)
+        log(f"      · เซฟรายงาน → {out_path}")
+    except Exception as e:
+        log(f"      · ⚠ เซฟรายงานไม่สำเร็จ: {str(e)[:160]}")
+
+
 def run_appointment(
     cfg: dict,
     login_excel: Path,
@@ -15345,7 +16881,8 @@ def _save_bt30_ctn_report(rows: list[dict[str, Any]], out_path: Path, log=print)
     ws.title = "บต.30 CTN + Appointment"
     headers = [
         "ลำดับ", "Username", "เลขที่คำขอ", "Passport", "รูปแบบ (BT..)",
-        "ป้ายในระบบ", "สถานะ", "ไฟล์ CTN", "ไฟล์ APPOINTMENT", "หมายเหตุ",
+        "ป้ายในระบบ", "สถานะ", "ไฟล์ CTN", "ไฟล์ บต.25",
+        "ไฟล์ APPOINTMENT", "ไฟล์ Receipt", "หมายเหตุ",
     ]
     ws.append(headers)
     head_fill = PatternFill("solid", fgColor="305496")
@@ -15356,7 +16893,7 @@ def _save_bt30_ctn_report(rows: list[dict[str, Any]], out_path: Path, log=print)
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
     text_cols = {"เลขที่คำขอ", "Passport"}
-    link_cols = {"ไฟล์ CTN", "ไฟล์ APPOINTMENT"}
+    link_cols = {"ไฟล์ CTN", "ไฟล์ บต.25", "ไฟล์ APPOINTMENT", "ไฟล์ Receipt"}
     save_subdir = "bt30_ctn"
     for i, r in enumerate(rows, start=1):
         ws.append([
@@ -15368,7 +16905,9 @@ def _save_bt30_ctn_report(rows: list[dict[str, Any]], out_path: Path, log=print)
             r.get("label", ""),
             r.get("status", ""),
             r.get("pdf_file", ""),
+            r.get("bt25_file", ""),
             r.get("appt_file", ""),
+            r.get("receipt_file", ""),
             r.get("error", ""),
         ])
         row_idx = ws.max_row
@@ -15387,7 +16926,7 @@ def _save_bt30_ctn_report(rows: list[dict[str, Any]], out_path: Path, log=print)
                 cell.value = fname
                 cell.font = link_font
 
-    widths = [6, 28, 20, 18, 12, 40, 12, 45, 45, 40]
+    widths = [6, 28, 20, 18, 12, 40, 12, 45, 45, 45, 45, 40]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A2"
@@ -15404,10 +16943,12 @@ def _save_bt30_ctn_report(rows: list[dict[str, Any]], out_path: Path, log=print)
 
 def _bt30_ctn_process_record(
     page: Page, rec: dict, save_dir: Path, make_subfolder: bool = False,
-    do_ctn: bool = True, do_appointment: bool = False, log=print,
+    do_ctn: bool = True, do_appointment: bool = False,
+    do_bt25: bool = False, do_receipt: bool = False, log=print,
 ) -> dict[str, Any]:
-    """1 คำขอ: เปิด detail → ดาวน์โหลด บต.XX (ใบตอบรับ) และ/หรือ ใบนัดหมาย
-    → บันทึกเป็น {PASSPORT}_BT{XX}_CTN.pdf และ/หรือ {PASSPORT}_APPOINTMENT.pdf
+    """1 คำขอ: เปิด detail → ดาวน์โหลดเอกสารที่เลือก (บต.30 / บต.25 / ใบนัดหมาย / ใบเสร็จค่าธรรมเนียม)
+    → บันทึกเป็น {PASSPORT}_BT{XX}_CTN.pdf / {PASSPORT}_BT25.pdf /
+      {PASSPORT}_APPOINTMENT.pdf / {PASSPORT}_RECEIPT.pdf
     คืน dict สำหรับใส่ report
     """
     req_no = rec.get("req_no", "")
@@ -15419,7 +16960,9 @@ def _bt30_ctn_process_record(
         "form_code": "",
         "label": "",
         "pdf_file": "",
+        "bt25_file": "",
         "appt_file": "",
+        "receipt_file": "",
         "status": "FAIL",
         "error": "",
     }
@@ -15432,9 +16975,13 @@ def _bt30_ctn_process_record(
     passport = ""
     form_num = ""
     ctn_ok = False
+    bt25_ok = False
     appt_ok = False
+    receipt_ok = False
     ctn_err = ""
+    bt25_err = ""
     appt_err = ""
+    receipt_err = ""
 
     # --- 2A) ดาวน์โหลด ใบตอบรับ (บต.XX) ---
     if do_ctn:
@@ -15475,6 +17022,36 @@ def _bt30_ctn_process_record(
             except Exception as e:
                 ctn_err = f"บันทึก PDF ล้มเหลว: {str(e)[:160]}"
 
+    # --- 2A2) ดาวน์โหลด แบบ บต.25 (เอกสารตอบรับจากระบบ) ---
+    if do_bt25:
+        b25, lbl25, e25 = _bt30_ctn_download(
+            page, log=log, pat=r"บต\.?\s*25", doc_name="บต.25",
+        )
+        if not out["label"]:
+            out["label"] = lbl25
+        if e25:
+            bt25_err = e25
+        else:
+            if not passport:
+                passport = _extract_passport_from_pdf(_bt30_ctn_read_pdf_text(b25))
+                if passport:
+                    out["passport"] = passport
+            prefix = passport if passport else (req_no or "unknown")
+            target_dir = save_dir / prefix if make_subfolder else save_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_path = _uniq_pdf_path(target_dir / f"{prefix}_BT25.pdf")
+            try:
+                target_path.write_bytes(b25)
+                try:
+                    rel = target_path.relative_to(save_dir).as_posix()
+                except Exception:
+                    rel = target_path.name
+                out["bt25_file"] = rel
+                bt25_ok = True
+                log(f"      · BT25: {rel}  (passport={passport or '-'})")
+            except Exception as e:
+                bt25_err = f"บันทึก บต.25 PDF ล้มเหลว: {str(e)[:160]}"
+
     # --- 2B) ดาวน์โหลด ใบนัดหมาย (APPOINTMENT) ---
     if do_appointment:
         appt_bytes, appt_pp, appt_name, aerr = _bt30_ctn_download_appointment(page, log=log)
@@ -15510,10 +17087,64 @@ def _bt30_ctn_process_record(
             except Exception as e:
                 appt_err = f"บันทึก APPOINTMENT PDF ล้มเหลว: {str(e)[:160]}"
 
+    # --- 2C) ดาวน์โหลด Receipt ค่าธรรมเนียมใบอนุญาตทำงาน (แท็บการชำระเงิน) ---
+    #     ทำเป็นขั้นสุดท้าย เพราะ case2 จะ navigate ออกไปหน้า MultiplePayments
+    if do_receipt:
+        pay_case = ""
+        try:
+            _appt_open_payment_tab(page)
+            pay_case = _appt_detect_payment_case(page)
+        except Exception as e:
+            receipt_err = f"เปิดแท็บการชำระเงินไม่สำเร็จ: {str(e)[:120]}"
+        if not receipt_err:
+            if pay_case == "empty":
+                receipt_err = "ไม่มี Record การชำระเงิน (ยังไม่ชำระ / ไม่มีใบเสร็จ)"
+            else:
+                rbody = b""; ramount = ""; rkind = ""; rerr = ""
+                if pay_case == "case1":
+                    rbody, ramount, rkind, rerr = _bt30_ctn_grab_receipt_case1(page, log=log)
+                else:
+                    rbody, _rfname_tmp, rerr = _appt_case2_download(page, req_no, save_dir, log=log)
+                    if rbody:
+                        ramount = _extract_pdf_amount(rbody)
+                        rkind = _bt30_ctn_receipt_fee_kind(rbody)
+                        # ลบไฟล์ชั่วคราวของ case2 (จะบันทึกใหม่ด้วยชื่อที่มียอดเงิน)
+                        try:
+                            if _rfname_tmp:
+                                (save_dir / _rfname_tmp).unlink()
+                        except Exception:
+                            pass
+                if rerr or not rbody:
+                    receipt_err = rerr or "ดาวน์โหลดใบเสร็จไม่สำเร็จ"
+                else:
+                    if not passport:
+                        passport = _extract_passport_from_pdf(_bt30_ctn_read_pdf_text(rbody))
+                        if passport and not out["passport"]:
+                            out["passport"] = passport
+                    prefix = passport if passport else (req_no or "unknown")
+                    target_dir = save_dir / prefix if make_subfolder else save_dir
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    amt_tag = ramount or ""
+                    final_path = _uniq_pdf_path(target_dir / f"{prefix}_RECEIPT{amt_tag}.pdf")
+                    try:
+                        final_path.write_bytes(rbody)
+                        try:
+                            rel = final_path.relative_to(save_dir).as_posix()
+                        except Exception:
+                            rel = final_path.name
+                        out["receipt_file"] = rel
+                        receipt_ok = True
+                        _warn = "" if rkind == "workpermit" else f"  ⚠(ประเภท={rkind or 'unknown'})"
+                        log(f"      · RECEIPT: {rel}  (case={pay_case}, ยอด={amt_tag or '-'}, passport={prefix}){_warn}")
+                    except Exception as e:
+                        receipt_err = f"บันทึกใบเสร็จล้มเหลว: {str(e)[:160]}"
+
     # --- 3) สรุปสถานะ ---
     wanted = []
     if do_ctn: wanted.append(("ctn", ctn_ok, ctn_err))
+    if do_bt25: wanted.append(("bt25", bt25_ok, bt25_err))
     if do_appointment: wanted.append(("appt", appt_ok, appt_err))
+    if do_receipt: wanted.append(("receipt", receipt_ok, receipt_err))
     n_ok = sum(1 for _, ok, _ in wanted if ok)
     if n_ok == len(wanted) and wanted:
         out["status"] = "SUCCESS"
@@ -15529,7 +17160,9 @@ def _bt30_ctn_process_record(
             out["status"] = "FAIL"
     err_parts = []
     if ctn_err:  err_parts.append(f"CTN: {ctn_err}")
+    if bt25_err: err_parts.append(f"BT25: {bt25_err}")
     if appt_err: err_parts.append(f"APPT: {appt_err}")
+    if receipt_err: err_parts.append(f"RECEIPT: {receipt_err}")
     if err_parts:
         out["error"] = " | ".join(err_parts)
     if do_ctn and ctn_ok and not passport:
@@ -15549,6 +17182,8 @@ def run_bt30_ctn(
     make_subfolder: bool = False,
     do_ctn: bool = True,
     do_appointment: bool = False,
+    do_bt25: bool = False,
+    do_receipt: bool = False,
     log=print,
     progress=None,
     is_cancelled=None,
@@ -15557,8 +17192,10 @@ def run_bt30_ctn(
 
     Args:
         do_ctn: True = ดาวน์โหลด 'ใบตอบรับ บต.30' จาก tab เอกสารตอบรับ (สถานะ WP2)
+        do_bt25: True = ดาวน์โหลด 'แบบ บต.25' จาก tab เอกสารตอบรับ
         do_appointment: True = ดาวน์โหลด 'ใบนัดหมาย' จาก tab การนัดหมาย (สถานะ AP/APSS)
-        (ถ้าเลือกทั้งคู่ → รันในลูปเดียวกัน แต่ผู้ใช้ควรเลือก status filter ให้ครอบคลุมทั้ง WP+AP+SS)
+        do_receipt: True = ดาวน์โหลด 'ใบเสร็จค่าธรรมเนียมใบอนุญาตทำงาน' จาก tab การชำระเงิน
+        (เลือกได้หลายอย่างพร้อมกัน → รันในลูปเดียว แต่ควรเลือก status filter ให้ครอบคลุม)
 
     Flow:
         UsernameLogin.xlsx (หรือบัญชีเดียวจาก cfg) → login ทีละบัญชี →
@@ -15580,9 +17217,9 @@ def run_bt30_ctn(
 
     Returns: (count_success, out_path)
     """
-    if not (do_ctn or do_appointment):
+    if not (do_ctn or do_appointment or do_bt25 or do_receipt):
         raise ValueError(
-            "ต้องเลือกอย่างน้อย 1 เอกสาร (ใบตอบรับ หรือ ใบนัดหมาย) ก่อนรันโหมดนี้"
+            "ต้องเลือกอย่างน้อย 1 เอกสาร (บต.30 / บต.25 / ใบนัดหมาย / ใบเสร็จ) ก่อนรันโหมดนี้"
         )
     out_path = _timestamped_path(out_path)
 
@@ -15681,6 +17318,7 @@ def run_bt30_ctn(
                         "username": acct["username"], "password": acct["password"],
                         "user_type": acct["type"],
                         "method": acct.get("method") or cfg.get("method", "E-Workpermit"),
+                        "login_timeout_ms": cfg.get("login_timeout_ms", 30_000),
                     })
                     goto_tracking(page)
                 except Exception as e:
@@ -15774,6 +17412,7 @@ def run_bt30_ctn(
                         r = _bt30_ctn_process_record(
                             page, rec_in, save_dir, make_subfolder=make_subfolder,
                             do_ctn=do_ctn, do_appointment=do_appointment,
+                            do_bt25=do_bt25, do_receipt=do_receipt,
                             log=log,
                         )
                         r["username"] = username
@@ -15785,7 +17424,7 @@ def run_bt30_ctn(
                             "req_no": req_no, "username": username,
                             "status": "ERROR", "error": str(e).splitlines()[0][:200],
                             "passport": "", "form_code": "", "label": "", "pdf_file": "",
-                            "appt_file": "",
+                            "bt25_file": "", "appt_file": "", "receipt_file": "",
                         })
                         log(f"      ✗ ผิดพลาด: {str(e).splitlines()[0][:160]}")
                     if progress:
