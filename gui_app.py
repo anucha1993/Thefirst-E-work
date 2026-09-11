@@ -138,6 +138,7 @@ class App(tk.Tk):
         # โหมด results: เลือกเอกสารผลอนุญาต
         self.doc_result_notice = tk.BooleanVar(value=True)
         self.doc_request_receipt = tk.BooleanVar(value=True)
+        self.doc_result_bt50 = tk.BooleanVar(value=False)
 
         self._build_ui()
         self.after(120, self._drain_log)
@@ -811,6 +812,9 @@ class App(tk.Tk):
         ).pack(side="left", padx=(0, 14))
         ttk.Checkbutton(
             rdoc_box, text="ใบรับคำขอใบอนุญาตทำงาน", variable=self.doc_request_receipt,
+        ).pack(side="left", padx=(0, 14))
+        ttk.Checkbutton(
+            rdoc_box, text="แบบ บต.50 อ.6", variable=self.doc_result_bt50,
         ).pack(side="left")
 
         ttk.Label(
@@ -2165,6 +2169,7 @@ class App(tk.Tk):
                 key for key, var in (
                     ("result_notice", self.doc_result_notice),
                     ("request_receipt", self.doc_request_receipt),
+                    ("bt50", self.doc_result_bt50),
                 ) if var.get()
             ]
             if not result_doc_keys:

@@ -5666,6 +5666,10 @@ RESULT_DOC_TYPES: dict[str, dict[str, str]] = {
         "label": "ใบรับคำขอใบอนุญาตทำงาน",
         "label_pattern": r"ใบรับคำขอใบอนุญาตทำงาน",
     },
+    "bt50": {
+        "label": "แบบ บต.50 อ.6",
+        "label_pattern": r"บต\.?\s*50",
+    },
 }
 RESULT_DOC_TYPES_DEFAULT: list[str] = ["result_notice", "request_receipt"]
 
