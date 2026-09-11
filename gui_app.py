@@ -48,6 +48,7 @@ REPORTS_DIR = ROOT / "reports"
 # เรียงตามลำดับเดียวกับ select บนเว็บ
 REQUEST_TYPES: list[tuple[str, str]] = [
     ("", "ทั้งหมด (ไม่กรอง)"),
+    ("MT_63_2_19_RENEWAL", "การต่ออายุใบอนุญาตทำงานให้กับคนต่างด้าวสัญชาติลาว เมียนมา และเวียดนาม ตามมติคณะรัฐมนตรีเมื่อวันที่ 14 กรกฎาคม 2569"),
     ("MT_63_RENEWAL", "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าว"),
     ("MT_63_1_RENEWAL", "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าว (มาตรา 63 วรรค 1)"),
     ("MT_59_RENEWAL", "การยื่นคำขอต่ออายุใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว (Non-Immigrant) เพื่อทำงานที่ใช้ความรู้ความสามารถทักษะฝีมือ"),
@@ -326,6 +327,31 @@ class App(tk.Tk):
         opt.pack(fill="x", **pad)
         self._etracking_frames: list[ttk.LabelFrame] = [opt]
 
+        # ---- รูปแบบรายงาน (Template) — เฉพาะโหมด e-Tracking ----
+        self.etk_template_frame = ttk.LabelFrame(
+            self._body, text="รูปแบบรายงาน (Template)", padding=10
+        )
+        self.etk_template_frame.pack(fill="x", **pad)
+        self.etk_template = tk.StringVar(value="main")
+        ttk.Radiobutton(
+            self.etk_template_frame,
+            text="Template หลัก — รายละเอียดครบทุกคอลัมน์ (ค่าเริ่มต้น)",
+            variable=self.etk_template, value="main",
+        ).grid(row=0, column=0, sticky="w")
+        ttk.Radiobutton(
+            self.etk_template_frame,
+            text=("Template นัดหมาย — ลำดับ | Username | เลขคำขอ | ชื่อบริษัท | "
+                  "ชื่อแรงงาน | วันที่นัดหมาย | เวลานัด | สถานที่"),
+            variable=self.etk_template, value="appointment",
+        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Label(
+            self.etk_template_frame,
+            text=("Template นัดหมาย จะเข้าแท็บ 'การนัดหมาย' ของแต่ละรายการ"
+                  "เพื่อดึงวันที่/เวลา/สถานที่ (ทำงานช้าลงเล็กน้อย) — เลือกกรองสถานะ "
+                  "'รอนัดหมาย/นัดหมายแล้ว' ในตัวกรองด้านล่างเอง"),
+            foreground="gray", wraplength=780, justify="left",
+        ).grid(row=2, column=0, sticky="w", pady=(4, 0))
+
         # รายการคำขอ (เลือกได้หลายรายการ)
         # default = MT_59_MOU_RENEWAL (รายการที่ใช้บ่อยที่สุด)
         _default_code = "MT_59_MOU_RENEWAL"
@@ -449,11 +475,13 @@ class App(tk.Tk):
 
         ttk.Label(opt, text="Login ใหม่ทุก (รายการ):").grid(row=8, column=0, sticky="w", pady=4)
         self.relogin_every = tk.StringVar(value="500")
+        # state="normal" = พิมพ์ตัวเลขเองได้ (ไม่จำกัดแค่ค่าใน dropdown)
         ttk.Combobox(
-            opt, textvariable=self.relogin_every, width=10, state="readonly",
-            values=["ปิด (ไม่ login ใหม่)", "500", "1000", "2000"],
+            opt, textvariable=self.relogin_every, width=10, state="normal",
+            values=["ปิด (ไม่ login ใหม่)", "100", "200", "300", "500", "1000", "2000"],
         ).grid(row=8, column=1, sticky="w", padx=8)
-        ttk.Label(opt, text="กัน session timeout ในงานยาว", foreground="gray").grid(
+        ttk.Label(opt, text="พิมพ์จำนวนเองได้ (0/ว่าง = ปิด) — กัน session timeout ในงานยาว",
+                  foreground="gray").grid(
             row=8, column=2, sticky="w",
         )
 
@@ -1603,6 +1631,7 @@ class App(tk.Tk):
         self.billpay_frame.pack_forget()
         self.payrcpt_frame.pack_forget()
         self.appt_frame.pack_forget()
+        self.etk_template_frame.pack_forget()
         self.bt30ctn_frame.pack_forget()
         self.namelist_frame.pack_forget()
         self.booking_frame.pack_forget()
@@ -1684,7 +1713,10 @@ class App(tk.Tk):
             if cur_basename in defaults:
                 self.out_path.set(str(REPORTS_DIR / "WA_permit_report.xlsx"))
         else:
-            for f in self._etracking_frames:
+            # e-Tracking: ตัวเลือก → รูปแบบรายงาน (Template) → ตัวกรองสถานะ
+            self._etracking_frames[0].pack(fill="x", padx=10, pady=6)
+            self.etk_template_frame.pack(fill="x", padx=10, pady=6)
+            for f in self._etracking_frames[1:]:
                 f.pack(fill="x", padx=10, pady=6)
             if cur_basename in defaults:
                 self.out_path.set(str(REPORTS_DIR / "WA_report.xlsx"))
@@ -2010,12 +2042,13 @@ class App(tk.Tk):
 
     # ---------- actions ----------
     def _relogin_every_value(self) -> int:
-        """แปลงตัวเลือก 'Login ใหม่ทุก' จาก dropdown → จำนวนรายการ (0 = ปิด)"""
-        raw = (self.relogin_every.get() or "").strip()
+        """แปลงตัวเลือก 'Login ใหม่ทุก' (dropdown หรือพิมพ์เอง) → จำนวนรายการ (0 = ปิด)"""
+        raw = (self.relogin_every.get() or "").strip().replace(",", "")
         try:
-            return int(raw)
+            n = int(raw)
         except ValueError:
             return 0  # "ปิด (ไม่ login ใหม่)" หรือค่าที่แปลงไม่ได้
+        return n if n > 0 else 0  # ติดลบ/ศูนย์ = ปิด
 
     def _on_start(self) -> None:
         mode = self.source_mode.get()
@@ -2050,6 +2083,9 @@ class App(tk.Tk):
             "status_whitelist": [s for s, v in self.whitelist_vars.items() if v.get()],
             "capture_extra_notes": self.capture_extra_notes.get(),
             "relogin_every": self._relogin_every_value(),
+            "report_template": (
+                self.etk_template.get() if mode == "etracking" else "main"
+            ),
         }
         out = Path(self.out_path.get())
         limit = int(self.limit.get() or 0)

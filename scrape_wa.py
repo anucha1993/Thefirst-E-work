@@ -827,7 +827,7 @@ def collect_wa_rows(page: Page) -> list[dict]:
     return rows
 
 
-def scrape_detail(page: Page, row: dict, cfg: dict | None = None, log=print, capture_extra_notes: bool = True) -> dict:
+def scrape_detail(page: Page, row: dict, cfg: dict | None = None, log=print, capture_extra_notes: bool = True, capture_appointment: bool = False) -> dict:
     """เข้าหน้า detail แล้วดึง หมายเหตุ + ข้อมูลคนต่างด้าว + คำขออนุญาต + บันทึกเพิ่มเติม
 
     แต่ละ step มี try/except แยกกัน — ถ้าหน้านี้ไม่มี tab/ปุ่ม/section ที่คาดหวัง
@@ -1017,6 +1017,31 @@ def scrape_detail(page: Page, row: dict, cfg: dict | None = None, log=print, cap
         result["structured_fields"] = extract_label_value_pairs(page) or {}
     except Exception as e:
         errors.append(f"structured:{e}")
+
+    # 2.6) การนัดหมาย (เฉพาะ Template นัดหมาย) — เข้าแท็บ #tab_default_5 อ่าน iframe
+    #      ดึง วันที่/เวลา/สถานที่ + ชื่อแรงงาน + ชื่อบริษัท (ทำก่อน extra_notes ที่อาจ navigate ออก)
+    if capture_appointment:
+        try:
+            appt = _extract_appointment_details(page, log=log)
+            result["appt_place"] = appt.get("place", "")
+            result["appt_date"] = appt.get("date", "")
+            result["appt_time"] = appt.get("time", "")
+            result["appt_worker_name"] = appt.get("worker_name", "")
+            result["appt_passport"] = appt.get("passport", "")
+            result["appt_error"] = appt.get("error", "")
+            # ชื่อบริษัท: reuse _pick_establishment/_pick_employer จาก structured_fields
+            pairs = _pairs_from_structured(result.get("structured_fields") or {})
+            estab_company, _prov, _sec = _pick_establishment(pairs)
+            emp_company, _emp_prov = _pick_employer(pairs)
+            result["appt_company"] = emp_company or estab_company
+            # ชื่อแรงงาน: จาก iframe ก่อน, fallback structured_fields
+            if not result["appt_worker_name"]:
+                result["appt_worker_name"] = _worker_name_from_structured(pairs)
+            # account username (สำหรับคอลัมน์ Username — ใช้ได้ทั้งโหมดเดี่ยว/หลายบัญชี)
+            if cfg and not result.get("account_username"):
+                result["account_username"] = cfg.get("username", "")
+        except Exception as e:
+            errors.append(f"appointment:{str(e).splitlines()[0][:120]}")
 
     # 3) บันทึกเพิ่มเติม — ทำหลังสุดเพราะอาจ navigate ไปหน้า edit
     if capture_extra_notes:
@@ -1257,6 +1282,63 @@ def save_excel(
     wb.save(out_path)
 
 
+def save_excel_appointment(
+    rows: list[dict], out_path: Path, fast: bool = False, include_account: bool = False,
+) -> None:
+    """บันทึกรายงาน 'Template นัดหมาย' — 1 แถว/คำขอ
+    คอลัมน์: ลำดับ | Username | เลขคำขอ | ชื่อบริษัท | ชื่อแรงงาน | วันที่นัดหมาย | เวลานัด | สถานที่
+    (ตารางธรรมดา ไม่ใส่สีแถว — ผู้ใช้กรองสถานะ 'นัดหมายแล้ว' เองใน UI)
+
+    include_account: มีไว้ให้ signature ตรงกับ save_excel (สลับฟังก์ชันได้) — ไม่มีผล
+    เพราะ Template นี้มีคอลัมน์ Username เสมออยู่แล้ว
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "นัดหมาย"
+
+    cols = [
+        "ลำดับ", "Username", "เลขคำขอ", "ชื่อบริษัท", "ชื่อแรงงาน",
+        "วันที่นัดหมาย", "เวลานัด", "สถานที่",
+    ]
+    ws.append(cols)
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="C2185B")
+    for c in range(1, len(cols) + 1):
+        cell = ws.cell(row=1, column=c)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+    for idx, r in enumerate(rows, start=1):
+        ws.append([
+            idx,
+            r.get("account_username", ""),
+            r.get("reqNo", ""),
+            r.get("appt_company", ""),
+            r.get("appt_worker_name", ""),
+            r.get("appt_date", ""),
+            r.get("appt_time", ""),
+            r.get("appt_place", ""),
+        ])
+
+    widths = {
+        "ลำดับ": 8, "Username": 26, "เลขคำขอ": 18, "ชื่อบริษัท": 40,
+        "ชื่อแรงงาน": 28, "วันที่นัดหมาย": 20, "เวลานัด": 14, "สถานที่": 55,
+    }
+    for c_idx, name in enumerate(cols, start=1):
+        ws.column_dimensions[get_column_letter(c_idx)].width = widths.get(name, 20)
+    if not fast:
+        for r_idx in range(2, ws.max_row + 1):
+            for c_idx in range(1, ws.max_column + 1):
+                ws.cell(row=r_idx, column=c_idx).alignment = Alignment(
+                    vertical="top", wrap_text=True
+                )
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    wb.save(out_path)
+
+
 # ─────────────────────────────────────────────────────────────────
 # Checkpoint / Resume — กัน session timeout/โปรแกรมพังกลางทาง (8000+ รายการ)
 #   เก็บแต่ละรายการที่ดึงเสร็จลง .progress.jsonl ทันที (append ทีละบรรทัด)
@@ -1386,6 +1468,13 @@ def run_scrape(
     out_path = _timestamped_path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     log(f"      ไฟล์รายงาน: {out_path.name}")
+
+    # Template รายงาน: 'main' (ปกติ) หรือ 'appointment' (Template นัดหมาย)
+    report_template = (cfg.get("report_template") or "main").strip().lower()
+    capture_appointment = (report_template == "appointment")
+    _wa_save = save_excel_appointment if capture_appointment else save_excel
+    if capture_appointment:
+        log("      รูปแบบรายงาน: Template นัดหมาย (จะเข้าแท็บการนัดหมายเพื่อดึงวันที่/เวลา/สถานที่)")
 
     def _cancelled() -> bool:
         return bool(is_cancelled and is_cancelled())
@@ -1519,7 +1608,7 @@ def run_scrape(
                 if not write_output or not chunk_rows:
                     return None
                 p = _chunk_path(out_path, chunk_index) if CHUNK_SIZE else out_path
-                save_excel(chunk_rows, p, fast=not final)
+                _wa_save(chunk_rows, p, fast=not final)
                 if p not in chunk_files:
                     chunk_files.append(p)
                 return p
@@ -1548,6 +1637,7 @@ def run_scrape(
                         detail = scrape_detail(
                             page, row, cfg=cfg, log=log,
                             capture_extra_notes=capture_extra,
+                            capture_appointment=capture_appointment,
                         )
                         # ถ้า session relogin ไม่ผ่าน → ลองฟื้น tracking แล้วเรียกใหม่ 1 ครั้ง
                         if "session:relogin_failed" in (detail.get("scrape_errors") or ""):
@@ -1556,6 +1646,7 @@ def run_scrape(
                                 detail = scrape_detail(
                                     page, row, cfg=cfg, log=log,
                                     capture_extra_notes=capture_extra,
+                                    capture_appointment=capture_appointment,
                                 )
                         row.update(detail)
                         if detail.get("scrape_errors"):
@@ -1672,6 +1763,8 @@ def run_scrape_multi(
     stem = out_path.stem
     suffix = out_path.suffix or ".xlsx"
     n = len(accounts)
+    report_template = (cfg.get("report_template") or "main").strip().lower()
+    _wa_save = save_excel_appointment if report_template == "appointment" else save_excel
 
     if combine:
         # ── รวมทุกบัญชีเป็นไฟล์เดียว ──
@@ -1703,13 +1796,13 @@ def run_scrape_multi(
                 log(f"      + บัญชีนี้ได้ {len(all_rows) - before} แถว (รวมสะสม {len(all_rows)} แถว)")
                 # เซฟไฟล์รวมหลังจบแต่ละบัญชี (กันข้อมูลหายถ้าบัญชีถัดไปพัง)
                 try:
-                    save_excel(all_rows, combined_path, include_account=True)
+                    _wa_save(all_rows, combined_path, include_account=True)
                 except Exception as e:
                     log(f"      (เซฟไฟล์รวมระหว่างทางไม่สำเร็จ: {e})")
             except Exception as e:
                 log(f"   ✗ บัญชี {acct['username']} ล้มเหลว: {e} — ข้ามไปบัญชีถัดไป")
                 continue
-        save_excel(all_rows, combined_path, include_account=True)
+        _wa_save(all_rows, combined_path, include_account=True)
         log(f"\n[Multi] เสร็จสิ้น — รวม {len(all_rows)} แถว จาก {ok_accounts}/{n} บัญชี → {combined_path}")
         return len(all_rows), combined_path
 
@@ -2007,6 +2100,45 @@ def _pick_employer(pairs: list[dict]) -> tuple[str, str]:
             if prov:
                 province = prov
     return company.strip(), province.strip()
+
+
+def _pairs_from_structured(sf: dict) -> list[dict]:
+    """แปลง structured_fields (dict คีย์ 'section | label') กลับเป็น list ของ
+    {section, label, value} เพื่อใช้กับ _pick_establishment / _pick_employer ซ้ำได้
+    """
+    pairs: list[dict] = []
+    for key, val in (sf or {}).items():
+        if " | " in key:
+            sec, lab = key.split(" | ", 1)
+        else:
+            sec, lab = "", key
+        pairs.append({"section": sec, "label": lab, "value": val})
+    return pairs
+
+
+def _worker_name_from_structured(pairs: list[dict]) -> str:
+    """ดึงชื่อแรงงาน (คนต่างด้าว) จาก structured_fields — ใช้เป็น fallback เมื่อ
+    iframe การนัดหมายไม่มีชื่อ. ลอง section 'คนต่างด้าว/แรงงาน' + label ที่มีคำว่า 'ชื่อ'
+    (ข้ามชื่อสถานประกอบการ/นายจ้าง/บริษัท)
+    """
+    def scan(latin_only: bool) -> str:
+        for p in pairs:
+            sec = p.get("section", "") or ""
+            lab = p.get("label", "") or ""
+            val = (p.get("value", "") or "").strip()
+            if not val:
+                continue
+            if "คนต่างด้าว" not in sec and "แรงงาน" not in sec:
+                continue
+            if "ชื่อ" not in lab:
+                continue
+            if any(k in lab for k in ("สถานประกอบการ", "นายจ้าง", "บริษัท")):
+                continue
+            if latin_only and not re.search(r"[A-Za-z]", val):
+                continue
+            return val
+        return ""
+    return scan(True) or scan(False)
 
 
 def _pick_workplace_province(pairs: list[dict]) -> str:
@@ -5235,6 +5367,16 @@ def run_receipts(
         req_people.setdefault(_rec.get("req_no", ""), []).append(
             {"passport": _rec.get("passport", ""), "name_eng": _rec.get("name_eng", "")}
         )
+    # หา PASSPORT ที่ถูกใช้ซ้ำกับหลายเลขคำขอ (เช่นคอลัมน์ PASSPORT เป็นชื่อ LOT/ก้อน ไม่ใช่พาสปอร์ตจริง)
+    # ชื่อไฟล์ปกติเป็น {PASSPORT}_BT44.pdf → ถ้า passport ซ้ำ ไฟล์จะชนกันจนถูกมองว่า SKIP_EXISTS
+    _pp_to_reqs: dict[str, set[str]] = {}
+    for _rec in records:
+        _pp = _receipt_safe_name(_rec.get("passport", "") or _rec.get("seq", "") or "")
+        _pp_to_reqs.setdefault(_pp, set()).add(_rec.get("req_no", ""))
+    ambiguous_passports = {pp for pp, rq in _pp_to_reqs.items() if len(rq) > 1}
+    if ambiguous_passports:
+        log(f"      ⚠ คอลัมน์ PASSPORT ซ้ำข้ามหลายเลขคำขอ {len(ambiguous_passports)} ค่า "
+            f"→ จะเติมเลขคำขอในชื่อไฟล์กันชนกัน (เช่น {{PASSPORT}}_{{เลขคำขอ}}_BT44.pdf)")
     if progress:
         try: progress(0, len(selected))
         except Exception: pass
@@ -5296,6 +5438,7 @@ def run_receipts(
                         page, rec, login_cfg, receipts_dir, doc_types, log=log,
                         per_person_done=per_person_done, req_people=req_people,
                         name_suffix=name_suffix, make_subfolder=make_subfolder,
+                        ambiguous_passports=ambiguous_passports,
                     )
                     results.append(res)
                     done_count += 1
@@ -5327,6 +5470,7 @@ def _process_one_receipt(
     req_people: dict[str, list[dict[str, Any]]] | None = None,
     name_suffix: str = "",
     make_subfolder: bool = False,
+    ambiguous_passports: set[str] | None = None,
 ) -> dict[str, Any]:
     """ค้นหา 1 เลขคำขอ → เปิด detail → ดาวน์โหลดเอกสารตามที่เลือก
     มี session recovery: ถ้าหลุด login ระหว่างทาง → login ใหม่ด้วยบัญชีเดิม แล้วลองอีกครั้ง
@@ -5342,6 +5486,9 @@ def _process_one_receipt(
     name_excel = rec.get("name_eng", "")
     passport = rec.get("passport", "") or seq  # fallback = ลำดับ
     passport_safe = _receipt_safe_name(passport)
+    # ถ้า passport นี้ถูกใช้ซ้ำกับหลายเลขคำขอ → เติมเลขคำขอในชื่อไฟล์ กันไฟล์ชนกัน (SKIP_EXISTS ผิด ๆ)
+    req_safe = _receipt_safe_name(req_no)
+    name_key = f"{passport_safe}_{req_safe}" if (req_safe and passport_safe in (ambiguous_passports or set())) else passport_safe
     # โฟลเดอร์ปลายทาง: ถ้าติ๊กสร้างโฟลเดอร์ → receipts/{PASSPORT}/ ของแต่ละคน
     # ไม่สร้างโฟลเดอร์ตรงนี้ — ปล่อยให้ path ของไฟล์สร้างแบบ lazy ตอนเขียนไฟล์จริงเท่านั้น
     # (ถ้า record ไหนไม่พบ/ดาวน์โหลดไม่สำเร็จ จะไม่มีโฟลเดอร์ว่างค้างไว้)
@@ -5371,7 +5518,7 @@ def _process_one_receipt(
                 todo.append(dt)
             continue
         if cfg_dt.get("multi"):
-            existing = sorted(target_dir.glob(f"{passport_safe}_RECEIPT*.pdf"))
+            existing = sorted(target_dir.glob(f"{name_key}_RECEIPT*.pdf"))
             if existing:
                 docs_state[dt]["status"] = "SKIP_EXISTS"
                 docs_state[dt]["pdf_file"] = ", ".join(p.name for p in existing)
@@ -5379,7 +5526,7 @@ def _process_one_receipt(
             else:
                 todo.append(dt)
             continue
-        out_pdf = target_dir / f"{passport_safe}_{cfg_dt['suffix']}{name_suffix}.pdf"
+        out_pdf = target_dir / f"{name_key}_{cfg_dt['suffix']}{name_suffix}.pdf"
         if out_pdf.exists():
             docs_state[dt]["status"] = "SKIP_EXISTS"
             docs_state[dt]["pdf_file"] = out_pdf.name
@@ -5405,7 +5552,7 @@ def _process_one_receipt(
             if cfg_dt.get("per_person"):
                 people = (req_people or {}).get(req_no, [])
                 pp_results = _download_bt55_per_person(
-                    page, target_dir, passport_safe, req_no, people, log=log,
+                    page, target_dir, name_key, req_no, people, log=log,
                     name_suffix=name_suffix,
                 )
                 ok = [r for r in pp_results if r["status"] == "SUCCESS"]
@@ -5425,7 +5572,7 @@ def _process_one_receipt(
                         break
                 continue
             if cfg_dt.get("multi"):
-                rec_results = _download_all_receipts(page, target_dir, passport_safe, log=log, name_suffix=name_suffix)
+                rec_results = _download_all_receipts(page, target_dir, name_key, log=log, name_suffix=name_suffix)
                 ok = [r for r in rec_results if r["status"] == "SUCCESS"]
                 errs_here = [r["error"] for r in rec_results if r.get("error")]
                 if ok:
@@ -5441,7 +5588,7 @@ def _process_one_receipt(
                         retry.append(dt)
                         break
                 continue
-            out_pdf = target_dir / f"{passport_safe}_{cfg_dt['suffix']}{name_suffix}.pdf"
+            out_pdf = target_dir / f"{name_key}_{cfg_dt['suffix']}{name_suffix}.pdf"
             err = _download_doc_pdf(page, cfg_dt, out_pdf, log=log)
             if err:
                 docs_state[dt]["status"] = "FAIL"
@@ -15272,6 +15419,151 @@ def _appt_get_appointment_tab_text(page: Page) -> str:
     if len(text) > 500:
         text = text[:497] + "..."
     return text
+
+
+_APPT_LABELS = (
+    "การนัดหมาย", "สถานที่", "วันที่", "เวลา",
+    "หมายเลขนัดหมาย", "ชื่อคนต่างด้าว", "เลขที่หนังสือเดินทาง",
+)
+
+
+def _parse_appointment_body(body: str) -> dict:
+    """แยก สถานที่/วันที่/เวลา/ชื่อ/passport จากข้อความ iframe การนัดหมาย
+    (ข้อความต่อกันไม่มี space): '...สถานที่<PLACE>วันที่<DATE>เวลา<TIME>พิมพ์แบบฟอร์ม...'
+    ตัวอย่างจริง: 'การนัดหมายพิมพ์แบบฟอร์มนัดหมายทั้งหมดสถานที่ศูนย์บริการใบอนุญาต
+    ทำงานของคนต่างด้าว จังหวัดฉะเชิงเทราวันที่16 ธันวาคม 2569เวลาพิมพ์แบบฟอร์มนัดหมาย...
+    หมายเลขนัดหมายชื่อคนต่างด้าวเลขที่หนังสือเดินทาง2-CCO001122601108Miss KYI KYI NAING MH190359'
+    (ในตัวอย่างนี้ 'เวลา' ว่าง — production ที่จองแล้วจะมีเวลา เช่น '8.30 น.')
+    """
+    body = re.sub(r"\s+", " ", body or "").strip()
+    out = {"place": "", "date": "", "time": "", "worker_name": "", "passport": ""}
+    _strip = " :·-\u2022\u2018\u2019"
+    # สถานที่: ระหว่าง 'สถานที่' กับ 'วันที่'
+    m = re.search(r"สถานที่\s*(.+?)\s*วันที่", body)
+    if m:
+        out["place"] = m.group(1).strip(_strip)
+    # วันที่: ระหว่าง 'วันที่' กับ 'เวลา'
+    m = re.search(r"วันที่\s*(.+?)\s*เวลา", body)
+    if m:
+        out["date"] = m.group(1).strip(_strip)
+    # เวลา: ระหว่าง 'เวลา' กับ marker ถัดไป (อาจว่างได้)
+    m = re.search(
+        r"เวลา\s*(.*?)\s*(?:พิมพ์แบบฟอร์ม|ขอยกเลิก|หมายเลขนัดหมาย|ชื่อคนต่างด้าว|$)",
+        body,
+    )
+    if m:
+        t = m.group(1).strip(_strip)
+        # ต้องมีตัวเลข (เวลา เช่น 08.30/8:30) — กันจับ label/ปุ่มภาษาไทยเมื่อไม่มีเวลาจริง
+        if t and len(t) <= 40 and re.search(r"\d", t):
+            out["time"] = t
+    # ชื่อคนต่างด้าว (Latin): Mr/Mrs/Miss/Ms + ตัวอักษร
+    nm = re.search(
+        r"(Mr\.?|Mrs\.?|Miss|Ms\.?|Mss\.?)\s+([A-Z][A-Za-z\.\s]{1,80}?)"
+        r"(?=\s*[A-Z]{1,2}\d|\s{2,}|ยกเลิก|$)",
+        body,
+    )
+    if nm:
+        out["worker_name"] = (nm.group(1) + " " + nm.group(2)).strip()
+    # passport: Myanmar M[A-Z]\d, Cambodia C[A-Z]\d, generic 1-2 ตัวอักษร + 6-9 หลัก
+    # ใช้ขอบเขต Latin/digit เอง (ไม่ใช้ \b) เพราะอักษรไทยเป็น word-char ใน Python regex
+    # → \b หลังเลข passport ที่ตามด้วยไทยทันที (เช่น 'MH190359ยกเลิก') จะไม่เกิด
+    for pat in (
+        r"(?<![A-Za-z0-9])(M[A-Z]\d{6,8})(?![A-Za-z0-9])",
+        r"(?<![A-Za-z0-9])(C[A-Z]\d{6,8})(?![A-Za-z0-9])",
+        r"(?<![A-Za-z0-9])([A-Z]{1,2}\d{6,9})(?![A-Za-z0-9])",
+    ):
+        pm = re.search(pat, body)
+        if pm:
+            out["passport"] = pm.group(1)
+            break
+    return out
+
+
+def _extract_appointment_details(page: Page, log=print) -> dict:
+    """เปิดแท็บ 'การนัดหมาย' (#tab_default_5) → อ่าน iframe (queue-fe*.doe.go.th)
+    → คืน {place, date, time, worker_name, passport, raw, error}
+
+    ถ้ายังไม่ได้จอง / ไม่มีการนัดหมาย → คืนค่าว่างพร้อม error อธิบายเหตุ
+    (record ยังคงถูกใส่ในรายงาน — ผู้ใช้กรองสถานะเองใน UI)
+    """
+    blank = {"place": "", "date": "", "time": "", "worker_name": "",
+             "passport": "", "raw": "", "error": ""}
+    # 1) คลิกแท็บการนัดหมาย
+    try:
+        page.evaluate(r"""() => {
+            if (window.jQuery) { try { jQuery('a[href="#tab_default_5"]').tab('show'); } catch(e){} }
+            const a = document.querySelector('a[href="#tab_default_5"]');
+            if (a) a.click();
+            const els = [...document.querySelectorAll('a,.nav-link,.nav-tabs a,.nav a,[role="tab"]')];
+            const t = els.find(x => /^\s*การนัดหมาย\s*$/.test((x.textContent||'').trim()));
+            if (t) t.click();
+        }""")
+    except Exception:
+        pass
+    page.wait_for_timeout(2200)
+    # 2) หา iframe src
+    try:
+        iframe_src = page.evaluate(
+            "() => (document.querySelector('#link_appointment') "
+            "|| document.querySelector('iframe.iframe_show') "
+            "|| document.querySelector('iframe[src*=\"queue\"]') || {}).src || ''"
+        )
+    except Exception:
+        iframe_src = ""
+    if not iframe_src:
+        try:
+            empty_txt = page.evaluate(
+                "() => { const p=document.querySelector('#tab_default_5'); "
+                "return p ? (p.innerText||'').trim().slice(0,120) : ''; }"
+            )
+        except Exception:
+            empty_txt = ""
+        b = dict(blank)
+        b["error"] = ("record นี้ไม่มีการนัดหมาย"
+                      if "ไม่มีการนัดหมาย" in (empty_txt or "")
+                      else "ไม่พบ iframe การนัดหมาย")
+        return b
+    # 3) หา frame ที่ตรง + รอโหลด
+    appt_frame = None
+    for _ in range(15):
+        for fr in page.frames:
+            if fr.name == "link_appointment" \
+                    or "bookingdate" in (fr.url or "") \
+                    or "bookingdetail" in (fr.url or ""):
+                appt_frame = fr
+                break
+        if appt_frame:
+            break
+        page.wait_for_timeout(500)
+    if not appt_frame:
+        b = dict(blank)
+        b["error"] = "iframe การนัดหมายโหลดไม่สำเร็จ"
+        return b
+    try:
+        appt_frame.wait_for_load_state("domcontentloaded", timeout=15_000)
+    except Exception:
+        pass
+    page.wait_for_timeout(2000)
+    # 4) อ่าน body text จาก iframe
+    try:
+        body = appt_frame.evaluate(
+            "() => document.body ? document.body.innerText : ''"
+        ) or ""
+    except Exception as e:
+        b = dict(blank)
+        b["error"] = f"อ่าน iframe การนัดหมายไม่สำเร็จ: {str(e)[:80]}"
+        return b
+    norm = re.sub(r"\s+", " ", body).strip()
+    # ยังไม่ได้จอง (booking form) → ไม่มีวันที่/เวลา/สถานที่
+    if re.search(r"ยังไม่มีการนัดหมาย|เพิ่มวันนัดหมาย|กรุณาเลือก", norm):
+        b = dict(blank)
+        b["raw"] = norm[:500]
+        b["error"] = "ยังไม่ได้จองการนัดหมาย"
+        return b
+    parsed = _parse_appointment_body(norm)
+    parsed["raw"] = norm[:500]
+    parsed["error"] = ""
+    return parsed
 
 
 def _appt_detect_payment_case(page: Page) -> str:
