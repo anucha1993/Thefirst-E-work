@@ -5,12 +5,11 @@
 - ค่าเริ่มต้น: record #1 = 69125200578664 (มี บต.50 แน่นอน) + auto-discover อีก 1 เลข (สถานะ AP/SS)
 - override ได้: python _probe_result2.py <เลขคำขอ1> <เลขคำขอ2> ...
 - ดาวน์โหลดครบ 3 เอกสาร: ใบแจ้งผล / ใบรับคำขอ / บต.50 อ.6
-- เอาต์พุตลงโฟลเดอร์ _probe_result2_docs/<บริษัท>/ + รายงาน _probe_result2_report.xlsx
+- เอาต์พุตลงโฟลเดอร์ reports/result_docs/<บริษัท>/ (เหมือนโหมดจริงบน GUI) + รายงาน reports/_probe_result2_report.xlsx
 พิมพ์เฉพาะ username เท่านั้น — ไม่พิมพ์รหัสผ่าน
 """
 from __future__ import annotations
 import os
-import shutil
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
@@ -22,7 +21,7 @@ from scrape_wa import (  # noqa: E402
     login, goto_tracking, apply_wa_filter, collect_all_wa_rows,
     _process_one_result_by_ref, _save_result_docs_report,
     _is_logged_out, ensure_session,
-    RESULT_DOC_TYPES, ROOT,
+    RESULT_DOC_TYPES, REPORTS_DIR,
 )
 
 FORCE_REQ = "69125200578664"          # เลขที่รู้ว่ามี บต.50 แน่นอน (ใช้เป็น record แรก)
@@ -55,11 +54,9 @@ def main() -> int:
     else:
         print(f"[i] auto: record#1={FORCE_REQ} + auto-discover อีก {N_RECORDS - 1} เลข (AP/SS)")
 
-    docs_dir = ROOT / "_probe_result2_docs"
-    if docs_dir.exists():
-        shutil.rmtree(docs_dir, ignore_errors=True)   # เริ่มสด ให้ดาวน์โหลดจริง (ไม่ข้ามด้วย resume)
-    docs_dir.mkdir(parents=True, exist_ok=True)
-    report_path = ROOT / "_probe_result2_report.xlsx"
+    docs_dir = REPORTS_DIR / "result_docs"
+    docs_dir.mkdir(parents=True, exist_ok=True)   # เก็บที่เดียวกับโหมดจริงบน GUI (มี resume-skip ถ้าไฟล์ซ้ำ)
+    report_path = REPORTS_DIR / "_probe_result2_report.xlsx"
 
     with sync_playwright() as pw:
         b = pw.chromium.launch(headless=False, args=["--start-maximized"])

@@ -5669,6 +5669,7 @@ RESULT_DOC_TYPES: dict[str, dict[str, str]] = {
     "bt50": {
         "label": "แบบ บต.50 อ.6",
         "label_pattern": r"บต\.?\s*50",
+        "suffix": "BT50A6",  # ใช้เป็นท้ายชื่อไฟล์แทนชื่อเอกสารยาวจากเว็บ
     },
 }
 RESULT_DOC_TYPES_DEFAULT: list[str] = ["result_notice", "request_receipt"]
@@ -5811,11 +5812,13 @@ def _download_response_doc_named(
         label = label[m.start():].strip()
     label = label[:120]
     res["label"] = label
+    # ชื่อไฟล์: ใช้ suffix สั้น (เช่น BT50A6) ถ้ากำหนดไว้ ไม่งั้นใช้ชื่อเอกสารจากเว็บ
+    name_suffix = str(doc_cfg.get("suffix") or "").strip() or label
     req_safe = _receipt_safe_name(str(req_no or "").strip())
     if req_safe:
-        stem = _receipt_safe_name(f"{req_safe}_{name_eng_safe}_{label}")
+        stem = _receipt_safe_name(f"{req_safe}_{name_eng_safe}_{name_suffix}")
     else:
-        stem = _receipt_safe_name(f"{name_eng_safe}_{label}")
+        stem = _receipt_safe_name(f"{name_eng_safe}_{name_suffix}")
     out_pdf = out_dir / f"{stem}.pdf"
     if out_pdf.exists():
         res["status"] = "SKIP_EXISTS"
