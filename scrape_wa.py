@@ -79,6 +79,7 @@ FORM_TYPE_ENDPOINTS: dict[str, str] = {
     "MT_63_V_2": "/RequestForm63/DetailFormRequest63_V_2",
     "MT_63_2_3103_RENEWAL": "/Requtst63_2/DetailRequest63_2_13",
     "MT_63_2_1302_RENEWAL": "/Requtst63_2/DetailRequest63_2_13",
+    "MT_63_2_19_RENEWAL": "/Requtst63_2/DetailRequestFormRENEWAL",
 }
 
 # form_type ที่ openDetail() สร้าง URL แบบ path (group_id ใน path, id เป็น query เดียว)
@@ -1531,6 +1532,10 @@ def run_scrape(
             date_to = (cfg.get("date_to") or "").strip()
             if date_from or date_to:
                 log(f"      วันที่ยื่นคำขอ: {date_from or '(ต้นสุด)'} → {date_to or '(ล่าสุด)'}")
+
+            # ---- โหมดดึงตามเลขคำขอ (ถ้าระบุ) — ข้าม filter สถานะ/วันที่/whitelist ทั้งหมด ----
+            req_no_list = _parse_req_no_list(cfg.get("req_no_list"))
+
             # ---- เก็บ rows ----
             # ถ้าเลือกหลายรายการ → วน filter ทีละ code แล้ว merge (dedup โดย reqNo)
             def _fetch_rows_for(rt_code: str) -> list[dict]:
@@ -1544,7 +1549,31 @@ def run_scrape(
                         out_rows = collect_wa_rows(page)
                 return out_rows
 
-            if len(req_types_list) <= 1:
+            def _fetch_rows_by_req_no(req_nos: list[str]) -> list[dict]:
+                """ค้นหาทีละเลขคำขอ (ไม่ filter สถานะ — กันคำขอสถานะอื่นถูกกรองจนค้นไม่พบ)"""
+                apply_wa_filter(page, "", status_ids=["WP", "WCOSNA", "WA", "AP", "SS"])
+                out_rows: list[dict] = []
+                for _i, rn in enumerate(req_nos, 1):
+                    if _cancelled():
+                        break
+                    _search_request(page, rn)
+                    chunk = collect_wa_rows(page)
+                    if not chunk and _is_logged_out(page):
+                        if ensure_tracking_ready(page, cfg, "", log=log):
+                            apply_wa_filter(page, "", status_ids=["WP", "WCOSNA", "WA", "AP", "SS"])
+                            _search_request(page, rn)
+                            chunk = collect_wa_rows(page)
+                    if not chunk:
+                        log(f"      [{_i}/{len(req_nos)}] {rn} → ไม่พบคำขอนี้")
+                    else:
+                        log(f"      [{_i}/{len(req_nos)}] {rn} → พบ {len(chunk)} รายการ")
+                    out_rows.extend(chunk)
+                return out_rows
+
+            if req_no_list:
+                log(f"      ค้นหาตามเลขคำขอ: {len(req_no_list)} เลข (ไม่กรองสถานะ/วันที่)")
+                rows = _fetch_rows_by_req_no(req_no_list)
+            elif len(req_types_list) <= 1:
                 rows = _fetch_rows_for(req_type)
             else:
                 merged: list[dict] = []
@@ -1568,8 +1597,9 @@ def run_scrape(
             total_collected = len(rows)
 
             # กรองตาม status whitelist (global) — scrape detail เฉพาะ status ที่ระบุ
+            # (ข้ามขั้นตอนนี้ถ้าดึงตามเลขคำขอ — ผู้ใช้ระบุเลขเจาะจงแล้ว ต้องการทุกสถานะ)
             whitelist = cfg.get("status_whitelist") or DEFAULT_STATUS_WHITELIST
-            if whitelist:
+            if whitelist and not req_no_list:
                 before = len(rows)
                 rows = [r for r in rows if row_matches_whitelist(r, whitelist)]
                 if before != len(rows):
@@ -1835,6 +1865,94 @@ def run_scrape_multi(
             continue
     log(f"\n[Multi] เสร็จสิ้น — รวม {total_rows} แถว จาก {len(produced)} บัญชี (โฟลเดอร์: {out_dir})")
     return total_rows, out_dir
+
+
+def run_scrape_by_ref(
+    cfg: dict,
+    ref_excel: Path,
+    login_excel: Path,
+    out_path: Path,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด e-Tracking ดึง 'ข้อมูล' (ไม่ดาวน์โหลดเอกสาร) ตามเลขคำขอจาก Excel — รองรับหลาย user พร้อมกัน
+
+    ref_excel: Ref_number.xlsx — คอลัมน์ Ref_number (เลขคำขอ) + user (Username เจ้าของคำขอ)
+               (อ่านด้วย _read_ref_numbers เดียวกับโหมด results by-ref)
+    login_excel: UsernameLogin.xlsx — คอลัมน์ Username, Password, Type (+ ระบบ)
+    จัดกลุ่มเลขคำขอตาม username → login ทีละบัญชี → ใช้ run_scrape เดิม (cfg["req_no_list"]
+    เฉพาะของบัญชีนั้น) → รวมทุกบัญชีเป็นไฟล์เดียว (มีคอลัมน์ 'บัญชี (Username)' แยกแถว)
+
+    Returns: (จำนวนแถวรวมทุกบัญชี, path ไฟล์รวม)
+    """
+    records = _read_ref_numbers(ref_excel)
+    if not records:
+        raise ValueError(f"ไม่พบเลขคำขอในไฟล์: {ref_excel}")
+    accounts = _read_login_accounts(login_excel)
+    if not accounts:
+        raise ValueError(f"ไม่พบบัญชีในไฟล์ UsernameLogin.xlsx: {login_excel}")
+
+    groups: dict[str, list[str]] = {}
+    for rec in records:
+        u = (rec.get("username") or "").strip()
+        rn = (rec.get("req_no") or "").strip()
+        if u and rn:
+            groups.setdefault(u, []).append(rn)
+    if not groups:
+        raise ValueError(f"ไฟล์ {ref_excel.name} ไม่มีคอลัมน์ user/username ที่ใช้จับคู่บัญชีได้")
+
+    log(f"[1/2] อ่าน {ref_excel.name} ({len(records)} เลขคำขอ) → จัดกลุ่มเป็น {len(groups)} บัญชี")
+    log(f"      บัญชี login: {login_excel.name} ({len(accounts)} บัญชี)")
+
+    out_path = Path(out_path)
+    out_dir = out_path.parent
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stem = out_path.stem
+    suffix = out_path.suffix or ".xlsx"
+    report_template = (cfg.get("report_template") or "main").strip().lower()
+    _wa_save = save_excel_appointment if report_template == "appointment" else save_excel
+    combined_path = _timestamped_path(out_path)
+
+    all_rows: list[dict] = []
+    ok_accounts = 0
+    n = len(groups)
+    for gi, (uname, req_nos) in enumerate(groups.items(), start=1):
+        if is_cancelled and is_cancelled():
+            log("[!] ผู้ใช้ยกเลิก — หยุด"); break
+        acct = accounts.get(uname.lower())
+        if not acct:
+            log(f"   ✗ [{gi}/{n}] ไม่พบบัญชี '{uname}' ใน UsernameLogin.xlsx — ข้าม {len(req_nos)} เลขคำขอ")
+            continue
+        login_cfg = dict(cfg)
+        login_cfg["username"] = acct["username"]
+        login_cfg["password"] = acct["password"]
+        login_cfg["user_type"] = acct["type"]
+        if acct.get("method"):
+            login_cfg["method"] = acct["method"]
+        login_cfg["req_no_list"] = req_nos
+        safe_user = (_receipt_safe_name(acct["username"]).strip() or f"user{gi}")
+        per_ckpt = out_dir / f"{stem}_{safe_user}{suffix}"
+        before = len(all_rows)
+        log(f"\n===== บัญชี {gi}/{n}: {acct['username']} ({len(req_nos)} เลขคำขอ) =====")
+        try:
+            run_scrape(
+                login_cfg, per_ckpt,
+                log=log, progress=progress, is_cancelled=is_cancelled,
+                sink=all_rows, write_output=False,
+            )
+            ok_accounts += 1
+            log(f"      + บัญชีนี้ได้ {len(all_rows) - before} แถว (รวมสะสม {len(all_rows)} แถว)")
+            try:
+                _wa_save(all_rows, combined_path, include_account=True)
+            except Exception as e:
+                log(f"      (เซฟไฟล์รวมระหว่างทางไม่สำเร็จ: {e})")
+        except Exception as e:
+            log(f"   ✗ บัญชี {acct['username']} ล้มเหลว: {e} — ข้ามไปบัญชีถัดไป")
+            continue
+    _wa_save(all_rows, combined_path, include_account=True)
+    log(f"\n[เสร็จสิ้น] รวม {len(all_rows)} แถว จาก {ok_accounts}/{n} บัญชี → {combined_path}")
+    return len(all_rows), combined_path
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -3501,6 +3619,23 @@ REGISTER_URL = "https://eworkpermit.doe.go.th/Login/Register"
 REGISTER_ALIEN_URL = "https://eworkpermit.doe.go.th/Register/Alien"
 
 
+def _parse_req_no_list(value: Any) -> list[str]:
+    """แปลงค่า input (string คั่นด้วย comma/ขึ้นบรรทัดใหม่/เว้นวรรค หรือ list) → list เลขคำขอ
+    ตัดช่องว่าง, เอาตัวซ้ำออก (คงลำดับเดิม)
+    """
+    if not value:
+        return []
+    items = [str(v) for v in value] if isinstance(value, (list, tuple, set)) else re.split(r"[,\n\r\t ]+", str(value))
+    out: list[str] = []
+    seen: set = set()
+    for it in items:
+        s = it.strip()
+        if s and s not in seen:
+            seen.add(s)
+            out.append(s)
+    return out
+
+
 def _parse_row_range(spec: str | None, total: int) -> list[int]:
     """แปลง '1-10,15,20-25' เป็น list ของ index 1-based"""
     if not spec:
@@ -5149,18 +5284,28 @@ def _download_bt55_per_person(
     #    โครงสร้างจริง (#tab_default_4 → #DetailDocumentList): เป็น grid แบบ flat
     #    คอลัมน์ชื่อเอกสาร <div class="col-7/col-8"> กับปุ่มดาวน์โหลด
     #    <div class="row col-3"><a onclick="GetDocumentConfirm(...)"> เป็น "พี่น้องติดกัน"
-    #    (ปุ่มไม่ได้อยู่ใน element เดียวกับ label) → จับคู่ผ่าน parentElement.previousElementSibling
-    #    แล้วกรองเฉพาะ label ที่เป็น บต.55 (กัน บต.52/บต.56 และแถวแม่ที่ไม่มีปุ่ม) + dedup ด้วย onclick
+    #    (ปุ่มไม่ได้อยู่ใน element เดียวกับ label) → กรองเฉพาะ label ที่เป็น บต.55
+    #    (กัน บต.52/บต.56 และแถวแม่ที่ไม่มีปุ่ม) + dedup ด้วย onclick
+    # หา label ของแถวเอกสาร: ปีนขึ้นจาก parent ไปเรื่อยๆ จนเจอ ancestor ที่มี previousElementSibling
+    # (เว็บอัปเดตเพิ่ม div ครอบปุ่ม 'ดูเอกสาร'/'รีเฟรชเอกสาร' อีกชั้น ทำให้ a.parentElement ตัวเดียว
+    # ไม่ใช่ตัวที่มี label เป็น previousElementSibling อีกต่อไป — ต้องปีนแบบไม่ fix จำนวนชั้น)
     enum_js = r"""(pat) => {
         const re = new RegExp(pat);
+        function findLabel(a) {
+            let node = a.parentElement;
+            for (let i = 0; i < 6 && node; i++) {
+                const prev = node.previousElementSibling;
+                if (prev) return (prev.innerText || '').trim();
+                node = node.parentElement;
+            }
+            return '';
+        }
         const seen = new Set();
         let n = 0;
         document.querySelectorAll('[onclick*="GetDocumentConfirm"]').forEach(a => {
             const oc = a.getAttribute('onclick') || '';
             if (!oc) return;
-            const grp = a.parentElement;
-            const lbl = (grp && grp.previousElementSibling)
-                ? (grp.previousElementSibling.innerText || '') : '';
+            const lbl = findLabel(a);
             if (!re.test(lbl)) return;
             if (seen.has(oc)) return;
             seen.add(oc); n++;
@@ -5178,13 +5323,20 @@ def _download_bt55_per_person(
     pick_js = r"""(args) => {
         const { pat, i, mode } = args;
         const re = new RegExp(pat);
+        function findLabel(a) {
+            let node = a.parentElement;
+            for (let i = 0; i < 6 && node; i++) {
+                const prev = node.previousElementSibling;
+                if (prev) return (prev.innerText || '').trim();
+                node = node.parentElement;
+            }
+            return '';
+        }
         const seen = new Set(); const list = [];
         document.querySelectorAll('[onclick*="GetDocumentConfirm"]').forEach(a => {
             const oc = a.getAttribute('onclick') || '';
             if (!oc) return;
-            const grp = a.parentElement;
-            const lbl = (grp && grp.previousElementSibling)
-                ? (grp.previousElementSibling.innerText || '') : '';
+            const lbl = findLabel(a);
             if (!re.test(lbl)) return;
             if (seen.has(oc)) return;
             seen.add(oc); list.push(a);
@@ -5750,6 +5902,99 @@ def _open_detail_direct(page: Page, row: dict) -> bool:
     return _open_detail_for_row(page, row)
 
 
+def _try_generate_response_doc(
+    page: Page,
+    pattern: str,
+    label: str,
+    log=print,
+    max_wait_s: int = 150,
+    poll_every_s: int = 20,
+) -> str:
+    """ถ้าเอกสารยังไม่เคยถูกสร้าง (แถวมีแค่ปุ่ม 'สร้างเอกสาร' ไม่มีปุ่ม 'เปิดเอกสาร') → กดสร้างให้
+    อัตโนมัติ แล้ว poll รอจนกว่าลิงก์ดาวน์โหลดจะปรากฏ (เว็บแจ้งว่าใช้เวลา ~1-2 นาที) หรือหมดเวลา
+    คืน 'GENERATED' (เจอลิงก์แล้ว พร้อมดาวน์โหลดต่อ), 'COOLDOWN:<ข้อความ>' (ติดคูลดาวน์ 24 ชม.),
+    'TIMEOUT' (กดสร้างแล้วแต่รอไม่ทัน), 'NO_BUTTON' (ไม่พบปุ่มสร้างเอกสารเลย)
+    """
+    clicked = page.evaluate(
+        r"""(pat) => {
+            const re = new RegExp(pat);
+            const cont = document.querySelector('#DetailDocumentList') || document.querySelector('#tab-response') || document;
+            const rows = [...cont.querySelectorAll('.row.align-items-center.col-12')];
+            for (const row of rows) {
+                const txt = (row.innerText || '').trim();
+                if (!re.test(txt)) continue;
+                const genBtn = [...row.querySelectorAll('a,button,[onclick]')]
+                    .find(b => (b.getAttribute('onclick')||'').includes('handleUpdateClick')
+                        && (b.getAttribute('onclick')||'').includes('GenerateDocument'));
+                if (genBtn) { genBtn.click(); return true; }
+            }
+            return false;
+        }""",
+        pattern,
+    )
+    if not clicked:
+        return "NO_BUTTON"
+    log(f"     ⏳ '{label}': ยังไม่เคยสร้างเอกสาร — กดปุ่ม 'สร้างเอกสาร' แล้วรอระบบออกเอกสาร (~1-2 นาที)...")
+    page.wait_for_timeout(1500)
+
+    # เช็ค SweetAlert แจ้งเตือนคูลดาวน์ ("สามารถกดได้อีกครั้ง...")
+    cooldown_msg = page.evaluate(
+        r"""() => {
+            const el = [...document.querySelectorAll('.swal2-html-container, .swal2-popup, .swal2-title')]
+                .find(e => /สามารถกดได้อีกครั้ง/.test(e.innerText || ''));
+            return el ? (el.innerText || '').replace(/\s+/g, ' ').trim() : '';
+        }"""
+    )
+    if cooldown_msg:
+        try:
+            page.evaluate(
+                r"""() => { const b=[...document.querySelectorAll('.swal2-confirm,button')]
+                    .find(x=>/ปิด|ตกลง|OK/i.test(x.innerText||'')); if(b) b.click(); }"""
+            )
+        except Exception:
+            pass
+        log(f"     ⏸ '{label}': ติดคูลดาวน์ระบบ — {cooldown_msg}")
+        return f"COOLDOWN:{cooldown_msg}"
+
+    # รอ + poll หาไฟล์ที่ถูกสร้างเสร็จ จนกว่าจะเจอหรือหมดเวลา (reload หน้า + เปิดแท็บใหม่ทุกรอบ)
+    page.wait_for_timeout(2000)
+    waited = 0
+    while True:
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_timeout(1200)
+        page.evaluate(
+            r"""() => { const f=[...document.querySelectorAll('a[href^="#"], .nav-link, .nav-tabs a, .nav a')]
+                .find(a=>/เอกสารตอบรับ/.test(a.innerText||'')); if(f) f.click(); }"""
+        )
+        page.wait_for_timeout(1500)
+        has_link = page.evaluate(
+            r"""(pat) => {
+                const re = new RegExp(pat);
+                const pane = document.querySelector('#tab-response') || document;
+                let found = false;
+                pane.querySelectorAll('*').forEach(el => {
+                    if (found) return;
+                    const txt = (el.innerText || '').trim();
+                    if (!txt || !re.test(txt)) return;
+                    const links = [...el.querySelectorAll('a, button, [onclick]')]
+                        .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
+                    if (links.length === 1) found = true;
+                });
+                return found;
+            }""",
+            pattern,
+        )
+        if has_link:
+            log(f"     ✓ '{label}': ระบบสร้างเอกสารเสร็จแล้ว (รอ ~{waited}s)")
+            return "GENERATED"
+        if waited >= max_wait_s:
+            break
+        page.wait_for_timeout(poll_every_s * 1000)
+        waited += poll_every_s
+    log(f"     ⏱ '{label}': กดสร้างเอกสารแล้วแต่รอ {max_wait_s}s ยังไม่เสร็จ — รันใหม่ภายหลังจะเช็คให้อัตโนมัติ")
+    return "TIMEOUT"
+
+
 def _download_response_doc_named(
     page: Page,
     out_dir: Path,
@@ -5781,6 +6026,15 @@ def _download_response_doc_named(
         return res
     page.wait_for_timeout(1500)
 
+    # แท็บขึ้น "ไม่มีเอกสารการตอบรับ" = คำขอยังไม่อนุมัติ/รอพิจารณา (ไม่ใช่บั๊กโค้ด)
+    if page.evaluate(
+        r"""() => { const p=document.querySelector('#tab-response')||document.querySelector('.tab-pane.active');
+            const t=(p?p.innerText:document.body.innerText)||''; return /ไม่มีเอกสารการตอบรับ/.test(t); }"""
+    ):
+        res["status"] = "NO_DOC_YET"
+        res["error"] = "ยังไม่มีเอกสารตอบรับจากระบบ (คำขอยังไม่อนุมัติ/รอพิจารณา)"
+        return res
+
     # อ่านชื่อเอกสาร (label) ที่ตรง pattern และมีลิงก์ GetDocumentConfirm 1 ลิงก์
     label_text = page.evaluate(
         r"""(pat) => {
@@ -5801,15 +6055,44 @@ def _download_response_doc_named(
         pattern,
     )
     if not label_text:
-        res["status"] = "NOT_FOUND"
-        res["error"] = f"ไม่พบเอกสาร '{doc_cfg['label']}' ในแท็บเอกสารตอบรับ"
-        return res
+        # เอกสารอาจยังไม่เคยถูกสร้าง (มีแค่ปุ่ม 'สร้างเอกสาร') → ลองกดสร้างแล้วรอก่อนสรุปว่าไม่พบ
+        gen_result = _try_generate_response_doc(page, pattern, doc_cfg["label"], log=log)
+        if gen_result == "GENERATED":
+            label_text = page.evaluate(
+                r"""(pat) => {
+                    const re = new RegExp(pat);
+                    const pane = document.querySelector('#tab-response') || document;
+                    let bestText = '', bestLen = Infinity;
+                    pane.querySelectorAll('*').forEach(el => {
+                        const txt = (el.innerText || '').trim();
+                        if (!txt || !re.test(txt)) return;
+                        const links = [...el.querySelectorAll('a, button, [onclick]')]
+                            .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
+                        if (links.length === 1 && txt.length < bestLen) {
+                            bestText = txt; bestLen = txt.length;
+                        }
+                    });
+                    return bestText;
+                }""",
+                pattern,
+            )
+        if not label_text:
+            res["status"] = "NOT_FOUND"
+            if gen_result.startswith("COOLDOWN"):
+                res["error"] = f"เอกสาร '{doc_cfg['label']}' ยังไม่เคยถูกสร้าง และติดคูลดาวน์ระบบ: {gen_result.split(':', 1)[1]}"
+            elif gen_result == "TIMEOUT":
+                res["error"] = f"กดสร้างเอกสาร '{doc_cfg['label']}' แล้ว แต่ระบบยังสร้างไม่เสร็จภายในเวลาที่รอ — รันใหม่ภายหลัง"
+            else:
+                res["error"] = f"ไม่พบเอกสาร '{doc_cfg['label']}' ในแท็บเอกสารตอบรับ"
+            return res
 
     label = re.sub(r"\s+", " ", str(label_text)).strip()
     # ตัดข้อความที่นำหน้าชื่อเอกสารจริงออก (เช่น เลขลำดับแถว "2 ", "3 ")
     m = re.search(pattern, label)
     if m:
         label = label[m.start():].strip()
+    # ตัดข้อความ tooltip ปุ่ม 'สร้างเอกสารใหม่' ที่ติดมาด้วย (เช่น "...สามารถกดได้อีกครั้ง 15 ก.ย. ...")
+    label = re.sub(r"\s*สามารถกดได้อีกครั้ง.*$", "", label).strip()
     label = label[:120]
     res["label"] = label
     # ชื่อไฟล์: ใช้ suffix สั้น (เช่น BT50A6) ถ้ากำหนดไว้ ไม่งั้นใช้ชื่อเอกสารจากเว็บ
@@ -5834,6 +6117,14 @@ def _download_response_doc_named(
         "label_pattern": pattern,
     }
     err = _download_doc_pdf(page, dl_cfg, out_pdf, log=log)
+    # เอกสารที่เพิ่งกด 'สร้างเอกสาร' มาสดๆ — DOM อาจโชว์ลิงก์ก่อนที่ไฟล์จริงฝั่งเซิร์ฟเวอร์จะพร้อมโหลด
+    # (เว็บเองก็เตือนว่า "รอสักครู่ เอกสารจะถูกอัปเดตภายใน 1-2 นาที") → retry ซ้ำอีกสักพักก่อนยอมแพ้
+    retry_n = 0
+    while err and "ไม่พบไฟล์ PDF จากการคลิก" in err and retry_n < 4:
+        retry_n += 1
+        log(f"     ⏳ {doc_cfg['label']}: ไฟล์ยังไม่พร้อม (เพิ่งสร้าง) — รอแล้วลองดาวน์โหลดใหม่ ({retry_n}/4)")
+        page.wait_for_timeout(20_000)
+        err = _download_doc_pdf(page, dl_cfg, out_pdf, log=log)
     if err:
         res["status"] = "FAIL"
         res["error"] = err
@@ -5949,6 +6240,11 @@ def _process_one_result_by_ref(
                 return True
         goto_tracking(page)
         page.wait_for_timeout(1200)
+        # ค้นตามเลขคำขอ → ติ๊กทุกสถานะ (ไม่ filter) กันคำขอสถานะอื่นถูกกรองจนค้นไม่พบ
+        try:
+            apply_wa_filter(page, "", status_ids=["WP", "WCOSNA", "WA", "AP", "SS"])
+        except Exception:
+            pass
         _search_request(page, req_no)
         return _open_first_detail(page)
 
@@ -6031,6 +6327,8 @@ def _process_one_result_by_ref(
         res["status"] = "SUCCESS"
     elif any(s == "SUCCESS" for s in statuses):
         res["status"] = "PARTIAL"
+    elif all(s == "NO_DOC_YET" for s in statuses):
+        res["status"] = "NO_DOC_YET"  # คำขอยังไม่อนุมัติ → ยังไม่มีเอกสารตอบรับ
     else:
         res["status"] = "FAIL"
     res["error"] = " | ".join(
@@ -6137,12 +6435,14 @@ def run_result_docs_by_ref(
                 RELOGIN_EVERY = 80  # re-login เชิงรุกทุก N รายการ กัน session timeout
                 MAX_RETRY_PASSES = 3  # จำนวนรอบ retry คำขอที่ยังไม่สำเร็จ (หลังรอบแรก)
 
-                # เก็บรายการคำขอของบัญชีนี้ครั้งเดียว (filter สถานะ AP + SS) เพื่อ map
+                # เก็บรายการคำขอของบัญชีนี้ครั้งเดียว เพื่อ map
                 # เลขคำขอ → พารามิเตอร์ (user_id/form_type/group_id) สำหรับ navigate ตรง
                 # เร็วกว่าค้นหาทีละเลข + ลด round-trip ที่ทำให้ดาวน์โหลดค้างในงานยาว
+                # ดึงตามเลขคำขอ → ติ๊กทุกสถานะ (ไม่ filter) เพราะมีเลขคำขอเจาะจงอยู่แล้ว
+                # กันคำขอที่สถานะไม่ใช่ AP/SS ถูกกรองทิ้งจน map ไม่เจอ → หาคำขอไม่พบ
                 row_by_req: dict[str, dict] = {}
                 try:
-                    collect_status_ids = list(cfg.get("result_status_ids") or ["AP", "SS"])
+                    collect_status_ids = ["WP", "WCOSNA", "WA", "AP", "SS"]
                     goto_tracking(page)
                     apply_wa_filter(page, "", status_ids=collect_status_ids)
                     collected = collect_all_wa_rows(page, log=log)
@@ -16186,17 +16486,26 @@ def _bt30_ctn_download(
 
     # 2) หาลิงก์ GetDocumentConfirm ที่อยู่ใต้แถวป้าย 'บต.30' (ใช้ pattern เดียวกับ _bt55)
     #    โครงสร้าง: <div>label</div>...<div>...<a onclick="GetDocumentConfirm(...)">...</a></div>
+    #    ปีนขึ้นจาก parent ไปเรื่อยๆ จนเจอ ancestor ที่มี previousElementSibling (เว็บอัปเดตเพิ่ม div
+    #    ครอบปุ่ม 'ดูเอกสาร'/'รีเฟรชเอกสาร' อีกชั้น ทำให้ a.parentElement ตัวเดียวไม่พอแล้ว)
     pick_js = r"""(args) => {
         const { pat, mode } = args;
         const re = new RegExp(pat);
+        function findLabel(a) {
+            let node = a.parentElement;
+            for (let i = 0; i < 6 && node; i++) {
+                const prev = node.previousElementSibling;
+                if (prev) return (prev.innerText || '').trim();
+                node = node.parentElement;
+            }
+            return '';
+        }
         const seen = new Set(); const list = [];
         let bestLabel = '';
         document.querySelectorAll('[onclick*="GetDocumentConfirm"]').forEach(a => {
             const oc = a.getAttribute('onclick') || '';
             if (!oc) return;
-            const grp = a.parentElement;
-            const lbl = (grp && grp.previousElementSibling)
-                ? ((grp.previousElementSibling.innerText || '').trim()) : '';
+            const lbl = findLabel(a);
             if (!re.test(lbl)) return;
             if (seen.has(oc)) return;
             seen.add(oc); list.push({a, lbl});

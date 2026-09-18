@@ -3,7 +3,7 @@
 
 - login ครั้งเดียว (แก้ reCAPTCHA เอง ~120 วิ อย่าปิดเบราว์เซอร์กลางคัน)
 - ค่าเริ่มต้น: record #1 = 69125200578664 (มี บต.50 แน่นอน) + auto-discover อีก 1 เลข (สถานะ AP/SS)
-- override ได้: python _probe_result2.py <เลขคำขอ1> <เลขคำขอ2> ...
+- override ได้: python _probe_result2.py <เลขคำขอ1> <เลขคำขอ2> ... (ดึงครบทุกเลขที่ใส่ เก็บแถวทุกสถานะ navigate ตรง)
 - ดาวน์โหลดครบ 3 เอกสาร: ใบแจ้งผล / ใบรับคำขอ / บต.50 อ.6
 - เอาต์พุตลงโฟลเดอร์ reports/result_docs/<บริษัท>/ (เหมือนโหมดจริงบน GUI) + รายงาน reports/_probe_result2_report.xlsx
 พิมพ์เฉพาะ username เท่านั้น — ไม่พิมพ์รหัสผ่าน
@@ -76,9 +76,17 @@ def main() -> int:
             # ---- เลือก 2 record ----
             recs: list[dict] = []          # {seq, req_no, username, prebuilt}
             if arg_reqs:
-                for i, rq in enumerate(arg_reqs[:N_RECORDS], start=1):
+                # ดึงตามเลขคำขอ → เก็บแถวทุกสถานะ (ไม่ filter) เหมือน production
+                print("[2] เก็บรายการคำขอ (ทุกสถานะ ไม่ filter) เพื่อ navigate ตรง...")
+                apply_wa_filter(page, "", status_ids=["WP", "WCOSNA", "WA", "AP", "SS"])
+                rows = collect_all_wa_rows(page)
+                by_req = {str(r.get("reqNo", "")).strip(): r for r in rows if r.get("reqNo")}
+                print(f"[+] พบ {len(by_req)} คำขอในบัญชีนี้")
+                for i, rq in enumerate(arg_reqs, start=1):
+                    pb = by_req.get(rq)
+                    print(f"    - {rq}: {'พบในรายการ (navigate ตรง)' if pb else 'ไม่พบในรายการ → fallback ค้นหา'}")
                     recs.append({"seq": str(i), "req_no": rq,
-                                 "username": cfg["username"], "prebuilt": None})
+                                 "username": cfg["username"], "prebuilt": pb})
             else:
                 print("[2] เก็บรายการคำขอ (สถานะ AP + SS) เพื่อเลือกเลขทดสอบ...")
                 apply_wa_filter(page, "", status_ids=["AP", "SS"])

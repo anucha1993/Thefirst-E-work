@@ -13,6 +13,7 @@ from tkinter import filedialog, messagebox, ttk
 from scrape_wa import (
     run_scrape,
     run_scrape_multi,
+    run_scrape_by_ref,
     run_aliens_scrape,
     run_register,
     run_receipts,
@@ -544,6 +545,68 @@ class App(tk.Tk):
             row=5 + (len(WHITELIST_OPTIONS) + 1) // 2, column=0, columnspan=5,
             sticky="w", padx=4, pady=(2, 0),
         )
+
+        # ---- ดึงเฉพาะเลขคำขอ (ถ้าระบุ) — ข้ามฟิลเตอร์สถานะ/วันที่/whitelist ด้านบนทั้งหมด ----
+        # (เฉพาะโหมด e-Tracking บัญชีเดียว/หลายบัญชี — ไม่ใช้กับ bt30_ctn/permit_report จึงไม่รวมใน _etracking_frames)
+        self.etk_req_no_frame = ttk.LabelFrame(
+            self._body, text="ดึงเฉพาะเลขคำขอ (ทางเลือก — เว้นว่าง = ดึงตามฟิลเตอร์สถานะปกติด้านบน)",
+            padding=10,
+        )
+        ttk.Label(
+            self.etk_req_no_frame,
+            text="โหมด A: ไฟล์ Excel เลขคำขอ (รองรับหลาย user พร้อมกัน — จัดกลุ่มตาม username แล้ว login ทีละบัญชีอัตโนมัติ)",
+            foreground="#444",
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        ttk.Label(self.etk_req_no_frame, text="ไฟล์ Ref_number.xlsx:").grid(
+            row=1, column=0, sticky="w", pady=4,
+        )
+        self.etk_req_excel_input = tk.StringVar(value="")
+        ttk.Entry(self.etk_req_no_frame, textvariable=self.etk_req_excel_input).grid(
+            row=1, column=1, sticky="we", padx=8,
+        )
+        etk_req_excel_btns = ttk.Frame(self.etk_req_no_frame)
+        etk_req_excel_btns.grid(row=1, column=2, padx=4)
+        ttk.Button(
+            etk_req_excel_btns, text="เลือก...",
+            command=lambda: self._choose_into(self.etk_req_excel_input),
+        ).pack(side="left")
+        ttk.Button(
+            etk_req_excel_btns, text="ล้าง",
+            command=lambda: self.etk_req_excel_input.set(""),
+        ).pack(side="left", padx=(4, 0))
+        ttk.Label(
+            self.etk_req_no_frame,
+            text="คอลัมน์ที่ต้องมี: Ref_number (เลขคำขอ), user (Username เจ้าของคำขอ)",
+            foreground="gray",
+        ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        ttk.Label(self.etk_req_no_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
+            row=3, column=0, sticky="w", pady=4,
+        )
+        self.etk_req_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
+        ttk.Entry(self.etk_req_no_frame, textvariable=self.etk_req_login_input).grid(
+            row=3, column=1, sticky="we", padx=8,
+        )
+        ttk.Button(
+            self.etk_req_no_frame, text="เลือก...",
+            command=lambda: self._choose_into(self.etk_req_login_input),
+        ).grid(row=3, column=2, padx=4)
+        ttk.Label(
+            self.etk_req_no_frame,
+            text="ต้องมีคอลัมน์: Username, Password, Type — ใช้ตอนมีไฟล์ Ref_number.xlsx เท่านั้น",
+            foreground="gray",
+        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 8))
+
+        ttk.Separator(self.etk_req_no_frame, orient="horizontal").grid(
+            row=5, column=0, columnspan=3, sticky="we", pady=(0, 8),
+        )
+        ttk.Label(
+            self.etk_req_no_frame,
+            text="โหมด B: พิมพ์/วางเลขคำขอเอง (ใช้บัญชีเดียวจาก Username/Password ด้านบน — ใช้เมื่อไม่ระบุไฟล์ Excel โหมด A)",
+            foreground="#444",
+        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        self.etk_req_no_text = tk.Text(self.etk_req_no_frame, height=4, width=60)
+        self.etk_req_no_text.grid(row=7, column=0, columnspan=3, sticky="we")
+        self.etk_req_no_frame.columnconfigure(1, weight=1)
 
         # โหลด default ตาม request_type แรก
         self._apply_profile_defaults(self.request_type.get())
@@ -1625,6 +1688,7 @@ class App(tk.Tk):
         # ซ่อนทุก frame ก่อน
         for f in self._etracking_frames:
             f.pack_forget()
+        self.etk_req_no_frame.pack_forget()
         self.aliens_frame.pack_forget()
         self.register_frame.pack_forget()
         self.receipt_frame.pack_forget()
@@ -1717,11 +1781,12 @@ class App(tk.Tk):
             if cur_basename in defaults:
                 self.out_path.set(str(REPORTS_DIR / "WA_permit_report.xlsx"))
         else:
-            # e-Tracking: ตัวเลือก → รูปแบบรายงาน (Template) → ตัวกรองสถานะ
+            # e-Tracking: ตัวเลือก → รูปแบบรายงาน (Template) → ตัวกรองสถานะ → ดึงเฉพาะเลขคำขอ
             self._etracking_frames[0].pack(fill="x", padx=10, pady=6)
             self.etk_template_frame.pack(fill="x", padx=10, pady=6)
             for f in self._etracking_frames[1:]:
                 f.pack(fill="x", padx=10, pady=6)
+            self.etk_req_no_frame.pack(fill="x", padx=10, pady=6)
             if cur_basename in defaults:
                 self.out_path.set(str(REPORTS_DIR / "WA_report.xlsx"))
         self._reorder_after_login()
@@ -2087,6 +2152,10 @@ class App(tk.Tk):
             "status_whitelist": [s for s, v in self.whitelist_vars.items() if v.get()],
             "capture_extra_notes": self.capture_extra_notes.get(),
             "relogin_every": self._relogin_every_value(),
+            "req_no_list": (
+                self.etk_req_no_text.get("1.0", "end").strip()
+                if mode == "etracking" else ""
+            ),
             "report_template": (
                 self.etk_template.get() if mode == "etracking" else "main"
             ),
@@ -2099,6 +2168,21 @@ class App(tk.Tk):
             self.btn_start.config(state="normal")
             self.btn_cancel.config(state="disabled")
             return
+
+        etk_req_excel_str = self.etk_req_excel_input.get().strip() if mode == "etracking" else ""
+        etk_req_excel = Path(etk_req_excel_str) if etk_req_excel_str else None
+        etk_req_login = Path(self.etk_req_login_input.get()) if mode == "etracking" else None
+        if mode == "etracking" and etk_req_excel is not None:
+            if not etk_req_excel.exists():
+                messagebox.showwarning("ไม่พบไฟล์ Ref_number", f"ไม่พบไฟล์: {etk_req_excel}")
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
+            if not etk_req_login or not etk_req_login.exists():
+                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {etk_req_login}")
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
 
         register_input = Path(self.register_input.get()) if mode == "register" else None
         register_row_range = self.register_row_range.get().strip() or None
@@ -2444,7 +2528,7 @@ class App(tk.Tk):
                   receipt_request, receipt_login, receipt_row_range, receipt_doc_types,
                   receipt_name_suffix, receipt_make_folder,
                   result_login, result_doc_keys, result_ref, etk_multi, etk_login,
-                  etk_combine,
+                  etk_combine, etk_req_excel, etk_req_login,
                   inform_excel, inform_login, inform_row_range, inform_commit,
                   bt30_excel, bt30_login, bt30_row_range, bt30_do_step2, bt30_submit,
                   bt44_excel, bt44_login, bt44_row_range, bt44_dry_run, bt44_dry_stop, bt44_check_docs,
@@ -2502,6 +2586,7 @@ class App(tk.Tk):
         result_ref: Path | None = None,
         etk_multi: bool = False, etk_login: Path | None = None,
         etk_combine: bool = False,
+        etk_req_excel: Path | None = None, etk_req_login: Path | None = None,
         inform_excel: Path | None = None, inform_login: Path | None = None,
         inform_row_range: str | None = None, inform_commit: bool = False,
         bt30_excel: Path | None = None, bt30_login: Path | None = None,
@@ -2672,7 +2757,14 @@ class App(tk.Tk):
                         is_cancelled=self._wait_if_paused_or_cancelled,
                     )
             else:
-                if etk_multi and etk_login is not None:
+                if etk_req_excel is not None and etk_req_login is not None:
+                    count, path = run_scrape_by_ref(
+                        cfg, etk_req_excel, etk_req_login, out,
+                        log=self._log,
+                        progress=self._set_progress,
+                        is_cancelled=self._wait_if_paused_or_cancelled,
+                    )
+                elif etk_multi and etk_login is not None:
                     count, path = run_scrape_multi(
                         cfg, etk_login, out, limit=limit,
                         combine=etk_combine,
