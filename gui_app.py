@@ -30,6 +30,7 @@ from scrape_wa import (
     run_booking_availability,
     run_permit_report,
     run_permit_report_multi,
+    run_ticket_report,
     booking_scan_once,
     _read_bt30_excel,
     _bt30_preflight_doc_sizes,
@@ -270,6 +271,11 @@ class App(tk.Tk):
         ttk.Radiobutton(
             mode_frm, text="ดึงรายงานข้อมูลการขออนุญาต — สถานะคำขอ (อนุมัติคำขอ) + สถานประกอบการ (บริษัท/จังหวัด)",
             variable=self.source_mode, value="permit_report",
+            command=self._on_mode_changed,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            mode_frm, text="ตรวจสอบ Ticket ID (แจ้งปัญหาการใช้งาน) — ตาม Ticket ID จาก Excel",
+            variable=self.source_mode, value="ticket",
             command=self._on_mode_changed,
         ).pack(anchor="w")
 
@@ -1512,6 +1518,42 @@ class App(tk.Tk):
         ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
         self.namelist_frame.columnconfigure(1, weight=1)
 
+        # ---- ตัวเลือก (โหมด ticket: ตรวจสอบ Ticket ID) ----
+        self.ticket_frame = ttk.LabelFrame(
+            self._body,
+            text="ตัวเลือก — ตรวจสอบ Ticket ID (แจ้งปัญหาการใช้งาน)",
+            padding=10,
+        )
+        ttk.Label(
+            self.ticket_frame,
+            text="ไม่ต้อง Login — หน้า /TicketRequest เปิดสาธารณะ ค้นหาทีละเลข Ticket ID จากไฟล์ Excel "
+                 "แล้วเก็บข้อมูลตารางผลลัพธ์ทุกคอลัมน์ที่เว็บแสดง",
+            foreground="#444", wraplength=900, justify="left",
+        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+
+        ttk.Label(self.ticket_frame, text="ไฟล์ Excel Ticket ID:").grid(
+            row=1, column=0, sticky="w", pady=4,
+        )
+        self.ticket_excel_input = tk.StringVar(value=str(ROOT / "TicketID.xlsx"))
+        ttk.Entry(self.ticket_frame, textvariable=self.ticket_excel_input).grid(
+            row=1, column=1, sticky="we", padx=8,
+        )
+        ttk.Button(
+            self.ticket_frame, text="เลือก...",
+            command=lambda: self._choose_into(self.ticket_excel_input),
+        ).grid(row=1, column=2, padx=4)
+        ttk.Label(
+            self.ticket_frame,
+            text="คอลัมน์ที่ต้องมี: Ticket ID (หนึ่งแถวต่อหนึ่งเลข)",
+            foreground="gray",
+        ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        ttk.Label(
+            self.ticket_frame,
+            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ไม่ต้อง login, ไม่มีการส่งคำขอ/แก้ข้อมูลใดๆ",
+            foreground="#1a7000",
+        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        self.ticket_frame.columnconfigure(1, weight=1)
+
         # ----- โหมด: ตรวจวันว่างจอง (Real-Time Booking Availability) -----
         self.booking_frame = ttk.LabelFrame(
             self._body,
@@ -1703,6 +1745,7 @@ class App(tk.Tk):
         self.bt30ctn_frame.pack_forget()
         self.namelist_frame.pack_forget()
         self.booking_frame.pack_forget()
+        self.ticket_frame.pack_forget()
         # default output path ตามโหมด
         cur = self.out_path.get()
         defaults = {
@@ -1717,6 +1760,7 @@ class App(tk.Tk):
             "WA_namelist_alien_report.xlsx",
             "WA_booking_availability.xlsx",
             "WA_permit_report.xlsx",
+            "WA_ticket_report.xlsx",
         }
         cur_basename = Path(cur).name if cur else ""
         if mode == "aliens":
@@ -1780,6 +1824,10 @@ class App(tk.Tk):
                 f.pack(fill="x", padx=10, pady=6)
             if cur_basename in defaults:
                 self.out_path.set(str(REPORTS_DIR / "WA_permit_report.xlsx"))
+        elif mode == "ticket":
+            self.ticket_frame.pack(fill="x", padx=10, pady=6)
+            if cur_basename in defaults:
+                self.out_path.set(str(REPORTS_DIR / "WA_ticket_report.xlsx"))
         else:
             # e-Tracking: ตัวเลือก → รูปแบบรายงาน (Template) → ตัวกรองสถานะ → ดึงเฉพาะเลขคำขอ
             self._etracking_frames[0].pack(fill="x", padx=10, pady=6)
@@ -2124,7 +2172,7 @@ class App(tk.Tk):
         etk_multi = (mode in ("etracking", "permit_report") and self.etk_multi.get())
         # รวมทุกบัญชีเป็นไฟล์เดียว — เฉพาะโหมด e-Tracking แบบหลายบัญชี (permit_report รวมเป็นไฟล์เดียวอยู่แล้ว)
         etk_combine = (mode == "etracking" and etk_multi and self.etk_combine.get())
-        if mode not in ("register", "receipts", "results", "inform", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment", "bt30_ctn") and not etk_multi:
+        if mode not in ("register", "receipts", "results", "inform", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment", "bt30_ctn", "ticket") and not etk_multi:
             if not self.username.get().strip() or not self.password.get():
                 messagebox.showwarning("ข้อมูลไม่ครบ", "กรุณากรอก Username และ Password")
                 return
@@ -2522,6 +2570,22 @@ class App(tk.Tk):
             else:
                 booking_branch_filter = None
 
+        # ---- โหมด ticket: อ่านไฟล์ Excel Ticket ID ----
+        ticket_excel: Path | None = None
+        if mode == "ticket":
+            _te = (self.ticket_excel_input.get() or "").strip()
+            if not _te:
+                messagebox.showwarning("ข้อมูลไม่ครบ", "กรุณาเลือกไฟล์ Excel รายการ Ticket ID")
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
+            ticket_excel = Path(_te)
+            if not ticket_excel.exists():
+                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ '{ticket_excel}'")
+                self.btn_start.config(state="normal")
+                self.btn_cancel.config(state="disabled")
+                return
+
         self._worker = threading.Thread(
             target=self._run,
             args=(mode, cfg, out, limit, sub_tabs, register_input, register_row_range,
@@ -2539,7 +2603,8 @@ class App(tk.Tk):
                   bt30ctn_do_ctn, bt30ctn_do_appt,
                   bt30ctn_do_bt25, bt30ctn_do_receipt,
                   namelist_form_type, namelist_limit,
-                  booking_login, booking_months_ahead, booking_branch_filter),
+                  booking_login, booking_months_ahead, booking_branch_filter,
+                  ticket_excel),
             daemon=True,
         )
         self.btn_pause.config(state="normal")
@@ -2608,6 +2673,7 @@ class App(tk.Tk):
         namelist_form_type: str = "", namelist_limit: int = 0,
         booking_login: Path | None = None, booking_months_ahead: int = 3,
         booking_branch_filter: list[str] | None = None,
+        ticket_excel: Path | None = None,
     ) -> None:
         try:
             if mode == "aliens":
@@ -2756,6 +2822,13 @@ class App(tk.Tk):
                         progress=self._set_progress,
                         is_cancelled=self._wait_if_paused_or_cancelled,
                     )
+            elif mode == "ticket":
+                count, path = run_ticket_report(
+                    cfg, ticket_excel, out,
+                    log=self._log,
+                    progress=self._set_progress,
+                    is_cancelled=self._wait_if_paused_or_cancelled,
+                )
             else:
                 if etk_req_excel is not None and etk_req_login is not None:
                     count, path = run_scrape_by_ref(

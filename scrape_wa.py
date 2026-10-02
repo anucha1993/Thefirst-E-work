@@ -4925,51 +4925,61 @@ def _download_doc_pdf(
     # 2) เตรียม JS สำหรับ "เช็คว่ามีปุ่ม" และ "คลิกปุ่ม" ตาม find mode
     if find_mode == "row_link":
         pattern = doc_cfg["label_pattern"]
+        # ไล่ "ปีนขึ้น" จากแต่ละลิงก์ GetDocumentConfirm ที่มีอยู่จริง เพื่อหาว่าแถวไหนเป็นเจ้าของ
+        # (ปีนจากตัวลิงก์เอง ไม่ใช่ค้นจากข้อความกว้างๆ — กันไปเจอ ancestor ที่ครอบหลายแถว ซึ่งเคยทำให้
+        # เอกสารที่ยังไม่ถูกสร้าง ดันได้ไฟล์ของเอกสารอื่นที่สร้างไปแล้วแทน)
         has_js = r"""(pat) => {
             const re = new RegExp(pat);
             const pane = document.querySelector('#tab-response') || document;
-            let found = false;
-            pane.querySelectorAll('*').forEach(el => {
-                if (found) return;
-                const txt = (el.innerText || '').trim();
-                if (!txt || !re.test(txt)) return;
-                const links = [...el.querySelectorAll('a, button, [onclick]')]
-                    .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
-                if (links.length === 1) found = true;
-            });
-            return found;
+            const links = [...pane.querySelectorAll('[onclick*="GetDocumentConfirm"]')];
+            let n = 0;
+            for (const a of links) {
+                let node = a.parentElement, text = '';
+                for (let i = 0; i < 8 && node; i++) {
+                    text = (node.innerText || '').trim();
+                    if (text && re.test(text)) break;
+                    if ((node.className || '').includes('col-12')) break;  // ถึงขอบแถวแล้ว หยุด กันข้ามไปแถวอื่น
+                    node = node.parentElement;
+                }
+                if (text && re.test(text)) n++;
+            }
+            return n === 1;
         }"""
         click_js = r"""(pat) => {
             const re = new RegExp(pat);
             const pane = document.querySelector('#tab-response') || document;
-            let best = null, bestLen = Infinity;
-            pane.querySelectorAll('*').forEach(el => {
-                const txt = (el.innerText || '').trim();
-                if (!txt || !re.test(txt)) return;
-                const links = [...el.querySelectorAll('a, button, [onclick]')]
-                    .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
-                if (links.length === 1 && txt.length < bestLen) {
-                    best = links[0]; bestLen = txt.length;
+            const links = [...pane.querySelectorAll('[onclick*="GetDocumentConfirm"]')];
+            const matches = [];
+            for (const a of links) {
+                let node = a.parentElement, text = '';
+                for (let i = 0; i < 8 && node; i++) {
+                    text = (node.innerText || '').trim();
+                    if (text && re.test(text)) break;
+                    if ((node.className || '').includes('col-12')) break;
+                    node = node.parentElement;
                 }
-            });
-            if (best) { best.click(); return true; }
-            return false;
+                if (text && re.test(text)) matches.push(a);
+            }
+            if (matches.length !== 1) return false;
+            matches[0].click(); return true;
         }"""
         url_js = r"""(pat) => {
             const re = new RegExp(pat);
             const pane = document.querySelector('#tab-response') || document;
-            let best = null, bestLen = Infinity;
-            pane.querySelectorAll('*').forEach(el => {
-                const txt = (el.innerText || '').trim();
-                if (!txt || !re.test(txt)) return;
-                const links = [...el.querySelectorAll('a, button, [onclick]')]
-                    .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
-                if (links.length === 1 && txt.length < bestLen) {
-                    best = links[0]; bestLen = txt.length;
+            const links = [...pane.querySelectorAll('[onclick*="GetDocumentConfirm"]')];
+            const matches = [];
+            for (const a of links) {
+                let node = a.parentElement, text = '';
+                for (let i = 0; i < 8 && node; i++) {
+                    text = (node.innerText || '').trim();
+                    if (text && re.test(text)) break;
+                    if ((node.className || '').includes('col-12')) break;
+                    node = node.parentElement;
                 }
-            });
-            if (!best) return '';
-            return (best.getAttribute('onclick') || '') + ' | ' + (best.getAttribute('href') || '');
+                if (text && re.test(text)) matches.push(a);
+            }
+            if (matches.length !== 1) return '';
+            return (matches[0].getAttribute('onclick') || '') + ' | ' + (matches[0].getAttribute('href') || '');
         }"""
         not_found_msg = f"ไม่พบเอกสาร '{doc_cfg['label']}' ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"
     else:  # "button"
@@ -4995,7 +5005,19 @@ def _download_doc_pdf(
         not_found_msg = f"ไม่พบปุ่ม/ลิงก์ที่ตรงกับ '{pattern}' ในแท็บนี้"
 
     if not page.evaluate(has_js, pattern):
-        return not_found_msg
+        # เอกสารแท็บ 'เอกสารตอบรับ' อาจยังไม่เคยถูกสร้าง (มีแค่ปุ่ม 'สร้างเอกสาร') → ลองกดสร้างก่อนยอมแพ้
+        # (โหมด 'button' เช่น หลักฐานการชำระเงิน ไม่มีปุ่มสร้างเอกสารแบบนี้ — ข้าม)
+        generated_ok = False
+        if find_mode == "row_link":
+            gen_result = _try_generate_response_doc(page, pattern, doc_cfg["label"], log=log)
+            if gen_result == "GENERATED":
+                generated_ok = page.evaluate(has_js, pattern)
+            elif gen_result.startswith("COOLDOWN"):
+                return f"เอกสาร '{doc_cfg['label']}' ยังไม่เคยถูกสร้าง และติดคูลดาวน์ระบบ: {gen_result.split(':', 1)[1]}"
+            elif gen_result == "TIMEOUT":
+                return f"กดสร้างเอกสาร '{doc_cfg['label']}' แล้ว แต่ระบบยังสร้างไม่เสร็จภายในเวลาที่รอ — รันใหม่ภายหลัง"
+        if not generated_ok:
+            return not_found_msg
 
     # 3) ลองดึง URL เอกสารจากปุ่ม/ลิงก์ เพื่อ fetch ตรง (เร็วกว่าเปิด popup)
     prefetch_url = ""
@@ -5314,9 +5336,22 @@ def _download_bt55_per_person(
     }"""
     count = page.evaluate(enum_js, pat)
     if not count:
-        return [{"name": "", "doc_no": "", "work_permit": "", "file": "",
-                 "status": "FAIL",
-                 "error": "ไม่พบเอกสาร บต.55 ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"}]
+        # บต.55 อาจยังไม่เคยถูกสร้าง (มีแค่ปุ่ม 'สร้างเอกสาร') → ลองกดสร้างก่อนยอมแพ้
+        gen_result = _try_generate_response_doc(page, pat, "แบบ บต.55", log=log)
+        if gen_result == "GENERATED":
+            count = page.evaluate(enum_js, pat)
+        elif gen_result.startswith("COOLDOWN"):
+            return [{"name": "", "doc_no": "", "work_permit": "", "file": "",
+                     "status": "FAIL",
+                     "error": f"บต.55 ยังไม่เคยถูกสร้าง และติดคูลดาวน์ระบบ: {gen_result.split(':', 1)[1]}"}]
+        elif gen_result == "TIMEOUT":
+            return [{"name": "", "doc_no": "", "work_permit": "", "file": "",
+                     "status": "FAIL",
+                     "error": "กดสร้างเอกสาร บต.55 แล้ว แต่ระบบยังสร้างไม่เสร็จภายในเวลาที่รอ — รันใหม่ภายหลัง"}]
+        if not count:
+            return [{"name": "", "doc_no": "", "work_permit": "", "file": "",
+                     "status": "FAIL",
+                     "error": "ไม่พบเอกสาร บต.55 ในแท็บเอกสารตอบรับ (อาจยังไม่ถูกสร้าง)"}]
 
     # JS เลือกลิงก์ลำดับที่ i ด้วยลำดับ/ตัวกรอง dedup เดียวกับ enum_js
     # (mode='url' อ่าน onclick/href, mode='click' สั่งคลิก)
@@ -5915,19 +5950,28 @@ def _try_generate_response_doc(
     คืน 'GENERATED' (เจอลิงก์แล้ว พร้อมดาวน์โหลดต่อ), 'COOLDOWN:<ข้อความ>' (ติดคูลดาวน์ 24 ชม.),
     'TIMEOUT' (กดสร้างแล้วแต่รอไม่ทัน), 'NO_BUTTON' (ไม่พบปุ่มสร้างเอกสารเลย)
     """
+    # หา "แถว" ของปุ่ม 'สร้างเอกสาร' โดยปีนขึ้นจาก parent (ไม่ fix class ชื่อแถว — เว็บเคยเปลี่ยน
+    # จาก '.row.align-items-center.col-12' เป็น '.doc-row.col-12' มาแล้ว ทำให้ selector เดิมหาไม่เจอ)
     clicked = page.evaluate(
         r"""(pat) => {
             const re = new RegExp(pat);
             const cont = document.querySelector('#DetailDocumentList') || document.querySelector('#tab-response') || document;
-            const rows = [...cont.querySelectorAll('.row.align-items-center.col-12')];
-            for (const row of rows) {
-                const txt = (row.innerText || '').trim();
-                if (!re.test(txt)) continue;
-                const genBtn = [...row.querySelectorAll('a,button,[onclick]')]
-                    .find(b => (b.getAttribute('onclick')||'').includes('handleUpdateClick')
-                        && (b.getAttribute('onclick')||'').includes('GenerateDocument'));
-                if (genBtn) { genBtn.click(); return true; }
+            const btns = [...cont.querySelectorAll('[onclick]')].filter(b => {
+                const oc = b.getAttribute('onclick') || '';
+                return oc.includes('handleUpdateClick') && oc.includes('GenerateDocument');
+            });
+            let best = null, bestLen = Infinity;
+            for (const b of btns) {
+                let node = b.parentElement, text = '';
+                for (let i = 0; i < 8 && node; i++) {
+                    text = (node.innerText || '').trim();
+                    if (text && re.test(text)) break;
+                    if ((node.className || '').includes('col-12')) break;
+                    node = node.parentElement;
+                }
+                if (text && re.test(text) && text.length < bestLen) { best = b; bestLen = text.length; }
             }
+            if (best) { best.click(); return true; }
             return false;
         }""",
         pattern,
@@ -5969,18 +6013,24 @@ def _try_generate_response_doc(
         page.wait_for_timeout(1500)
         has_link = page.evaluate(
             r"""(pat) => {
+                // ไล่ "ปีนขึ้น" จากแต่ละลิงก์ GetDocumentConfirm ที่มีอยู่จริง เพื่อหาว่าแถวไหนเป็นเจ้าของ
+                // (ปีนจากตัวลิงก์เอง ไม่ใช่ค้นจากข้อความกว้างๆ — กันไปเจอ ancestor ที่ครอบหลายแถว
+                // ซึ่งเคยทำให้เอกสารที่ยังไม่ถูกสร้าง ดันได้ไฟล์ของเอกสารอื่นที่สร้างไปแล้วแทน)
                 const re = new RegExp(pat);
                 const pane = document.querySelector('#tab-response') || document;
-                let found = false;
-                pane.querySelectorAll('*').forEach(el => {
-                    if (found) return;
-                    const txt = (el.innerText || '').trim();
-                    if (!txt || !re.test(txt)) return;
-                    const links = [...el.querySelectorAll('a, button, [onclick]')]
-                        .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
-                    if (links.length === 1) found = true;
-                });
-                return found;
+                const links = [...pane.querySelectorAll('[onclick*="GetDocumentConfirm"]')];
+                let n = 0;
+                for (const a of links) {
+                    let node = a.parentElement, text = '';
+                    for (let i = 0; i < 8 && node; i++) {
+                        text = (node.innerText || '').trim();
+                        if (text && re.test(text)) break;
+                        if ((node.className || '').includes('col-12')) break;
+                        node = node.parentElement;
+                    }
+                    if (text && re.test(text)) n++;
+                }
+                return n === 1;
             }""",
             pattern,
         )
@@ -6035,22 +6085,27 @@ def _download_response_doc_named(
         res["error"] = "ยังไม่มีเอกสารตอบรับจากระบบ (คำขอยังไม่อนุมัติ/รอพิจารณา)"
         return res
 
-    # อ่านชื่อเอกสาร (label) ที่ตรง pattern และมีลิงก์ GetDocumentConfirm 1 ลิงก์
+    # อ่านชื่อเอกสาร (label) จากแถวที่เป็นเจ้าของลิงก์ GetDocumentConfirm ที่ตรง pattern พอดี 1 ลิงก์
+    # (ไล่ปีนขึ้นจากตัวลิงก์แต่ละอันที่มีอยู่จริง แทนการค้นข้อความกว้างๆ — กันไปเจอ ancestor ที่ครอบ
+    # หลายแถว ซึ่งเคยทำให้เอกสารที่ยังไม่ถูกสร้าง ดันได้ไฟล์ของเอกสารอื่นที่สร้างไปแล้วแทน)
     label_text = page.evaluate(
         r"""(pat) => {
             const re = new RegExp(pat);
             const pane = document.querySelector('#tab-response') || document;
-            let bestText = '', bestLen = Infinity;
-            pane.querySelectorAll('*').forEach(el => {
-                const txt = (el.innerText || '').trim();
-                if (!txt || !re.test(txt)) return;
-                const links = [...el.querySelectorAll('a, button, [onclick]')]
-                    .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
-                if (links.length === 1 && txt.length < bestLen) {
-                    bestText = txt; bestLen = txt.length;
+            const links = [...pane.querySelectorAll('[onclick*="GetDocumentConfirm"]')];
+            const matches = [];
+            for (const a of links) {
+                let node = a.parentElement, text = '';
+                for (let i = 0; i < 8 && node; i++) {
+                    text = (node.innerText || '').trim();
+                    if (text && re.test(text)) break;
+                    if ((node.className || '').includes('col-12')) break;
+                    node = node.parentElement;
                 }
-            });
-            return bestText;
+                if (text && re.test(text)) matches.push(text);
+            }
+            if (matches.length !== 1) return '';
+            return matches[0];
         }""",
         pattern,
     )
@@ -6062,17 +6117,20 @@ def _download_response_doc_named(
                 r"""(pat) => {
                     const re = new RegExp(pat);
                     const pane = document.querySelector('#tab-response') || document;
-                    let bestText = '', bestLen = Infinity;
-                    pane.querySelectorAll('*').forEach(el => {
-                        const txt = (el.innerText || '').trim();
-                        if (!txt || !re.test(txt)) return;
-                        const links = [...el.querySelectorAll('a, button, [onclick]')]
-                            .filter(b => (b.getAttribute('onclick') || '').includes('GetDocumentConfirm'));
-                        if (links.length === 1 && txt.length < bestLen) {
-                            bestText = txt; bestLen = txt.length;
+                    const links = [...pane.querySelectorAll('[onclick*="GetDocumentConfirm"]')];
+                    const matches = [];
+                    for (const a of links) {
+                        let node = a.parentElement, text = '';
+                        for (let i = 0; i < 8 && node; i++) {
+                            text = (node.innerText || '').trim();
+                            if (text && re.test(text)) break;
+                            if ((node.className || '').includes('col-12')) break;
+                            node = node.parentElement;
                         }
-                    });
-                    return bestText;
+                        if (text && re.test(text)) matches.push(text);
+                    }
+                    if (matches.length !== 1) return '';
+                    return matches[0];
                 }""",
                 pattern,
             )
@@ -6091,8 +6149,9 @@ def _download_response_doc_named(
     m = re.search(pattern, label)
     if m:
         label = label[m.start():].strip()
-    # ตัดข้อความ tooltip ปุ่ม 'สร้างเอกสารใหม่' ที่ติดมาด้วย (เช่น "...สามารถกดได้อีกครั้ง 15 ก.ย. ...")
-    label = re.sub(r"\s*สามารถกดได้อีกครั้ง.*$", "", label).strip()
+    # ตัดข้อความปุ่ม/tooltip ที่ติดมากับ innerText ของแถว (เช่น "ดูเอกสาร", "รีเฟรชเอกสาร",
+    # "รีเฟรชได้อีกครั้ง 1 ต.ค. 2569 18:21", หรือของเก่า "...สามารถกดได้อีกครั้ง 15 ก.ย. ...")
+    label = re.sub(r"\s*(ดูเอกสาร|สร้างเอกสาร|สามารถกดได้อีกครั้ง).*$", "", label).strip()
     label = label[:120]
     res["label"] = label
     # ชื่อไฟล์: ใช้ suffix สั้น (เช่น BT50A6) ถ้ากำหนดไว้ ไม่งั้นใช้ชื่อเอกสารจากเว็บ
@@ -18355,6 +18414,241 @@ def run_namelist_alien(
             return len(all_rows), out_path
         finally:
             ctx.close(); browser.close()
+
+
+# ─────────────────────────────────────────────────────────────────
+# โหมดใหม่ — ตรวจสอบ Ticket ID (หน้าสาธารณะ "แจ้งปัญหาการใช้งาน" /TicketRequest)
+# ไม่ต้อง login — อ่านเลข Ticket ID จาก Excel แล้วค้นหาทีละเลข เก็บผลตาราง Full ทุกคอลัมน์
+# ─────────────────────────────────────────────────────────────────
+TICKET_REQUEST_URL = "https://eworkpermit.doe.go.th/TicketRequest"
+
+
+def _read_ticket_ids(path: Path) -> list[str]:
+    """อ่านไฟล์ Excel รายการ Ticket ID → list[str] (ตัดว่าง/ซ้ำออก, คงลำดับเดิม)
+    คอลัมน์ที่รองรับ: 'Ticket ID' / 'TicketID' / 'Ticket_ID' / 'Ticket' / 'เลข Ticket ID'
+    (ถ้าไม่เจอชื่อคอลัมน์ที่รู้จัก จะ fallback ไปใช้คอลัมน์แรกของชีต)
+    """
+    p = Path(path) if path else Path("")
+    if not str(p).strip():
+        raise FileNotFoundError("ไม่ได้ระบุไฟล์ Excel รายการ Ticket ID")
+    if not p.exists():
+        raise FileNotFoundError(f"ไม่พบไฟล์ '{p}'")
+    wb = load_workbook(p, data_only=True)
+    ws = wb.active
+    hdr = [str(c.value).strip() if c.value is not None else "" for c in ws[1]]
+
+    def col(*names: str) -> int:
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if h.lower() == nm.lower():
+                    return i
+        for nm in names:
+            for i, h in enumerate(hdr):
+                if nm.lower() in h.lower():
+                    return i
+        return -1
+
+    i_ticket = col("Ticket ID", "TicketID", "Ticket_ID", "Ticket", "เลข Ticket ID", "เลข Ticket")
+    if i_ticket < 0:
+        i_ticket = 0  # fallback: คอลัมน์แรก
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not any(v not in (None, "") for v in row):
+            continue
+        if not (0 <= i_ticket < len(row)) or row[i_ticket] is None:
+            continue
+        v = row[i_ticket]
+        if isinstance(v, float) and v.is_integer():
+            v = int(v)
+        s = str(v).strip()
+        if s and s not in seen:
+            seen.add(s)
+            out.append(s)
+    return out
+
+
+def save_excel_ticket_report(rows: list[dict], out_path: Path) -> None:
+    """บันทึกรายงานผลค้นหา Ticket ID ลง Excel — 1 แถว/ผลลัพธ์ที่ตารางหน้าเว็บแสดง
+    (Ticket ID ที่ไม่พบข้อมูล → 1 แถว หมายเหตุ 'ไม่พบข้อมูล')
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Ticket Report"
+
+    cols = [
+        "ลำดับ", "Ticket ID", "กลุ่มปัญหา", "หัวข้อ", "รายละเอียด",
+        "ชื่อผู้แจ้ง", "เบอร์โทร(ผู้แจ้ง)", "วันที่แจ้ง", "วันที่อัปเดต",
+        "สถานะการดำเนินงาน", "หมายเหตุ",
+    ]
+    ws.append(cols)
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="C2185B")
+    for c in range(1, len(cols) + 1):
+        cell = ws.cell(row=1, column=c)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+    for i, r in enumerate(rows, start=1):
+        ws.append([
+            i, r.get("ticket_id", ""), r.get("problem_group", ""),
+            r.get("subject", ""), r.get("detail", ""),
+            r.get("reporter_name", ""), r.get("reporter_phone", ""),
+            r.get("date_reported", ""), r.get("date_updated", ""),
+            r.get("status", ""), r.get("remark", ""),
+        ])
+
+    widths = {
+        "ลำดับ": 8, "Ticket ID": 14, "กลุ่มปัญหา": 16, "หัวข้อ": 28,
+        "รายละเอียด": 50, "ชื่อผู้แจ้ง": 22, "เบอร์โทร(ผู้แจ้ง)": 16,
+        "วันที่แจ้ง": 18, "วันที่อัปเดต": 18, "สถานะการดำเนินงาน": 18, "หมายเหตุ": 24,
+    }
+    for c_idx, name in enumerate(cols, start=1):
+        ws.column_dimensions[get_column_letter(c_idx)].width = widths.get(name, 16)
+    for r_idx in range(2, ws.max_row + 1):
+        for c_idx in range(1, ws.max_column + 1):
+            ws.cell(row=r_idx, column=c_idx).alignment = Alignment(vertical="top", wrap_text=True)
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+    wb.save(out_path)
+
+
+def _ticket_search_and_collect(page: Page, ticket_id: str, log=print) -> list[dict]:
+    """ค้นหา Ticket ID เดียวบนหน้า TicketRequest (ที่เปิดค้างอยู่แล้ว) แล้วอ่านตาราง
+    ผลลัพธ์ทั้งหมดที่เว็บแสดง (#myTicketsTable) → คืน list ของ dict ต่อแถว (ว่างถ้าไม่พบ)
+    """
+    page.select_option("#guestSearchType", value="ticket")
+    page.locator("#guestSearchText").fill(ticket_id)
+    try:
+        with page.expect_response(
+            lambda r: "GetListTicketFreshDeskNonLogin" in r.url, timeout=15_000
+        ):
+            page.click("#btnGuestSearch")
+    except PWTimeoutError:
+        log(f"      ⚠ {ticket_id}: รอผลค้นหาไม่ทัน (timeout) — อ่านตารางเท่าที่มี")
+    page.wait_for_timeout(600)
+
+    data = page.evaluate(
+        r"""() => {
+            const table = document.getElementById('myTicketsTable');
+            if (!table) return null;
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
+            return rows.map(tr => {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                if (tds.length <= 1) return null;  // "No data available in table"
+                return tds.slice(0, 8).map(td => {
+                    const ps = Array.from(td.querySelectorAll('p'));
+                    if (ps.length) return ps.map(p => p.innerText.trim());
+                    return td.innerText.trim();
+                });
+            }).filter(r => r !== null);
+        }"""
+    )
+
+    def _first(v):
+        return v[0] if isinstance(v, list) else v
+
+    out: list[dict] = []
+    for cells in (data or []):
+        group_lines = cells[1] if isinstance(cells[1], list) else [cells[1]]
+        subj_lines = cells[2] if isinstance(cells[2], list) else [cells[2]]
+        out.append({
+            "ticket_id": ticket_id,
+            "problem_group": group_lines[0] if group_lines else "",
+            "subject": subj_lines[0] if subj_lines else "",
+            "detail": subj_lines[1] if len(subj_lines) > 1 else "",
+            "reporter_name": _first(cells[3]) or "",
+            "reporter_phone": _first(cells[4]) or "",
+            "date_reported": _first(cells[5]) or "",
+            "date_updated": _first(cells[6]) or "",
+            "status": _first(cells[7]) or "",
+            "remark": "",
+        })
+    return out
+
+
+def run_ticket_report(
+    cfg: dict,
+    ticket_excel: Path,
+    out_path: Path,
+    log=print,
+    progress=None,
+    is_cancelled=None,
+) -> tuple[int, Path]:
+    """โหมด 'ตรวจสอบ Ticket ID' — หน้าสาธารณะ https://eworkpermit.doe.go.th/TicketRequest
+    (ไม่ต้อง login) อ่านเลข Ticket ID จาก Excel → ค้นหาทีละเลข → เก็บข้อมูลตารางผลลัพธ์
+    ทุกคอลัมน์ตามที่เว็บแสดง → บันทึกเป็น Excel
+
+    Args:
+        cfg: {headless, hide_window} (ไม่ต้องมี username/password — หน้านี้ไม่ต้อง login)
+        ticket_excel: ไฟล์ Excel คอลัมน์ 'Ticket ID'
+        out_path: ไฟล์ผลลัพธ์ Excel
+
+    Returns: (จำนวนแถวผลลัพธ์รวม, path ไฟล์ที่บันทึก)
+    """
+    out_path = _timestamped_path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    ticket_ids = _read_ticket_ids(ticket_excel)
+    if not ticket_ids:
+        raise ValueError(f"ไม่พบเลข Ticket ID ในไฟล์ '{Path(ticket_excel).name}'")
+    log(f"[1/2] พบ {len(ticket_ids)} Ticket ID จากไฟล์ {Path(ticket_excel).name}")
+    log(f"      ไฟล์รายงาน: {out_path.name}")
+
+    def _cancelled() -> bool:
+        return bool(is_cancelled and is_cancelled())
+
+    total = len(ticket_ids)
+    if progress:
+        try: progress(0, total)
+        except Exception: pass
+
+    all_rows: list[dict] = []
+    with sync_playwright() as pw:
+        browser = _launch_chromium(pw, cfg, ["--disable-blink-features=AutomationControlled"])
+        ctx = browser.new_context(locale="th-TH", timezone_id="Asia/Bangkok")
+        page = ctx.new_page()
+        try:
+            page.goto(TICKET_REQUEST_URL, wait_until="domcontentloaded", timeout=45_000)
+            page.wait_for_selector("#guestSearchText", state="visible", timeout=20_000)
+
+            for i, tid in enumerate(ticket_ids, 1):
+                if _cancelled():
+                    log("[!] ยกเลิกโดยผู้ใช้ — กำลังบันทึกสิ่งที่ดึงได้แล้ว")
+                    break
+                log(f"  [{i}/{total}] ค้นหา Ticket ID: {tid}")
+                try:
+                    found = _ticket_search_and_collect(page, tid, log=log)
+                except Exception as e:
+                    log(f"      !! ผิดพลาด (ข้าม): {e}")
+                    found = []
+                if found:
+                    all_rows.extend(found)
+                    log(f"      ✓ พบ {len(found)} รายการ")
+                else:
+                    all_rows.append({
+                        "ticket_id": tid, "problem_group": "", "subject": "",
+                        "detail": "", "reporter_name": "", "reporter_phone": "",
+                        "date_reported": "", "date_updated": "", "status": "",
+                        "remark": "ไม่พบข้อมูล",
+                    })
+                    log("      ✗ ไม่พบข้อมูล")
+                if progress:
+                    try: progress(i, total)
+                    except Exception: pass
+                if i % 20 == 0:
+                    try:
+                        save_excel_ticket_report(all_rows, out_path)
+                    except Exception:
+                        pass
+        finally:
+            ctx.close(); browser.close()
+
+    save_excel_ticket_report(all_rows, out_path)
+    log(f"[2/2] บันทึกไฟล์ Excel: {out_path}")
+    log(f"[เสร็จสิ้น] รวม {len(all_rows)} แถว จาก {total} Ticket ID")
+    return len(all_rows), out_path
 
 
 def main() -> int:
