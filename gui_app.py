@@ -1,5 +1,12 @@
-"""GUI สำหรับดึงรายงาน 'รอยื่นเอกสารเพิ่มเติม' จาก e-WorkPermit
+"""GUI สำหรับดึงรายงาน / ดาวน์โหลดเอกสาร / ยื่นคำขอ จากระบบ e-WorkPermit
 รัน: python gui_app.py
+
+โครงสร้างหน้าจอ (V31):
+  ┌ Sidebar          │ หัวข้อโหมด + ป้ายความปลอดภัย + คำอธิบาย                     ┐
+  │ (เลือกโหมด       │ การ์ดตัวเลือก (เลื่อนได้) — แสดงเฉพาะที่โหมดนั้นใช้จริง        │
+  │  จัดกลุ่ม 4 หมวด) │ แถบปุ่ม เริ่ม/พัก/ต่อ/ยกเลิก + progress (อยู่ล่างสุดเสมอ)      │
+  │                  │ บันทึกการทำงาน (พับ/กางได้)                                 │
+  └──────────────────┴────────────────────────────────────────────────────────┘
 """
 from __future__ import annotations
 
@@ -9,6 +16,8 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
+
+import usage_tracker
 
 from scrape_wa import (
     run_scrape,
@@ -45,6 +54,9 @@ from scrape_wa import (
 ROOT = Path(__file__).parent
 # โฟลเดอร์เก็บไฟล์รายงาน (Report) ทุกโหมด ให้เป็นระเบียบ
 REPORTS_DIR = ROOT / "reports"
+APP_VERSION = "31"
+# ไฟล์จำค่าที่กรอกล่าสุด (ไม่เก็บรหัสผ่าน)
+SETTINGS_FILE = ROOT / "_gui_settings.json"
 
 # (code, label) ของรายการคำขอ — ดึงจาก dropdown #Filter_request_list ของเว็บจริง
 # เรียงตามลำดับเดียวกับ select บนเว็บ
@@ -110,24 +122,327 @@ WHITELIST_OPTIONS = [
     "ดำเนินการเสร็จสิ้น",
 ]
 
+# ---------------------------------------------------------------------------
+# ทะเบียนโหมด — แหล่งข้อมูลเดียวสำหรับ sidebar / หัวข้อ / login ที่ต้องใช้ / ไฟล์ผลลัพธ์
+#   login : "creds"  = ใช้ Username/Password ในหน้าจอ
+#           "file"   = ใช้บัญชีจาก Excel (UsernameLogin ฯลฯ) ไม่ต้องกรอกด้านบน
+#           "either" = ใช้ได้ทั้งสองแบบ
+#           "none"   = ไม่ต้อง login
+#   safety: "read" (อ่านอย่างเดียว) / "write" (บันทึกข้อมูลลงระบบ) / "danger" (ส่งคำขอจริง/มีค่าธรรมเนียม)
+# ---------------------------------------------------------------------------
+MODE_GROUPS: list[tuple[str, str]] = [
+    ("report", "📊  รายงาน / ดึงข้อมูล"),
+    ("download", "📥  ดาวน์โหลดเอกสาร"),
+    ("submit", "✍️  ยื่นคำขอ / บันทึกข้อมูล"),
+    ("booking", "📅  คิวถ่ายบัตร"),
+]
+
+MODES: list[dict] = [
+    dict(key="etracking", group="report", nav="e-Tracking (รายการคำขอ)",
+         title="e-Tracking — ดึงรายการคำขอ",
+         desc="ดึงรายการคำขอจากหน้า e-Tracking ตามรายการคำขอ/สถานะ/วันที่ แล้วบันทึกเป็น Excel "
+              "(รายงาน WA + ข้อมูลคนต่างด้าว)",
+         login="creds", safety="read", out="WA_report.xlsx"),
+    dict(key="permit_report", group="report", nav="รายงานข้อมูลการขออนุญาต",
+         title="รายงานข้อมูลการขออนุญาต",
+         desc="สถานะคำขอ (อนุมัติคำขอ) + ข้อมูลสถานประกอบการ (บริษัท/จังหวัด) ตามรายการคำขอ/สถานะ/วันที่ที่เลือก",
+         login="creds", safety="read", out="WA_permit_report.xlsx"),
+    dict(key="aliens", group="report", nav="ข้อมูลคนต่างด้าว (จัดการบัญชี)",
+         title="จัดการบัญชี → ข้อมูลคนต่างด้าว",
+         desc="ดึงรายชื่อคนต่างด้าวทั้งหมดจากหน้าจัดการบัญชี (อ่านเฉพาะตาราง ไม่เปิดรายละเอียดรายคน — เร็วมาก)",
+         login="creds", safety="read", out="WA_aliens.xlsx"),
+    dict(key="namelist_alien", group="report", nav="รายชื่อยื่นต่ออายุแล้ว (NameList)",
+         title="รายชื่อคนต่างด้าวที่ยื่นคำขอต่ออายุแล้ว (NameListAlien)",
+         desc="เปิดหน้า NameListAlien ตาม Form Type แล้ววนทุกหน้า (100 แถว/หน้า) บันทึกลง Excel",
+         login="creds", safety="read", out="WA_namelist_alien_report.xlsx"),
+    dict(key="ticket", group="report", nav="ตรวจสอบ Ticket ID",
+         title="ตรวจสอบ Ticket ID (แจ้งปัญหาการใช้งาน)",
+         desc="หน้า /TicketRequest เปิดสาธารณะ — ไม่ต้อง login ค้นหาทีละเลข Ticket ID จาก Excel แล้วเก็บผลทุกคอลัมน์",
+         login="none", safety="read", out="WA_ticket_report.xlsx"),
+
+    dict(key="receipts", group="download", nav="ใบเสร็จ / บต.44 / บต.22 ฯลฯ",
+         title="ดาวน์โหลดใบเสร็จและแบบฟอร์ม (บต.44 / บต.22 / บต.53 / บต.55 / บต.52 / บต.56)",
+         desc="อ่านเลขคำขอจาก RequestData.xlsx → login ตามบัญชีเจ้าของคำขอ → ดาวน์โหลด PDF ลง reports/receipts",
+         login="file", safety="read", out="WA_receipts_report.xlsx"),
+    dict(key="results", group="download", nav="ใบแจ้งผล / ใบรับคำขอ",
+         title="ดาวน์โหลดใบแจ้งผล / ใบรับคำขอ / บต.50",
+         desc="โหมด A: ตามเลขคำขอใน Ref_number.xlsx  |  โหมด B: ดึงจาก e-Tracking ตามรายการคำขอ (สถานะ 'รอนัดหมาย')",
+         login="file", safety="read", out="WA_result_docs_report.xlsx"),
+    dict(key="bill_payment", group="download", nav="ใบแจ้งชำระเงิน",
+         title="ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม)",
+         desc="วนทุกบัญชีใน UsernameLogin.xlsx → กรองสถานะ 'รอชำระเงิน' → พิมพ์แบบฟอร์มการชำระเงินเก็บไว้ (ไม่มีการตัดเงิน)",
+         login="file", safety="read", out="WA_bill_payment_report.xlsx"),
+    dict(key="payment_receipts", group="download", nav="ใบเสร็จรับเงินทั้งชุด",
+         title="ดาวน์โหลดใบเสร็จรับเงินทั้งชุด (900 + 100 + อื่นๆ)",
+         desc="อ่านเลขคำขอจาก Request_Receipt.xlsx → แท็บ 'การชำระเงิน' → ดูใบเสร็จรับเงิน → แยก PDF เป็น 1 ใบ/1 คน/1 ไฟล์",
+         login="file", safety="read", out="WA_payment_receipts_report.xlsx"),
+    dict(key="bt30_ctn", group="download", nav="ใบตอบรับ / ใบนัดหมาย",
+         title="ดาวน์โหลดใบตอบรับ (บต.30) / บต.25 / ใบนัดหมาย / ใบเสร็จ",
+         desc="วนทุกบัญชี (หรือบัญชีเดียวด้านล่าง) → e-Tracking ตามรายการคำขอ/สถานะ/วันที่ → เปิดแต่ละคำขอแล้วดาวน์โหลด PDF ลง reports/bt30_ctn",
+         login="either", safety="read", out="WA_bt30_ctn_report.xlsx"),
+    dict(key="appointment", group="download", nav="นัดหมายถ่ายบัตร (ที่อยู่จากใบเสร็จ)",
+         title="นัดหมายถ่ายบัตร — เก็บที่อยู่จากใบเสร็จค่าธรรมเนียม",
+         desc="วนทุกบัญชีใน UsernameLogin.xlsx → สถานะ 'รอนัดหมาย' (AP) → ดาวน์โหลดใบเสร็จ → อ่านจังหวัด/อำเภอจาก PDF",
+         login="file", safety="read", out="WA_appointment_report.xlsx"),
+
+    dict(key="register", group="submit", nav="ลงทะเบียนคนต่างด้าว",
+         title="ลงทะเบียนคนต่างด้าวจาก Excel (Register + ดึงข้อมูลใบอนุญาต)",
+         desc="สร้างบัญชีคนต่างด้าวทีละแถวจาก Excel ด้วยบัญชีของคนต่างด้าวแต่ละคน",
+         login="file", safety="write", out="WA_register_report.xlsx"),
+    dict(key="inform", group="submit", nav="แจ้งเข้านายจ้าง (บต.52)",
+         title="แจ้งเข้านายจ้าง (แบบ บต.52) — INFORM_ENTER_EXIT",
+         desc="กรอกฟอร์มจาก FormRequestEmployment.xlsx ด้วยบัญชีแรกใน UsernameLogin.xlsx — ค่าเริ่มต้นเป็นโหมดทดสอบ (ไม่ส่งจริง)",
+         login="file", safety="write", out="WA_inform_report.xlsx"),
+    dict(key="bt30", group="submit", nav="ต่อใบอนุญาต MoU (บต.30)",
+         title="ยื่นต่อใบอนุญาตทำงาน (แบบ บต.30 / MoU)",
+         desc="กรอกค้นหาข้อมูลคนต่างด้าวจาก from_bt30.xlsx → ทำขั้นตอน 2–6 → หยุดก่อนชำระเงิน (เว้นแต่เปิด 'ส่งคำขอจริง')",
+         login="file", safety="danger", out="WA_bt30_report.xlsx"),
+    dict(key="bt44", group="submit", nav="เปลี่ยนย้ายนายจ้าง (บต.44)",
+         title="เปลี่ยนย้ายนายจ้างในระบบ (บต.44)",
+         desc="กรอกข้อมูลจาก from_bt44 → บันทึก (ไม่กดถัดไป/ไม่ส่งคำขอ) — มีโหมดทดลองยื่น (Dry-Run)",
+         login="file", safety="write", out="WA_bt44_report.xlsx"),
+
+    dict(key="booking_availability", group="booking", nav="ตรวจวันว่างจอง (Real-Time)",
+         title="ตรวจวันว่างจอง (คิวถ่ายบัตร) — Real-Time",
+         desc="หา token จากคำขอสถานะ AP/SS → ดึงรายชื่อสาขา → วนปฏิทิน × ช่วงเวลา → Excel 3 sheet  |  หรือเปิดหน้าจอ Monitor สด ๆ",
+         login="either", safety="read", out="WA_booking_availability.xlsx"),
+]
+MODE_BY_KEY: dict[str, dict] = {m["key"]: m for m in MODES}
+DEFAULT_OUT_NAMES: set[str] = {m["out"] for m in MODES}
+
+SAFETY_BADGE = {
+    "read": ("อ่านอย่างเดียว — ไม่ส่งคำขอ/ไม่ตัดเงิน", "Safe.Badge.TLabel"),
+    "write": ("บันทึกข้อมูลลงระบบจริง", "Warn.Badge.TLabel"),
+    "danger": ("อาจส่งคำขอจริง + มีค่าธรรมเนียม", "Danger.Badge.TLabel"),
+}
+
+# ---------------------------------------------------------------------------
+# Theme
+# ---------------------------------------------------------------------------
+PALETTE = {
+    "bg": "#F3F4F6",        # พื้นหลังหน้าต่าง
+    "surface": "#FFFFFF",   # การ์ด/ช่องกรอก
+    "sidebar": "#1F2937",   # sidebar เข้ม
+    "sidebar_fg": "#E5E7EB",
+    "sidebar_sel": "#2563EB",
+    "border": "#E5E7EB",
+    "text": "#111827",
+    "muted": "#6B7280",
+    "accent": "#2563EB",
+    "accent_hover": "#1D4ED8",
+    "accent_fg": "#FFFFFF",
+    "ok": "#15803D",
+    "ok_bg": "#DCFCE7",
+    "warn": "#B45309",
+    "warn_bg": "#FEF3C7",
+    "danger": "#B91C1C",
+    "danger_bg": "#FEE2E2",
+    "info": "#1D4ED8",
+}
+FONT_UI = ("Segoe UI", 10)
+FONT_UI_BOLD = ("Segoe UI", 10, "bold")
+FONT_SMALL = ("Segoe UI", 9)
+FONT_TITLE = ("Segoe UI", 14, "bold")
+FONT_MONO = ("Consolas", 10)
+
+
+def apply_theme(root: tk.Tk) -> None:
+    """ตั้งค่า ttk style ให้ดูทันสมัย/สม่ำเสมอทั้งแอป (ใช้ธีม clam เป็นฐานเพื่อให้ปรับสีได้)"""
+    st = ttk.Style(root)
+    try:
+        st.theme_use("clam")
+    except Exception:
+        pass
+    P = PALETTE
+    root.configure(bg=P["bg"])
+    root.option_add("*Font", FONT_UI)
+    root.option_add("*TCombobox*Listbox.font", FONT_UI)
+
+    st.configure(".", background=P["bg"], foreground=P["text"], font=FONT_UI,
+                 bordercolor=P["border"], lightcolor=P["border"], darkcolor=P["border"],
+                 troughcolor=P["border"], focuscolor=P["accent"])
+    st.configure("TFrame", background=P["bg"])
+    st.configure("Surface.TFrame", background=P["surface"])
+    st.configure("Header.TFrame", background=P["surface"])
+    st.configure("Bottom.TFrame", background=P["surface"])
+    st.configure("TLabel", background=P["bg"], foreground=P["text"])
+    st.configure("Surface.TLabel", background=P["surface"])
+    st.configure("Title.TLabel", background=P["surface"], font=FONT_TITLE)
+    st.configure("Desc.TLabel", background=P["surface"], foreground=P["muted"], font=FONT_UI)
+    st.configure("Muted.TLabel", foreground=P["muted"], font=FONT_SMALL)
+    st.configure("Hint.TLabel", foreground=P["muted"], font=FONT_SMALL)
+    st.configure("Info.TLabel", foreground=P["info"], font=FONT_SMALL)
+    st.configure("Ok.TLabel", foreground=P["ok"], font=FONT_SMALL)
+    st.configure("Warn.TLabel", foreground=P["warn"], font=FONT_SMALL)
+    st.configure("Danger.TLabel", foreground=P["danger"], font=("Segoe UI", 9, "bold"))
+    st.configure("Section.TLabel", foreground=P["text"], font=FONT_UI_BOLD)
+
+    # Badge
+    for name, fg, bg in (
+        ("Safe", P["ok"], P["ok_bg"]),
+        ("Warn", P["warn"], P["warn_bg"]),
+        ("Danger", P["danger"], P["danger_bg"]),
+    ):
+        st.configure(f"{name}.Badge.TLabel", foreground=fg, background=bg,
+                     font=("Segoe UI", 9, "bold"), padding=(8, 2))
+
+    # Card (LabelFrame)
+    st.configure("TLabelframe", background=P["bg"], bordercolor=P["border"],
+                 relief="solid", borderwidth=1, padding=10)
+    st.configure("TLabelframe.Label", background=P["bg"], foreground=P["text"], font=FONT_UI_BOLD)
+
+    # Inputs
+    st.configure("TEntry", fieldbackground=P["surface"], padding=4)
+    st.configure("TCombobox", fieldbackground=P["surface"], padding=3, arrowsize=14)
+    st.map("TCombobox", fieldbackground=[("readonly", P["surface"])])
+    st.configure("TSpinbox", fieldbackground=P["surface"], padding=3, arrowsize=12)
+    st.configure("TCheckbutton", background=P["bg"])
+    st.configure("TRadiobutton", background=P["bg"])
+    st.configure("Surface.TCheckbutton", background=P["surface"])
+
+    # Buttons
+    st.configure("TButton", padding=(10, 5), background=P["surface"], relief="flat",
+                 bordercolor=P["border"])
+    st.map("TButton",
+           background=[("active", "#E5E7EB"), ("disabled", "#F3F4F6")],
+           foreground=[("disabled", "#9CA3AF")])
+    st.configure("Accent.TButton", background=P["accent"], foreground=P["accent_fg"],
+                 font=FONT_UI_BOLD, padding=(16, 7), bordercolor=P["accent"])
+    st.map("Accent.TButton",
+           background=[("active", P["accent_hover"]), ("disabled", "#93C5FD")],
+           foreground=[("disabled", "#EFF6FF")])
+    st.configure("Danger.TButton", foreground=P["danger"])
+    st.configure("Link.TButton", padding=(4, 2), background=P["bg"], relief="flat",
+                 foreground=P["info"])
+    st.map("Link.TButton", background=[("active", P["bg"])])
+
+    # Progress
+    st.configure("TProgressbar", troughcolor=P["border"], background=P["accent"],
+                 bordercolor=P["border"], lightcolor=P["accent"], darkcolor=P["accent"])
+
+    # Sidebar nav (Treeview)
+    st.configure("Nav.Treeview", background=P["sidebar"], fieldbackground=P["sidebar"],
+                 foreground=P["sidebar_fg"], rowheight=30, borderwidth=0, relief="flat",
+                 font=FONT_UI)
+    st.map("Nav.Treeview",
+           background=[("selected", P["sidebar_sel"])],
+           foreground=[("selected", "#FFFFFF")])
+    st.layout("Nav.Treeview", [("Nav.Treeview.treearea", {"sticky": "nswe"})])
+
+    # Notebook / Scrollbar
+    st.configure("TScrollbar", troughcolor=P["bg"], background="#D1D5DB", arrowsize=12,
+                 bordercolor=P["bg"])
+    st.configure("Treeview", rowheight=24, fieldbackground=P["surface"], background=P["surface"])
+    st.configure("Treeview.Heading", font=FONT_UI_BOLD, padding=4)
+
+
+class Collapsible(ttk.Frame):
+    """กล่องพับ/กางได้ — header เป็นปุ่ม ▸/▾ + ชื่อ, เนื้อหาอยู่ใน self.body"""
+
+    def __init__(self, master, title: str, open: bool = False, hint: str = ""):
+        super().__init__(master)
+        self._open = tk.BooleanVar(value=open)
+        self._title = title
+        hdr = ttk.Frame(self)
+        hdr.pack(fill="x")
+        self._btn = ttk.Button(hdr, text="", style="Link.TButton", command=self.toggle)
+        self._btn.pack(side="left")
+        if hint:
+            ttk.Label(hdr, text=hint, style="Hint.TLabel").pack(side="left", padx=(6, 0))
+        self.body = ttk.Frame(self, padding=(18, 4, 0, 4))
+        self._refresh()
+
+    def toggle(self) -> None:
+        self._open.set(not self._open.get())
+        self._refresh()
+
+    def set_open(self, v: bool) -> None:
+        self._open.set(bool(v))
+        self._refresh()
+
+    def is_open(self) -> bool:
+        return bool(self._open.get())
+
+    def _refresh(self) -> None:
+        if self._open.get():
+            self._btn.config(text=f"▾  {self._title}")
+            self.body.pack(fill="x")
+        else:
+            self._btn.config(text=f"▸  {self._title}")
+            self.body.pack_forget()
+
+
+class Tooltip:
+    """tooltip เล็ก ๆ สำหรับ widget (hover 500ms)"""
+
+    def __init__(self, widget, text: str):
+        self.widget = widget
+        self.text = text
+        self._tip: tk.Toplevel | None = None
+        self._job = None
+        widget.bind("<Enter>", self._schedule, add="+")
+        widget.bind("<Leave>", self._hide, add="+")
+        widget.bind("<ButtonPress>", self._hide, add="+")
+
+    def _schedule(self, _e=None):
+        self._cancel()
+        self._job = self.widget.after(500, self._show)
+
+    def _cancel(self):
+        if self._job:
+            try:
+                self.widget.after_cancel(self._job)
+            except Exception:
+                pass
+            self._job = None
+
+    def _show(self):
+        if self._tip or not self.text:
+            return
+        try:
+            x = self.widget.winfo_rootx() + 12
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 4
+            self._tip = tk.Toplevel(self.widget)
+            self._tip.wm_overrideredirect(True)
+            self._tip.wm_geometry(f"+{x}+{y}")
+            tk.Label(
+                self._tip, text=self.text, justify="left", wraplength=420,
+                background="#111827", foreground="#F9FAFB", font=FONT_SMALL,
+                padx=8, pady=5,
+            ).pack()
+        except Exception:
+            self._tip = None
+
+    def _hide(self, _e=None):
+        self._cancel()
+        if self._tip:
+            try:
+                self._tip.destroy()
+            except Exception:
+                pass
+            self._tip = None
+
 
 class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("ดึงรายงาน e-WorkPermit (รอยื่นเอกสารเพิ่มเติม)")
-        self.geometry("920x820")
-        self.minsize(780, 700)
+        self.title("e-WorkPermit Tools")
+        self.geometry("1180x800")
+        self.minsize(960, 640)
         try:
             self.tk.call("tk", "scaling", 1.2)
         except Exception:
             pass
+        apply_theme(self)
 
-        self._log_q: queue.Queue[str] = queue.Queue()
+        self._log_q: queue.Queue = queue.Queue()      # str (log) หรือ tuple ("progress", done, total)
         self._worker: threading.Thread | None = None
         self._cancel = threading.Event()
         # _pause_evt: set = ทำงานปกติ, clear = พักค้างไว้ (worker จะรอที่จุดปลอดภัย)
         self._pause_evt = threading.Event()
         self._pause_evt.set()
+        # ตัวแปรที่จะจำค่าไว้ข้ามการเปิดโปรแกรม (ไม่รวมรหัสผ่าน)
+        self._persist: dict[str, tk.Variable] = {}
 
         # โหมด receipts: เลือกประเภทเอกสารที่จะดาวน์โหลด
         self.doc_receipt = tk.BooleanVar(value=True)
@@ -142,24 +457,241 @@ class App(tk.Tk):
         self.doc_request_receipt = tk.BooleanVar(value=True)
         self.doc_result_bt50 = tk.BooleanVar(value=False)
 
+        self._last_progress: tuple[int, int] = (0, 0)
+        self._job_meta: dict | None = None
         self._build_ui()
+        self._load_settings()
+        self._on_mode_changed()
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.bind("<F5>", lambda _e: self._on_start())
         self.after(120, self._drain_log)
+        # ส่งบันทึกการใช้งานที่ค้างอยู่ (ถ้ามี) ตอนเปิดโปรแกรม
+        self.after(1500, lambda: usage_tracker.flush_async(log=self._log))
+
+    # ---------- usage tracking ----------
+    def _usage_status(self) -> None:
+        """ปุ่ม 'สถานะการบันทึกใช้งาน' — แสดงสถานะ + ทดสอบเชื่อมต่อ MySQL"""
+        pending = usage_tracker.pending_count()
+        ok, msg = usage_tracker.test_connection()
+        operator = self.operator.get().strip() or usage_tracker.default_operator()
+        lines = [
+            ("✓ " if ok else "✗ ") + msg,
+            "",
+            f"ผู้ใช้งาน: {operator}",
+            f"รหัสเครื่อง: {usage_tracker.install_id()}",
+            f"รายการค้างส่ง: {pending}",
+        ]
+        if ok and pending:
+            usage_tracker.flush_async(log=self._log)
+            lines.append("(กำลังส่งรายการค้างอยู่ — ดูผลใน log)")
+        txt = "\n".join(lines)
+        (messagebox.showinfo if ok else messagebox.showwarning)("การบันทึกการใช้งาน", txt)
+
+    # ---------- settings (จำค่าล่าสุด) ----------
+    def _remember(self, name: str, var: tk.Variable) -> tk.Variable:
+        self._persist[name] = var
+        return var
+
+    def _load_settings(self) -> None:
+        try:
+            if not SETTINGS_FILE.exists():
+                return
+            data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return
+            for name, var in self._persist.items():
+                if name in data:
+                    try:
+                        var.set(data[name])
+                    except Exception:
+                        pass
+            geo = data.get("_geometry")
+            if isinstance(geo, str) and "x" in geo:
+                try:
+                    self.geometry(geo)
+                except Exception:
+                    pass
+            if "_log_open" in data:
+                self._log_box.set_open(bool(data["_log_open"]))
+            mode = data.get("_mode")
+            if mode in MODE_BY_KEY:
+                self.source_mode.set(mode)
+            # ค่าที่เก็บเป็น set → บันทึกเป็น list
+            sel = data.get("_req_selected")
+            if isinstance(sel, list):
+                self._req_selected_codes = {c for c in sel if c in self._req_codes}
+                self._render_request_listbox("")
+                self._on_request_changed()
+            bsel = data.get("_booking_selected")
+            if isinstance(bsel, list):
+                self._booking_selected_codes = set(bsel)
+                self._booking_render_listbox(self.booking_search.get())
+            self._on_etk_multi_changed()
+            self._on_bt44_dryrun_toggle()
+        except Exception:
+            pass
+
+    def _save_settings(self) -> None:
+        try:
+            data: dict = {}
+            for name, var in self._persist.items():
+                try:
+                    data[name] = var.get()
+                except Exception:
+                    pass
+            data["_geometry"] = self.geometry()
+            data["_log_open"] = self._log_box.is_open()
+            data["_mode"] = self.source_mode.get()
+            self._req_persist_selection()
+            data["_req_selected"] = sorted(self._req_selected_codes)
+            try:
+                self._booking_persist_selection()
+            except Exception:
+                pass
+            data["_booking_selected"] = sorted(self._booking_selected_codes)
+            SETTINGS_FILE.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8",
+            )
+        except Exception:
+            pass
+
+    def _on_close(self) -> None:
+        if self._worker is not None and self._worker.is_alive():
+            if not messagebox.askyesno(
+                "งานยังทำอยู่",
+                "ยังมีงานทำงานอยู่ — ปิดโปรแกรมจะยกเลิกงานทันที\nต้องการปิดหรือไม่?",
+                icon="warning",
+            ):
+                return
+            self._cancel.set()
+            self._pause_evt.set()
+        self._save_settings()
+        self.destroy()
+
+    # ---------- small UI helpers ----------
+    def _file_row(self, parent, row: int, label: str, var: tk.StringVar,
+                  hint: str = "", clearable: bool = False, save: bool = False):
+        """แถว: label | Entry | [เลือก...] [ล้าง]  (+ hint ใต้แถวถ้ามี)"""
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=3)
+        ent = ttk.Entry(parent, textvariable=var)
+        ent.grid(row=row, column=1, sticky="we", padx=8, pady=3)
+        box = ttk.Frame(parent)
+        box.grid(row=row, column=2, sticky="w", pady=3)
+        if save:
+            btn = ttk.Button(box, text="เลือก...", width=9, command=self._choose_out)
+        else:
+            btn = ttk.Button(box, text="เลือก...", width=9,
+                             command=lambda v=var: self._choose_into(v))
+        btn.pack(side="left")
+        if clearable:
+            ttk.Button(box, text="ล้าง", width=5, command=lambda v=var: v.set("")).pack(
+                side="left", padx=(4, 0))
+        if hint:
+            Tooltip(ent, hint)
+        return ent, btn
+
+    def _text_row(self, parent, row: int, label: str, var: tk.Variable,
+                  hint: str = "", width: int = 18):
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", pady=3)
+        ent = ttk.Entry(parent, textvariable=var, width=width)
+        ent.grid(row=row, column=1, sticky="w", padx=8, pady=3)
+        if hint:
+            ttk.Label(parent, text=hint, style="Hint.TLabel").grid(
+                row=row, column=2, sticky="w")
+        return ent
+
+    def _note(self, parent, text: str, style: str = "Hint.TLabel", row: int | None = None,
+              wrap: int = 760, pady=(2, 0)):
+        lbl = ttk.Label(parent, text=text, style=style, wraplength=wrap, justify="left")
+        if row is None:
+            lbl.pack(anchor="w", pady=pady)
+        else:
+            lbl.grid(row=row, column=0, columnspan=3, sticky="w", pady=pady)
+        return lbl
+
+    def _card(self, title: str) -> ttk.LabelFrame:
+        """สร้างการ์ดใน content area (ยังไม่ pack — _on_mode_changed จัดการ)"""
+        return ttk.LabelFrame(self._body, text=title)
 
     # ---------- UI ----------
     def _build_ui(self) -> None:
-        pad = {"padx": 10, "pady": 6}
+        P = PALETTE
+        self.source_mode = tk.StringVar(value="etracking")
 
-        # ---- Scrollable outer container ----
-        # ห่อ content ทั้งหมดด้วย Canvas + Scrollbar เพื่อให้ผู้ใช้ scroll
-        # ลงไปเห็นปุ่ม/log ได้ เมื่อจอไม่พอ (ตัวเลือกเยอะ)
-        outer = ttk.Frame(self)
+        # ================= Header =================
+        header = ttk.Frame(self, style="Header.TFrame", padding=(14, 8))
+        header.pack(fill="x")
+        ttk.Label(header, text="e-WorkPermit Tools", style="Title.TLabel").pack(side="left")
+        ttk.Label(header, text="  ดึงรายงาน · ดาวน์โหลดเอกสาร · ยื่นคำขอ",
+                  style="Desc.TLabel").pack(side="left", pady=(4, 0))
+        # ชื่อผู้ใช้งาน — ใช้แยกยอดการใช้งานต่อคน (บันทึกลง MySQL)
+        ttk.Label(header, text="ผู้ใช้งาน:", style="Surface.TLabel").pack(side="left", padx=(28, 4), pady=(3, 0))
+        self.operator = self._remember("operator", tk.StringVar(value=usage_tracker.default_operator()))
+        op_ent = ttk.Entry(header, textvariable=self.operator, width=16)
+        op_ent.pack(side="left", pady=(2, 0))
+        Tooltip(op_ent, "ชื่อที่ใช้แยกยอดการใช้งานเพื่อคิดค่าใช้จ่าย — ใส่ชื่อตัวเอง/รหัสหน่วยงาน (จำค่าไว้ให้)")
+        ttk.Button(header, text="สถานะการบันทึกใช้งาน", style="Link.TButton",
+                   command=self._usage_status).pack(side="left", padx=(4, 0), pady=(2, 0))
+        # ตัวเลือกส่วนกลาง (ใช้ทุกโหมด)
+        self.headless = tk.BooleanVar(value=False)   # headless จริงซ่อนจาก UI (ใช้ซ่อนนอกจอแทน)
+        self.hide_window = self._remember("hide_window", tk.BooleanVar(value=False))
+        cb = ttk.Checkbutton(header, text="ซ่อนหน้าต่างเบราว์เซอร์ขณะทำงาน",
+                             variable=self.hide_window, style="Surface.TCheckbutton")
+        cb.pack(side="right")
+        Tooltip(cb, "เปิดเบราว์เซอร์จริงแต่ย้ายออกนอกจอ — ไม่รบกวนการใช้งานเครื่อง และเว็บตรวจไม่พบว่าเป็น headless")
+        ttk.Separator(self, orient="horizontal").pack(fill="x")
+
+        # ================= Main split: sidebar | content =================
+        main = ttk.Frame(self)
+        main.pack(fill="both", expand=True)
+
+        # ---- Sidebar ----
+        side = tk.Frame(main, bg=P["sidebar"], width=250)
+        side.pack(side="left", fill="y")
+        side.pack_propagate(False)
+        tk.Label(side, text="โหมดการทำงาน", bg=P["sidebar"], fg="#9CA3AF",
+                 font=FONT_SMALL, anchor="w", padx=12, pady=8).pack(fill="x")
+        self.nav = ttk.Treeview(side, show="tree", style="Nav.Treeview", selectmode="browse")
+        self.nav.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        self._nav_group_ids: dict[str, str] = {}
+        for gkey, glabel in MODE_GROUPS:
+            gid = self.nav.insert("", "end", iid=f"grp:{gkey}", text=glabel, open=True)
+            self._nav_group_ids[gkey] = gid
+        for m in MODES:
+            self.nav.insert(self._nav_group_ids[m["group"]], "end", iid=f"mode:{m['key']}",
+                            text="    " + m["nav"])
+        self.nav.bind("<<TreeviewSelect>>", self._on_nav_select)
+        tk.Label(side, text="F5 = เริ่มทำงาน", bg=P["sidebar"], fg="#6B7280",
+                 font=FONT_SMALL, anchor="w", padx=12, pady=6).pack(fill="x", side="bottom")
+
+        # ---- Content (right) ----
+        right = ttk.Frame(main)
+        right.pack(side="left", fill="both", expand=True)
+
+        # หัวข้อโหมด
+        head = ttk.Frame(right, style="Header.TFrame", padding=(16, 10, 16, 8))
+        head.pack(fill="x")
+        hrow = ttk.Frame(head, style="Header.TFrame")
+        hrow.pack(fill="x")
+        self.mode_title = ttk.Label(hrow, text="", style="Title.TLabel")
+        self.mode_title.pack(side="left")
+        self.mode_badge = ttk.Label(hrow, text="", style="Safe.Badge.TLabel")
+        self.mode_badge.pack(side="left", padx=(12, 0), pady=(4, 0))
+        self.mode_desc = ttk.Label(head, text="", style="Desc.TLabel", wraplength=820,
+                                   justify="left")
+        self.mode_desc.pack(fill="x", pady=(2, 0))
+        ttk.Separator(right, orient="horizontal").pack(fill="x")
+
+        # พื้นที่ตัวเลือก — เลื่อนได้
+        outer = ttk.Frame(right)
         outer.pack(fill="both", expand=True)
-        self._scroll_canvas = tk.Canvas(outer, borderwidth=0, highlightthickness=0)
+        self._scroll_canvas = tk.Canvas(outer, borderwidth=0, highlightthickness=0,
+                                        bg=P["bg"])
         _vsb = ttk.Scrollbar(outer, orient="vertical", command=self._scroll_canvas.yview)
         self._scroll_canvas.configure(yscrollcommand=_vsb.set)
         _vsb.pack(side="right", fill="y")
         self._scroll_canvas.pack(side="left", fill="both", expand=True)
-        self._body = ttk.Frame(self._scroll_canvas)
+        self._body = ttk.Frame(self._scroll_canvas, padding=(12, 8, 12, 8))
         self._body_window = self._scroll_canvas.create_window(
             (0, 0), window=self._body, anchor="nw",
         )
@@ -168,245 +700,182 @@ class App(tk.Tk):
             self._scroll_canvas.configure(scrollregion=self._scroll_canvas.bbox("all"))
 
         def _on_canvas_configure(evt):
-            # ให้ inner frame มีความกว้างเท่า canvas เสมอ (fill x)
             self._scroll_canvas.itemconfig(self._body_window, width=evt.width)
 
         self._body.bind("<Configure>", _on_body_configure)
         self._scroll_canvas.bind("<Configure>", _on_canvas_configure)
 
         def _on_mousewheel(evt):
-            # Windows/macOS: evt.delta คูณ 120; Linux: ใช้ Button-4/5 (ไม่ครอบคลุมที่นี่)
-            # ถ้าเมาส์อยู่บน widget ที่ scroll เองได้ (Listbox / Text) → ปล่อยให้มัน scroll เอง
+            # เลื่อนเฉพาะเมื่อเมาส์อยู่ในหน้าต่างหลัก (ไม่ใช่ Monitor/Dialog) และไม่อยู่บน Listbox/Text
             try:
                 w = evt.widget
+                if not isinstance(w, tk.Misc) or w.winfo_toplevel() is not self:
+                    return
                 p = w
                 while p is not None:
-                    if isinstance(p, (tk.Listbox, tk.Text)):
+                    if isinstance(p, (tk.Listbox, tk.Text, ttk.Treeview)):
                         return
+                    if p is self._scroll_canvas:
+                        break
                     p = getattr(p, "master", None)
-            except Exception:
-                pass
-            try:
+                if p is None:
+                    return  # อยู่นอกพื้นที่ตัวเลือก (เช่น sidebar/log)
                 self._scroll_canvas.yview_scroll(int(-1 * (evt.delta / 120)), "units")
             except Exception:
                 pass
 
-        # bind mouse wheel ให้ทำงานทั่วหน้าต่าง (เฉพาะตอน hover บน canvas/inner)
-        self._scroll_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self.bind_all("<MouseWheel>", _on_mousewheel)
 
-        # ---- โหมดการทำงาน ----
-        mode_frm = ttk.LabelFrame(self._body, text="โหมดการทำงาน", padding=10)
-        mode_frm.pack(fill="x", **pad)
-        self.source_mode = tk.StringVar(value="etracking")
-        ttk.Radiobutton(
-            mode_frm, text="e-Tracking — ดึงรายการคำขอ (รายงาน WA)",
-            variable=self.source_mode, value="etracking",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="จัดการบัญชี → ข้อมูลคนต่างด้าว (รายชื่อคนต่างด้าวทั้งหมด)",
-            variable=self.source_mode, value="aliens",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ลงทะเบียนคนต่างด้าวจาก Excel (Register + ดึงข้อมูลใบอนุญาต)",
-            variable=self.source_mode, value="register",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดาวน์โหลดใบเสร็จ",
-            variable=self.source_mode, value="receipts",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดาวน์โหลดใบแจ้งผล / ใบรับคำขอ (ตามรายการคำขอ)",
-            variable=self.source_mode, value="results",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="แจ้งเข้านายจ้าง (แบบ บต.52) — INFORM_ENTER_EXIT",
-            variable=self.source_mode, value="inform",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ยื่นต่อใบอนุญาตทำงาน (แบบ บต.30) — MoU: กรอกค้นหาข้อมูลคนต่างด้าว",
-            variable=self.source_mode, value="bt30",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="เปลี่ยนย้ายนายจ้างในระบบ (บต.44)",
-            variable=self.source_mode, value="bt44",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม) — หลายบัญชีจาก Excel",
-            variable=self.source_mode, value="bill_payment",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดาวน์โหลดใบเสร็จรับเงินทั้งชุด (900+100+อื่นๆ) — ตามเลขคำขอจาก Excel",
-            variable=self.source_mode, value="payment_receipts",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="นัดหมายถ่ายบัตร — เก็บที่อยู่จากใบเสร็จค่าธรรมเนียมใบอนุญาตทำงาน (Status=AP)",
-            variable=self.source_mode, value="appointment",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดาวน์โหลด (ใบตอบรับ / ใบนัดหมาย)",
-            variable=self.source_mode, value="bt30_ctn",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดึงรายชื่อคนต่างด้าวที่ยื่นคำขอต่ออายุแล้ว (NameListAlien — ทุก pagination)",
-            variable=self.source_mode, value="namelist_alien",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ตรวจวันว่างจอง (คิวถ่ายบัตร) — Real-Time Check วัน+ช่วงเวลาที่ยังว่างของทุกสาขา",
-            variable=self.source_mode, value="booking_availability",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ดึงรายงานข้อมูลการขออนุญาต — สถานะคำขอ (อนุมัติคำขอ) + สถานประกอบการ (บริษัท/จังหวัด)",
-            variable=self.source_mode, value="permit_report",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_frm, text="ตรวจสอบ Ticket ID (แจ้งปัญหาการใช้งาน) — ตาม Ticket ID จาก Excel",
-            variable=self.source_mode, value="ticket",
-            command=self._on_mode_changed,
-        ).pack(anchor="w")
+        # ================= Bottom bar (ปุ่ม + progress) =================
+        ttk.Separator(right, orient="horizontal").pack(fill="x", side="bottom")
+        self._log_box = Collapsible(right, "บันทึกการทำงาน", open=True)
+        self._log_box.pack(fill="both", side="bottom", padx=10, pady=(0, 6))
+        self._log_box.body.configure(padding=(0, 2, 0, 0))
+        logf = ttk.Frame(self._log_box.body)
+        logf.pack(fill="both", expand=True)
+        self.log_text = tk.Text(logf, height=8, wrap="word", state="disabled", font=FONT_MONO,
+                                bg=P["surface"], relief="flat", highlightthickness=1,
+                                highlightbackground=P["border"], padx=6, pady=4)
+        self.log_text.pack(fill="both", expand=True, side="left")
+        sb = ttk.Scrollbar(logf, command=self.log_text.yview)
+        sb.pack(side="right", fill="y")
+        self.log_text.configure(yscrollcommand=sb.set)
+        self.log_text.tag_configure("err", foreground=P["danger"])
+        self.log_text.tag_configure("ok", foreground=P["ok"])
+        self.log_text.tag_configure("warn", foreground=P["warn"])
+        ttk.Button(self._log_box.body, text="ล้าง log", style="Link.TButton",
+                   command=self._clear_log).pack(anchor="e")
 
-        frm = ttk.LabelFrame(self._body, text="ข้อมูลเข้าสู่ระบบ", padding=10)
-        frm.pack(fill="x", **pad)
+        bottom = ttk.Frame(right, style="Bottom.TFrame", padding=(12, 8))
+        bottom.pack(fill="x", side="bottom")
+        self.btn_start = ttk.Button(bottom, text="▶  เริ่มทำงาน", style="Accent.TButton",
+                                    command=self._on_start)
+        self.btn_start.pack(side="left")
+        self.btn_pause = ttk.Button(bottom, text="⏸  พัก", command=self._on_pause, state="disabled")
+        self.btn_pause.pack(side="left", padx=(8, 0))
+        self.btn_resume = ttk.Button(bottom, text="▶  ต่อ", command=self._on_resume, state="disabled")
+        self.btn_resume.pack(side="left", padx=(4, 0))
+        self.btn_cancel = ttk.Button(bottom, text="✕  ยกเลิก", command=self._on_cancel,
+                                     state="disabled", style="Danger.TButton")
+        self.btn_cancel.pack(side="left", padx=(4, 0))
+        self.btn_open = ttk.Button(bottom, text="📁  เปิดโฟลเดอร์ผลลัพธ์", command=self._open_folder)
+        self.btn_open.pack(side="right")
+        self.progress_lbl = ttk.Label(bottom, text="พร้อมทำงาน", style="Surface.TLabel", width=16,
+                                      anchor="e")
+        self.progress_lbl.pack(side="right", padx=(8, 12))
+        self.progress = ttk.Progressbar(bottom, mode="determinate")
+        self.progress.pack(side="left", fill="x", expand=True, padx=(16, 0))
 
-        ttk.Label(frm, text="Username (อีเมล):").grid(row=0, column=0, sticky="w", pady=4)
-        self.username = tk.StringVar()
-        ttk.Entry(frm, textvariable=self.username, width=44).grid(row=0, column=1, sticky="we", padx=8)
+        # ================= Cards (สร้างทั้งหมด แล้วให้ _on_mode_changed เลือกแสดง) =================
+        self._build_login_card()
+        self._build_etracking_cards()
+        self._build_output_card()
+        self._build_mode_cards()
 
-        ttk.Label(frm, text="Password:").grid(row=1, column=0, sticky="w", pady=4)
+        # เลือกโหมดเริ่มต้นใน sidebar
+        self._select_nav(self.source_mode.get())
+
+    # ---------- การ์ด: ข้อมูลเข้าสู่ระบบ ----------
+    def _build_login_card(self) -> None:
+        frm = self._card("บัญชีเข้าสู่ระบบ")
+        self.login_frame = frm
+        self.login_hint = ttk.Label(frm, text="", style="Info.TLabel", wraplength=760, justify="left")
+        self.login_hint.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 4))
+
+        ttk.Label(frm, text="Username (อีเมล):").grid(row=1, column=0, sticky="w", pady=3)
+        self.username = self._remember("username", tk.StringVar())
+        ttk.Entry(frm, textvariable=self.username, width=44).grid(row=1, column=1, sticky="we", padx=8)
+
+        ttk.Label(frm, text="Password:").grid(row=2, column=0, sticky="w", pady=3)
         self.password = tk.StringVar()
         self.pw_entry = ttk.Entry(frm, textvariable=self.password, width=44, show="•")
-        self.pw_entry.grid(row=1, column=1, sticky="we", padx=8)
+        self.pw_entry.grid(row=2, column=1, sticky="we", padx=8)
+        self.pw_entry.bind("<Return>", lambda _e: self._on_start())
         self.show_pw = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            frm, text="แสดงรหัสผ่าน", variable=self.show_pw,
-            command=self._toggle_pw,
-        ).grid(row=1, column=2, sticky="w")
+        ttk.Checkbutton(frm, text="แสดงรหัสผ่าน", variable=self.show_pw,
+                        command=self._toggle_pw).grid(row=2, column=2, sticky="w")
 
-        ttk.Label(frm, text="ประเภทผู้ใช้:").grid(row=2, column=0, sticky="w", pady=4)
-        self.user_type = tk.StringVar(value="ผู้กระทำการแทน")
+        ttk.Label(frm, text="ประเภทผู้ใช้:").grid(row=3, column=0, sticky="w", pady=3)
+        self.user_type = self._remember("user_type", tk.StringVar(value="ผู้กระทำการแทน"))
         ttk.Combobox(
             frm, textvariable=self.user_type, width=42, state="readonly",
-            values=[
-                "ผู้กระทำการแทน",
-                "นายจ้าง-คนไทย",
-                "นายจ้าง-คนต่างชาติ",
-                "บริษัทนำเข้า (บนจ.)",
-                "คนต่างด้าว",
-            ],
-        ).grid(row=2, column=1, sticky="we", padx=8)
-
-        ttk.Label(frm, text="ระบบ:").grid(row=3, column=0, sticky="w", pady=4)
-        self.method = tk.StringVar(value="E-Workpermit")
-        ttk.Combobox(
-            frm, textvariable=self.method, width=42, state="readonly",
-            values=["E-Workpermit", "E-Service"],
+            values=["ผู้กระทำการแทน", "นายจ้าง-คนไทย", "นายจ้าง-คนต่างชาติ",
+                    "บริษัทนำเข้า (บนจ.)", "คนต่างด้าว"],
         ).grid(row=3, column=1, sticky="we", padx=8)
 
-        # ซ่อนหน้าต่างเบราว์เซอร์ — ใช้ได้กับทุกโหมด
-        # หมายเหตุ: headless จริงถูกซ่อนจาก UI (กันผู้ใช้สับสน) — ใช้โหมด "ซ่อนนอกจอ" แทน
-        self.headless = tk.BooleanVar(value=False)
-
-        # ซ่อนแบบเปิดเบราว์เซอร์จริง (ไม่ headless) แต่ย้ายหน้าต่างออกนอกจอ
-        # เหมาะกับเว็บที่ตรวจจับ/บล็อก headless — ทำงานเหมือน browser จริงทุกอย่าง
-        self.hide_window = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            frm, text="ซ่อนหน้าต่างเบราว์เซอร์ขณะทำงาน — ไม่รบกวนการใช้งานเครื่อง",
-            variable=self.hide_window,
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
-
+        ttk.Label(frm, text="ระบบ:").grid(row=4, column=0, sticky="w", pady=3)
+        self.method = self._remember("method", tk.StringVar(value="E-Workpermit"))
+        ttk.Combobox(frm, textvariable=self.method, width=42, state="readonly",
+                     values=["E-Workpermit", "E-Service"]).grid(row=4, column=1, sticky="we", padx=8)
         frm.columnconfigure(1, weight=1)
 
-        # ---- ตัวเลือก (e-Tracking) ----
-        opt = ttk.LabelFrame(self._body, text="ตัวเลือก", padding=10)
-        opt.pack(fill="x", **pad)
+    # ---------- การ์ด: ไฟล์ผลลัพธ์ + การทำงาน ----------
+    def _build_output_card(self) -> None:
+        frm = self._card("ไฟล์ผลลัพธ์")
+        self.output_frame = frm
+        self.out_path = tk.StringVar(value=str(REPORTS_DIR / "WA_report.xlsx"))
+        self._file_row(frm, 0, "บันทึกรายงานเป็น:", self.out_path, save=True,
+                       hint="ระบบจะต่อท้ายวันที่-เวลาให้อัตโนมัติ กันชื่อซ้ำ")
+        # แถวตัวเลือกการทำงาน (เฉพาะ e-Tracking / permit_report)
+        self.run_opts_row = ttk.Frame(frm)
+        self.run_opts_row.grid(row=1, column=0, columnspan=3, sticky="w", pady=(4, 0))
+        ttk.Label(self.run_opts_row, text="จำกัดจำนวน:").pack(side="left")
+        self.limit = tk.IntVar(value=0)
+        sp = ttk.Spinbox(self.run_opts_row, from_=0, to=10000, textvariable=self.limit, width=7)
+        sp.pack(side="left", padx=(4, 4))
+        ttk.Label(self.run_opts_row, text="(0 = ทั้งหมด — ใส่ 5 เพื่อทดสอบ)", style="Hint.TLabel").pack(side="left")
+        ttk.Label(self.run_opts_row, text="Login ใหม่ทุก:").pack(side="left", padx=(18, 0))
+        self.relogin_every = self._remember("relogin_every", tk.StringVar(value="500"))
+        cbx = ttk.Combobox(self.run_opts_row, textvariable=self.relogin_every, width=9, state="normal",
+                           values=["ปิด (ไม่ login ใหม่)", "100", "200", "300", "500", "1000", "2000"])
+        cbx.pack(side="left", padx=(4, 4))
+        ttk.Label(self.run_opts_row, text="รายการ (กัน session หมดอายุ — 0/ว่าง = ปิด)",
+                  style="Hint.TLabel").pack(side="left")
+        frm.columnconfigure(1, weight=1)
+
+    # ---------- การ์ดชุด e-Tracking (ใช้ร่วมกับ bt30_ctn / permit_report) ----------
+    def _build_etracking_cards(self) -> None:
+        # ===== 1) รายการคำขอ + วันที่ยื่น =====
+        opt = self._card("รายการคำขอ และ วันที่ยื่นคำขอ")
+        self.req_frame = opt
         self._etracking_frames: list[ttk.LabelFrame] = [opt]
 
-        # ---- รูปแบบรายงาน (Template) — เฉพาะโหมด e-Tracking ----
-        self.etk_template_frame = ttk.LabelFrame(
-            self._body, text="รูปแบบรายงาน (Template)", padding=10
-        )
-        self.etk_template_frame.pack(fill="x", **pad)
-        self.etk_template = tk.StringVar(value="main")
-        ttk.Radiobutton(
-            self.etk_template_frame,
-            text="Template หลัก — รายละเอียดครบทุกคอลัมน์ (ค่าเริ่มต้น)",
-            variable=self.etk_template, value="main",
-        ).grid(row=0, column=0, sticky="w")
-        ttk.Radiobutton(
-            self.etk_template_frame,
-            text=("Template นัดหมาย — ลำดับ | Username | เลขคำขอ | ชื่อบริษัท | "
-                  "ชื่อแรงงาน | วันที่นัดหมาย | เวลานัด | สถานที่"),
-            variable=self.etk_template, value="appointment",
-        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.etk_template_frame,
-            text=("Template นัดหมาย จะเข้าแท็บ 'การนัดหมาย' ของแต่ละรายการ"
-                  "เพื่อดึงวันที่/เวลา/สถานที่ (ทำงานช้าลงเล็กน้อย) — เลือกกรองสถานะ "
-                  "'รอนัดหมาย/นัดหมายแล้ว' ในตัวกรองด้านล่างเอง"),
-            foreground="gray", wraplength=780, justify="left",
-        ).grid(row=2, column=0, sticky="w", pady=(4, 0))
-
-        # รายการคำขอ (เลือกได้หลายรายการ)
-        # default = MT_59_MOU_RENEWAL (รายการที่ใช้บ่อยที่สุด)
         _default_code = "MT_59_MOU_RENEWAL"
-        # เก็บ StringVar สำหรับ backward compat (ยังใช้กับ mode อื่นเช่น appointment ที่รับ request_type เดียว)
+        # เก็บ StringVar สำหรับ backward compat (ยังใช้กับ mode อื่นที่รับ request_type เดียว)
         self.request_type = tk.StringVar(value=_default_code)
         self.request_label = tk.StringVar(value="")
 
-        # header row: label + ปุ่มเลือกทั้งหมด/ล้าง
         rt_head = ttk.Frame(opt)
         rt_head.grid(row=0, column=0, columnspan=3, sticky="we", pady=(0, 2))
-        ttk.Label(
-            rt_head, text="รายการคำขอ (เลือกได้หลายรายการ — Ctrl/Shift + คลิก):",
-        ).pack(side="left")
-        ttk.Button(
-            rt_head, text="เลือกทั้งหมด", command=self._req_select_all, width=12,
-        ).pack(side="right", padx=(4, 0))
-        ttk.Button(
-            rt_head, text="ล้าง", command=self._req_clear, width=8,
-        ).pack(side="right")
+        ttk.Label(rt_head, text="เลือกรายการคำขอ (เลือกได้หลายรายการ — Ctrl/Shift + คลิก)").pack(side="left")
+        ttk.Button(rt_head, text="เลือกทั้งหมด", command=self._req_select_all, width=12).pack(
+            side="right", padx=(4, 0))
+        ttk.Button(rt_head, text="ล้าง", command=self._req_clear, width=6).pack(side="right")
 
-        # Listbox + scrollbars — ข้าม entry แรกที่ code=="" (ทั้งหมด/ไม่กรอง)
         self._req_codes: list[str] = [c for c, _ in REQUEST_TYPES if c]
         self._req_labels: list[str] = [l for c, l in REQUEST_TYPES if c]
-        self._req_visible_idx: list[int] = []                 # row-in-listbox → master idx
-        self._req_selected_codes: set[str] = {_default_code}  # เก็บ selection ข้าม filter
+        self._req_visible_idx: list[int] = []
+        self._req_selected_codes: set[str] = {_default_code}
         rt_box = ttk.Frame(opt)
         rt_box.grid(row=1, column=0, columnspan=3, sticky="we", pady=(0, 4))
         rt_box.columnconfigure(0, weight=1)
-        # ช่องค้นหา (กรองรายการในลิสต์ตามชื่อ/โค้ด)
         rt_search_row = ttk.Frame(rt_box)
         rt_search_row.grid(row=0, column=0, columnspan=2, sticky="we", pady=(0, 3))
-        ttk.Label(rt_search_row, text="🔍 ค้นหา:").pack(side="left")
+        ttk.Label(rt_search_row, text="🔍").pack(side="left")
         self.request_search = tk.StringVar(value="")
         ttk.Entry(rt_search_row, textvariable=self.request_search).pack(
-            side="left", fill="x", expand=True, padx=(4, 4),
-        )
+            side="left", fill="x", expand=True, padx=(4, 4))
         self.request_search.trace_add("write", lambda *_: self._req_apply_search())
-        ttk.Button(
-            rt_search_row, text="✕", width=3,
-            command=lambda: self.request_search.set(""),
-        ).pack(side="left")
+        ttk.Button(rt_search_row, text="✕", width=3,
+                   command=lambda: self.request_search.set("")).pack(side="left")
         vsb = ttk.Scrollbar(rt_box, orient="vertical")
         hsb = ttk.Scrollbar(rt_box, orient="horizontal")
         self.request_listbox = tk.Listbox(
-            rt_box, selectmode=tk.EXTENDED, height=8, exportselection=False,
-            yscrollcommand=vsb.set, xscrollcommand=hsb.set,
-            activestyle="dotbox",
+            rt_box, selectmode=tk.EXTENDED, height=7, exportselection=False,
+            yscrollcommand=vsb.set, xscrollcommand=hsb.set, activestyle="none",
+            bg=PALETTE["surface"], relief="flat", highlightthickness=1,
+            highlightbackground=PALETTE["border"], selectbackground=PALETTE["accent"],
+            selectforeground="#FFFFFF", font=FONT_UI,
         )
         vsb.config(command=self.request_listbox.yview)
         hsb.config(command=self.request_listbox.xview)
@@ -414,1302 +883,506 @@ class App(tk.Tk):
         vsb.grid(row=1, column=1, sticky="ns")
         hsb.grid(row=2, column=0, sticky="we")
         self.request_listbox.bind("<<ListboxSelect>>", self._on_request_changed)
-        # เติมรายการครั้งแรก (renderer จะ re-select default ให้) + เลื่อนไปหาที่เลือก
         self._render_request_listbox("")
         try:
-            _idx = next(
-                (r for r, m in enumerate(self._req_visible_idx)
-                 if self._req_codes[m] == _default_code),
-                None,
-            )
+            _idx = next((r for r, m in enumerate(self._req_visible_idx)
+                         if self._req_codes[m] == _default_code), None)
             if _idx is not None:
                 self.request_listbox.see(_idx)
         except Exception:
             pass
 
-        # แสดงจำนวนที่เลือก + hint
         self.request_summary = tk.StringVar(value="")
-        ttk.Label(opt, textvariable=self.request_summary, foreground="#1a7000").grid(
-            row=2, column=0, columnspan=3, sticky="w",
-        )
-        ttk.Label(
-            opt, text="(ไม่เลือกอะไรเลย = ดึงทุกรายการคำขอ)", foreground="gray",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(0, 4))
+        ttk.Label(opt, textvariable=self.request_summary, style="Ok.TLabel").grid(
+            row=2, column=0, columnspan=3, sticky="w")
 
-        # ---- ตัวกรองวันที่ยื่นคำขอ (จาก → ถึง) ----
         date_row = ttk.Frame(opt)
-        date_row.grid(row=4, column=0, columnspan=3, sticky="we", pady=(4, 0))
-        ttk.Label(date_row, text="วันที่ยื่นคำขอ (จาก):").pack(side="left")
+        date_row.grid(row=3, column=0, columnspan=3, sticky="we", pady=(6, 0))
+        ttk.Label(date_row, text="วันที่ยื่นคำขอ  จาก:").pack(side="left")
         self.date_from = tk.StringVar(value="")
-        ttk.Entry(date_row, textvariable=self.date_from, width=14).pack(
-            side="left", padx=(4, 12),
-        )
+        ttk.Entry(date_row, textvariable=self.date_from, width=13).pack(side="left", padx=(4, 10))
         ttk.Label(date_row, text="ถึง:").pack(side="left")
         self.date_to = tk.StringVar(value="")
-        ttk.Entry(date_row, textvariable=self.date_to, width=14).pack(
-            side="left", padx=(4, 12),
-        )
-        ttk.Label(
-            date_row,
-            text="รูปแบบ วว/ดด/ปปปป (เช่น 01/07/2026) — เว้นว่างทั้งสองช่อง = ทุกวันที่",
-            foreground="gray",
-        ).pack(side="left")
-
-        # ---- หลายบัญชี (multi-user) ----
-        self.etk_multi = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            opt, text="ดึงหลายบัญชีจากไฟล์ UsernameLogin.xlsx (ไม่ต้องกรอก Username/Password ด้านบน)",
-            variable=self.etk_multi, command=self._on_etk_multi_changed,
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        self.etk_login_lbl = ttk.Label(opt, text="ไฟล์ UsernameLogin.xlsx:")
-        self.etk_login_lbl.grid(row=6, column=0, sticky="w", pady=4)
-        self.etk_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        self.etk_login_entry = ttk.Entry(opt, textvariable=self.etk_login_input)
-        self.etk_login_entry.grid(row=6, column=1, sticky="we", padx=8)
-        self.etk_login_btn = ttk.Button(
-            opt, text="เลือก...",
-            command=lambda: self._choose_into(self.etk_login_input),
-        )
-        self.etk_login_btn.grid(row=6, column=2, padx=4)
-
-        # ตัวเลือก: รวมทุกบัญชีเป็นไฟล์เดียว หรือ แยกไฟล์ต่อบัญชี (เฉพาะโหมดหลายบัญชี)
-        self.etk_combine = tk.BooleanVar(value=False)
-        self.etk_combine_cb = ttk.Checkbutton(
-            opt,
-            text="รวมทุกบัญชีเป็นรายงานไฟล์เดียว (มีคอลัมน์ 'บัญชี (Username)' แยกแถว) — ไม่ติ๊ก = แยกไฟล์ต่อบัญชี",
-            variable=self.etk_combine,
-        )
-        self.etk_combine_cb.grid(row=7, column=0, columnspan=3, sticky="w", pady=(0, 2))
-
-        ttk.Label(opt, text="Login ใหม่ทุก (รายการ):").grid(row=8, column=0, sticky="w", pady=4)
-        self.relogin_every = tk.StringVar(value="500")
-        # state="normal" = พิมพ์ตัวเลขเองได้ (ไม่จำกัดแค่ค่าใน dropdown)
-        ttk.Combobox(
-            opt, textvariable=self.relogin_every, width=10, state="normal",
-            values=["ปิด (ไม่ login ใหม่)", "100", "200", "300", "500", "1000", "2000"],
-        ).grid(row=8, column=1, sticky="w", padx=8)
-        ttk.Label(opt, text="พิมพ์จำนวนเองได้ (0/ว่าง = ปิด) — กัน session timeout ในงานยาว",
-                  foreground="gray").grid(
-            row=8, column=2, sticky="w",
-        )
-
-        ttk.Label(opt, text="จำกัดจำนวน (0 = ทั้งหมด):").grid(row=9, column=0, sticky="w", pady=4)
-        self.limit = tk.IntVar(value=0)
-        ttk.Spinbox(opt, from_=0, to=10000, textvariable=self.limit, width=10).grid(
-            row=9, column=1, sticky="w", padx=8,
-        )
-
-        ttk.Label(opt, text="ไฟล์ที่บันทึก:").grid(row=10, column=0, sticky="w", pady=4)
-        self.out_path = tk.StringVar(value=str(REPORTS_DIR / "WA_report.xlsx"))
-        ttk.Entry(opt, textvariable=self.out_path).grid(row=10, column=1, sticky="we", padx=8)
-        ttk.Button(opt, text="เลือก...", command=self._choose_out).grid(row=10, column=2, padx=4)
+        ttk.Entry(date_row, textvariable=self.date_to, width=13).pack(side="left", padx=(4, 10))
+        ttk.Label(date_row, text="วว/ดด/ปปปป เช่น 01/07/2026 — เว้นว่าง = ทุกวันที่",
+                  style="Hint.TLabel").pack(side="left")
         opt.columnconfigure(1, weight=1)
 
-        # ---- ตัวกรองสถานะ (advanced) ----
-        adv = ttk.LabelFrame(self._body, text="ตัวกรองสถานะ (ตามที่เห็นในเว็บ)", padding=10)
-        adv.pack(fill="x", **pad)
+        # ===== 2) ตัวกรองสถานะ =====
+        adv = self._card("ตัวกรองสถานะ (ตามที่เห็นในเว็บ)")
+        self.status_frame = adv
         self._etracking_frames.append(adv)
-
-        ttk.Label(
-            adv, text="ติ๊ก checkbox สถานะที่จะดึง (หน้า e-Tracking):", foreground="#444"
-        ).grid(row=0, column=0, columnspan=5, sticky="w")
+        ttk.Label(adv, text="สถานะที่จะดึง:").grid(row=0, column=0, sticky="w")
+        st_row = ttk.Frame(adv)
+        st_row.grid(row=0, column=1, columnspan=4, sticky="w")
         self.filter_vars: dict[str, tk.BooleanVar] = {}
         for i, (code, label) in enumerate(STATUS_FILTERS):
             v = tk.BooleanVar(value=False)
             self.filter_vars[code] = v
-            ttk.Checkbutton(adv, text=f"{label}", variable=v).grid(
-                row=1, column=i, sticky="w", padx=4, pady=2
-            )
+            ttk.Checkbutton(st_row, text=label, variable=v).pack(side="left", padx=(0, 12), pady=2)
 
-        ttk.Separator(adv, orient="horizontal").grid(
-            row=2, column=0, columnspan=5, sticky="we", pady=(8, 4)
-        )
-
-        ttk.Label(
-            adv, text="กดเข้าไป scrape detail เฉพาะสถานะเหล่านี้ (match แบบ substring):",
-            foreground="#444",
-        ).grid(row=3, column=0, columnspan=5, sticky="w")
+        self.status_adv = Collapsible(
+            adv, "ตัวเลือกขั้นสูง: เปิดดูรายละเอียดเฉพาะสถานะ / บันทึกเพิ่มเติม", open=False,
+            hint="(ปกติไม่ต้องแก้ — ค่าเริ่มต้นตั้งตามรายการคำขอให้แล้ว)")
+        self.status_adv.grid(row=1, column=0, columnspan=5, sticky="we", pady=(6, 0))
+        wl = self.status_adv.body
+        ttk.Label(wl, text="กดเข้าไปดูรายละเอียดเฉพาะคำขอที่มีสถานะเหล่านี้ (match แบบ substring):",
+                  style="Muted.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
         self.whitelist_vars: dict[str, tk.BooleanVar] = {}
         for i, status in enumerate(WHITELIST_OPTIONS):
             v = tk.BooleanVar(value=True)
             self.whitelist_vars[status] = v
-            ttk.Checkbutton(adv, text=status, variable=v).grid(
-                row=4 + (i // 2), column=(i % 2) * 3, columnspan=3,
-                sticky="w", padx=4, pady=1,
-            )
-
-        ttk.Separator(adv, orient="horizontal").grid(
-            row=4 + (len(WHITELIST_OPTIONS) + 1) // 2, column=0, columnspan=5,
-            sticky="we", pady=(8, 4),
-        )
-
+            ttk.Checkbutton(wl, text=status, variable=v).grid(
+                row=1 + i // 2, column=i % 2, sticky="w", padx=(0, 16), pady=1)
         self.capture_extra_notes = tk.BooleanVar(value=True)
         ttk.Checkbutton(
-            adv, text="เก็บ 'บันทึกเพิ่มเติม' จากหน้าแก้ไข (ปิดถ้าหน้าไม่มีปุ่มแก้ไข)",
+            wl, text="เก็บ 'บันทึกเพิ่มเติม' จากหน้าแก้ไข (ปิดถ้าหน้าไม่มีปุ่มแก้ไข)",
             variable=self.capture_extra_notes,
-        ).grid(
-            row=5 + (len(WHITELIST_OPTIONS) + 1) // 2, column=0, columnspan=5,
-            sticky="w", padx=4, pady=(2, 0),
-        )
+        ).grid(row=1 + (len(WHITELIST_OPTIONS) + 1) // 2, column=0, columnspan=2, sticky="w", pady=(6, 0))
 
-        # ---- ดึงเฉพาะเลขคำขอ (ถ้าระบุ) — ข้ามฟิลเตอร์สถานะ/วันที่/whitelist ด้านบนทั้งหมด ----
-        # (เฉพาะโหมด e-Tracking บัญชีเดียว/หลายบัญชี — ไม่ใช้กับ bt30_ctn/permit_report จึงไม่รวมใน _etracking_frames)
-        self.etk_req_no_frame = ttk.LabelFrame(
-            self._body, text="ดึงเฉพาะเลขคำขอ (ทางเลือก — เว้นว่าง = ดึงตามฟิลเตอร์สถานะปกติด้านบน)",
-            padding=10,
-        )
-        ttk.Label(
-            self.etk_req_no_frame,
-            text="โหมด A: ไฟล์ Excel เลขคำขอ (รองรับหลาย user พร้อมกัน — จัดกลุ่มตาม username แล้ว login ทีละบัญชีอัตโนมัติ)",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(self.etk_req_no_frame, text="ไฟล์ Ref_number.xlsx:").grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        self.etk_req_excel_input = tk.StringVar(value="")
-        ttk.Entry(self.etk_req_no_frame, textvariable=self.etk_req_excel_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        etk_req_excel_btns = ttk.Frame(self.etk_req_no_frame)
-        etk_req_excel_btns.grid(row=1, column=2, padx=4)
-        ttk.Button(
-            etk_req_excel_btns, text="เลือก...",
-            command=lambda: self._choose_into(self.etk_req_excel_input),
-        ).pack(side="left")
-        ttk.Button(
-            etk_req_excel_btns, text="ล้าง",
-            command=lambda: self.etk_req_excel_input.set(""),
-        ).pack(side="left", padx=(4, 0))
-        ttk.Label(
-            self.etk_req_no_frame,
-            text="คอลัมน์ที่ต้องมี: Ref_number (เลขคำขอ), user (Username เจ้าของคำขอ)",
-            foreground="gray",
-        ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 6))
-        ttk.Label(self.etk_req_no_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
-        self.etk_req_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.etk_req_no_frame, textvariable=self.etk_req_login_input).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.etk_req_no_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.etk_req_login_input),
-        ).grid(row=3, column=2, padx=4)
-        ttk.Label(
-            self.etk_req_no_frame,
-            text="ต้องมีคอลัมน์: Username, Password, Type — ใช้ตอนมีไฟล์ Ref_number.xlsx เท่านั้น",
-            foreground="gray",
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        # ===== 3) หลายบัญชี (etracking / permit_report) =====
+        mf = self._card("บัญชีที่ใช้ดึง")
+        self.multi_frame = mf
+        self.etk_multi = self._remember("etk_multi", tk.BooleanVar(value=False))
+        ttk.Checkbutton(
+            mf, text="ดึงหลายบัญชีจากไฟล์ UsernameLogin.xlsx (ไม่ใช้ Username/Password ด้านบน)",
+            variable=self.etk_multi, command=self._on_etk_multi_changed,
+        ).grid(row=0, column=0, columnspan=3, sticky="w")
+        self.etk_login_input = self._remember("etk_login_input",
+                                              tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self.etk_login_entry, self.etk_login_btn = self._file_row(
+            mf, 1, "ไฟล์ UsernameLogin.xlsx:", self.etk_login_input,
+            hint="คอลัมน์ที่ต้องมี: Username, Password, Type")
+        self.etk_combine = self._remember("etk_combine", tk.BooleanVar(value=False))
+        self.etk_combine_cb = ttk.Checkbutton(
+            mf, text="รวมทุกบัญชีเป็นไฟล์เดียว (มีคอลัมน์ 'บัญชี (Username)') — ไม่ติ๊ก = แยกไฟล์ต่อบัญชี",
+            variable=self.etk_combine)
+        self.etk_combine_cb.grid(row=2, column=0, columnspan=3, sticky="w")
+        mf.columnconfigure(1, weight=1)
 
-        ttk.Separator(self.etk_req_no_frame, orient="horizontal").grid(
-            row=5, column=0, columnspan=3, sticky="we", pady=(0, 8),
-        )
-        ttk.Label(
-            self.etk_req_no_frame,
-            text="โหมด B: พิมพ์/วางเลขคำขอเอง (ใช้บัญชีเดียวจาก Username/Password ด้านบน — ใช้เมื่อไม่ระบุไฟล์ Excel โหมด A)",
-            foreground="#444",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        self.etk_req_no_text = tk.Text(self.etk_req_no_frame, height=4, width=60)
-        self.etk_req_no_text.grid(row=7, column=0, columnspan=3, sticky="we")
-        self.etk_req_no_frame.columnconfigure(1, weight=1)
+        # ===== 4) รูปแบบรายงาน (etracking เท่านั้น) =====
+        tf = self._card("รูปแบบรายงาน (Template)")
+        self.etk_template_frame = tf
+        self.etk_template = self._remember("etk_template", tk.StringVar(value="main"))
+        ttk.Radiobutton(tf, text="Template หลัก — รายละเอียดครบทุกคอลัมน์ (ค่าเริ่มต้น)",
+                        variable=self.etk_template, value="main").grid(row=0, column=0, sticky="w")
+        ttk.Radiobutton(
+            tf, text="Template นัดหมาย — ลำดับ | Username | เลขคำขอ | ชื่อบริษัท | ชื่อแรงงาน | วันที่นัด | เวลา | สถานที่",
+            variable=self.etk_template, value="appointment").grid(row=1, column=0, sticky="w", pady=(2, 0))
+        self._note(tf, "Template นัดหมาย จะเข้าแท็บ 'การนัดหมาย' ของแต่ละรายการ (ช้าลงเล็กน้อย) — "
+                       "ควรติ๊กสถานะ 'รอนัดหมาย' ในตัวกรองสถานะ", row=2)
+
+        # ===== 5) ดึงเฉพาะเลขคำขอ (etracking เท่านั้น — พับไว้) =====
+        rf = self._card("ดึงเฉพาะเลขคำขอ (ทางเลือก)")
+        self.etk_req_no_frame = rf
+        self.etk_req_no_box = Collapsible(
+            rf, "ระบุเลขคำขอเอง — ข้ามตัวกรองสถานะ/วันที่ด้านบนทั้งหมด", open=False,
+            hint="(เว้นว่าง = ดึงตามตัวกรองปกติ)")
+        self.etk_req_no_box.pack(fill="x")
+        rb = self.etk_req_no_box.body
+        ttk.Label(rb, text="โหมด A: ไฟล์ Excel เลขคำขอ — รองรับหลายบัญชี (จัดกลุ่มตาม username แล้ว login ทีละบัญชี)",
+                  style="Section.TLabel").grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        self.etk_req_excel_input = self._remember("etk_req_excel_input", tk.StringVar(value=""))
+        self._file_row(rb, 1, "ไฟล์ Ref_number.xlsx:", self.etk_req_excel_input, clearable=True,
+                       hint="คอลัมน์ที่ต้องมี: Ref_number (เลขคำขอ), user (Username เจ้าของคำขอ)")
+        self.etk_req_login_input = self._remember("etk_req_login_input",
+                                                  tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(rb, 2, "ไฟล์ UsernameLogin.xlsx:", self.etk_req_login_input,
+                       hint="คอลัมน์ที่ต้องมี: Username, Password, Type")
+        ttk.Separator(rb, orient="horizontal").grid(row=3, column=0, columnspan=3, sticky="we", pady=6)
+        ttk.Label(rb, text="โหมด B: พิมพ์/วางเลขคำขอเอง (ใช้บัญชีเดียวจากด้านบน — ใช้เมื่อไม่ระบุไฟล์โหมด A)",
+                  style="Section.TLabel").grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        self.etk_req_no_text = tk.Text(rb, height=3, width=60, font=FONT_UI, relief="flat",
+                                       highlightthickness=1, highlightbackground=PALETTE["border"])
+        self.etk_req_no_text.grid(row=5, column=0, columnspan=3, sticky="we")
+        rb.columnconfigure(1, weight=1)
 
         # โหลด default ตาม request_type แรก
         self._apply_profile_defaults(self.request_type.get())
         self._update_request_summary()
 
-        # ---- ตัวเลือก (โหมด aliens) ----
-        self.aliens_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ข้อมูลคนต่างด้าว", padding=10,
-        )
-        ttk.Label(
-            self.aliens_frame, text="เลือกหมวดข้อมูลที่จะดึง:", foreground="#444",
-        ).pack(anchor="w")
+    # ---------- การ์ดเฉพาะโหมด ----------
+    def _build_mode_cards(self) -> None:
+        self._build_card_aliens()
+        self._build_card_register()
+        self._build_card_receipts()
+        self._build_card_results()
+        self._build_card_inform()
+        self._build_card_bt30()
+        self._build_card_bt44()
+        self._build_card_billpay()
+        self._build_card_payrcpt()
+        self._build_card_appointment()
+        self._build_card_bt30ctn()
+        self._build_card_namelist()
+        self._build_card_ticket()
+        self._build_card_booking()
+
+    def _build_card_aliens(self) -> None:
+        f = self._card("ตัวเลือก — ข้อมูลคนต่างด้าว")
+        self.aliens_frame = f
+        ttk.Label(f, text="เลือกหมวดข้อมูลที่จะดึง:").pack(anchor="w")
         self.alien_subtab_vars: dict[str, tk.BooleanVar] = {}
         for name in ALIEN_SUB_TABS:
             v = tk.BooleanVar(value=True)
             self.alien_subtab_vars[name] = v
-            ttk.Checkbutton(self.aliens_frame, text=name, variable=v).pack(
-                anchor="w", padx=8, pady=2,
-            )
-        ttk.Label(
-            self.aliens_frame,
-            text="(ดึงเฉพาะข้อมูลในตาราง ไม่กดเข้าไปดูรายละเอียดแต่ละคน — เร็วมาก)",
-            foreground="gray",
-        ).pack(anchor="w", pady=(6, 0))
+            ttk.Checkbutton(f, text=name, variable=v).pack(anchor="w", padx=8, pady=2)
 
-        # ---- ตัวเลือก (โหมด register) ----
-        self.register_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ลงทะเบียนคนต่างด้าว", padding=10,
-        )
-        ttk.Label(
-            self.register_frame,
-            text="ไฟล์ Excel ต้องมีคอลัมน์: No., Name, TaxID, PassportNo., Password, Email",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-        ttk.Label(self.register_frame, text="ไฟล์ Excel input:").grid(row=1, column=0, sticky="w", pady=4)
-        self.register_input = tk.StringVar(value=str(ROOT / "Exm.xlsx"))
-        ttk.Entry(self.register_frame, textvariable=self.register_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.register_frame, text="เลือก...", command=self._choose_register_input,
-        ).grid(row=1, column=2, padx=4)
-        ttk.Label(self.register_frame, text="เลือกแถวที่จะลงทะเบียน:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
+    def _build_card_register(self) -> None:
+        f = self._card("ตัวเลือก — ลงทะเบียนคนต่างด้าว")
+        self.register_frame = f
+        self.register_input = self._remember("register_input", tk.StringVar(value=str(ROOT / "Exm.xlsx")))
+        self._file_row(f, 0, "ไฟล์ Excel input:", self.register_input,
+                       hint="คอลัมน์ที่ต้องมี: No., Name, TaxID, PassportNo., Password, Email")
         self.register_row_range = tk.StringVar(value="")
-        ttk.Entry(self.register_frame, textvariable=self.register_row_range).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.register_frame,
-            text='เช่น "4-13" หรือ "1,3,5-8" (เว้นว่าง = ทุกแถว)',
-            foreground="gray",
-        ).grid(row=2, column=2, sticky="w")
-        ttk.Label(
-            self.register_frame,
-            text='ตัวเลขคือลำดับแถวข้อมูลใน Excel (ไม่นับหัวตาราง) — แถวแรก = 1',
-            foreground="gray",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.register_frame,
-            text="(ใช้บัญชีของคนต่างด้าวแต่ละคนจาก Excel — ไม่ต้องใส่ Username/Password ด้านบน)",
-            foreground="gray",
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
-        self.register_frame.columnconfigure(1, weight=1)
+        self._text_row(f, 1, "แถวที่จะลงทะเบียน:", self.register_row_range,
+                       'เช่น "4-13" หรือ "1,3,5-8" — เว้นว่าง = ทุกแถว (นับแถวข้อมูล ไม่นับหัวตาราง)')
+        self._note(f, "ใช้บัญชีของคนต่างด้าวแต่ละคนจาก Excel (Password/Email) — ไม่ต้องกรอก Username/Password",
+                   row=2, pady=(6, 0))
+        f.columnconfigure(1, weight=1)
 
-        # ---- ตัวเลือก (โหมด receipts) ----
-        self.receipt_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ดาวน์โหลดเอกสาร (ใบเสร็จทุกราคา / บต.44 / บต.22 / บต.53 / บต.56)", padding=10,
-        )
-        ttk.Label(
-            self.receipt_frame,
-            text="RequestData ต้องมีคอลัมน์: ลำดับ, ชื่อคนต่างด้าว(Eng), เลขที่คำขอ, Username, PASSPORT NUMBER",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(
-            self.receipt_frame,
-            text="UsernameLogin ต้องมีคอลัมน์: Username, Password, Type",
-            foreground="#444",
-        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.receipt_frame, text="ไฟล์ RequestData.xlsx:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.receipt_request_input = tk.StringVar(value=str(ROOT / "RequestData.xlsx"))
-        ttk.Entry(self.receipt_frame, textvariable=self.receipt_request_input).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.receipt_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.receipt_request_input),
-        ).grid(row=2, column=2, padx=4)
-
-        ttk.Label(self.receipt_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
-        self.receipt_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.receipt_frame, textvariable=self.receipt_login_input).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.receipt_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.receipt_login_input),
-        ).grid(row=3, column=2, padx=4)
-
-        ttk.Label(self.receipt_frame, text="เลือกแถวที่จะดาวน์โหลด:").grid(
-            row=4, column=0, sticky="w", pady=4,
-        )
+    def _build_card_receipts(self) -> None:
+        f = self._card("ตัวเลือก — ดาวน์โหลดใบเสร็จ / แบบฟอร์ม")
+        self.receipt_frame = f
+        self.receipt_request_input = self._remember(
+            "receipt_request_input", tk.StringVar(value=str(ROOT / "RequestData.xlsx")))
+        self._file_row(f, 0, "ไฟล์ RequestData.xlsx:", self.receipt_request_input,
+                       hint="คอลัมน์ที่ต้องมี: ลำดับ, ชื่อคนต่างด้าว(Eng), เลขที่คำขอ, Username, PASSPORT NUMBER")
+        self.receipt_login_input = self._remember(
+            "receipt_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 1, "ไฟล์ UsernameLogin.xlsx:", self.receipt_login_input,
+                       hint="คอลัมน์ที่ต้องมี: Username, Password, Type — จัดกลุ่มตาม Username แล้ว login อัตโนมัติ")
         self.receipt_row_range = tk.StringVar(value="")
-        ttk.Entry(self.receipt_frame, textvariable=self.receipt_row_range).grid(
-            row=4, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.receipt_frame,
-            text='เช่น "1-50" หรือ "2,5,8" (เว้นว่าง = ทุกแถว)',
-            foreground="gray",
-        ).grid(row=4, column=2, sticky="w")
+        self._text_row(f, 2, "แถวที่จะดาวน์โหลด:", self.receipt_row_range,
+                       'เช่น "1-50" หรือ "2,5,8" — เว้นว่าง = ทุกแถว')
 
-        # เลือกประเภทเอกสารที่จะดาวน์โหลด
-        ttk.Label(self.receipt_frame, text="เอกสารที่จะดาวน์โหลด:").grid(
-            row=5, column=0, sticky="w", pady=(6, 2),
-        )
-        doc_box = ttk.Frame(self.receipt_frame)
-        doc_box.grid(row=5, column=1, columnspan=2, sticky="w", pady=(6, 2))
-        ttk.Checkbutton(
-            doc_box, text="ใบเสร็จ (ทุกใบ)", variable=self.doc_receipt,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            doc_box, text="แบบ บต.44", variable=self.doc_bt44,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            doc_box, text="แบบ บต.22", variable=self.doc_bt22,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            doc_box, text="แบบ บต.53", variable=self.doc_bt53,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            doc_box, text="แบบ บต.55", variable=self.doc_bt55,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            doc_box, text="แบบ บต.52", variable=self.doc_bt52,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            doc_box, text="แบบ บต.56", variable=self.doc_bt56,
-        ).pack(side="left")
+        ttk.Label(f, text="เอกสารที่จะดาวน์โหลด:").grid(row=3, column=0, sticky="nw", pady=(6, 2))
+        doc_box = ttk.Frame(f)
+        doc_box.grid(row=3, column=1, columnspan=2, sticky="w", pady=(6, 2))
+        for i, (text, var) in enumerate((
+            ("ใบเสร็จ (ทุกใบ)", self.doc_receipt), ("แบบ บต.44", self.doc_bt44),
+            ("แบบ บต.22", self.doc_bt22), ("แบบ บต.53", self.doc_bt53),
+            ("แบบ บต.55", self.doc_bt55), ("แบบ บต.52", self.doc_bt52),
+            ("แบบ บต.56", self.doc_bt56),
+        )):
+            ttk.Checkbutton(doc_box, text=text, variable=var).grid(
+                row=i // 4, column=i % 4, sticky="w", padx=(0, 14), pady=1)
 
-        # ต่อท้ายชื่อไฟล์เอง (optional) + สร้างโฟลเดอร์แยกตาม PASSPORT
         self.receipt_name_suffix = tk.StringVar(value="")
-        self.receipt_make_folder = tk.BooleanVar(value=False)
-        ttk.Label(self.receipt_frame, text="ต่อท้ายชื่อไฟล์ (ถ้าต้องการ):").grid(
-            row=6, column=0, sticky="w", pady=(6, 2),
-        )
-        ttk.Entry(self.receipt_frame, textvariable=self.receipt_name_suffix, width=18).grid(
-            row=6, column=1, sticky="w", padx=8, pady=(6, 2),
-        )
-        ttk.Label(
-            self.receipt_frame,
-            text='เว้นว่าง = ไม่ต่อท้าย | ใส่ "_IO" → {PASSPORT}_BT22_IO.pdf',
-            foreground="gray",
-        ).grid(row=6, column=2, sticky="w")
-        ttk.Checkbutton(
-            self.receipt_frame,
-            text="สร้างโฟลเดอร์แยกตาม PASSPORT (เช่น receipts/MD1524123/MD1524123_BT44.pdf)",
-            variable=self.receipt_make_folder,
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 4))
+        self._text_row(f, 4, "ต่อท้ายชื่อไฟล์:", self.receipt_name_suffix,
+                       'เว้นว่าง = ไม่ต่อท้าย | ใส่ "_IO" → {PASSPORT}_BT22_IO.pdf', width=14)
+        self.receipt_make_folder = self._remember("receipt_make_folder", tk.BooleanVar(value=False))
+        ttk.Checkbutton(f, text="สร้างโฟลเดอร์แยกตาม PASSPORT (receipts/MD1524123/MD1524123_BT44.pdf)",
+                        variable=self.receipt_make_folder).grid(
+            row=5, column=0, columnspan=3, sticky="w", pady=(4, 2))
+        self._note(f, "PDF เก็บใน reports/receipts ตั้งชื่อตามราคา {PASSPORT}_RECEIPT100.pdf / _BT44.pdf ฯลฯ  •  "
+                      "รันซ้ำได้: ไฟล์ที่มีอยู่แล้วจะถูกข้าม", row=6)
+        f.columnconfigure(1, weight=1)
 
-        ttk.Label(
-            self.receipt_frame,
-            text="ไฟล์ PDF เก็บในโฟลเดอร์ receipts — ใบเสร็จดาวน์ทุกใบ ตั้งชื่อตามราคา: {PASSPORT}_RECEIPT100.pdf / _RECEIPT1800.pdf / _BT44.pdf / _BT22.pdf / _BT53.pdf / _BT55.pdf / _BT52.pdf / _BT56.pdf",
-            foreground="gray",
-        ).grid(row=8, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.receipt_frame,
-            text="(จัดกลุ่มตาม Username → login ตาม Type ในไฟล์ — ไม่ต้องกรอก Username/Password ด้านบน)",
-            foreground="gray",
-        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.receipt_frame,
-            text="ทำซ้ำได้: เอกสารที่มีไฟล์ PDF อยู่แล้วจะถูกข้าม / รองรับ session หมดอายุ",
-            foreground="gray",
-        ).grid(row=10, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.receipt_frame.columnconfigure(1, weight=1)
+    def _build_card_results(self) -> None:
+        f = self._card("ตัวเลือก — ใบแจ้งผล / ใบรับคำขอ")
+        self.result_frame = f
+        ttk.Label(f, text="โหมด A — ตามเลขคำขอจาก Ref_number.xlsx (ถ้าระบุไฟล์)", style="Section.TLabel").grid(
+            row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        self.result_ref_input = self._remember(
+            "result_ref_input", tk.StringVar(value=str(ROOT / "Ref_number.xlsx")))
+        self._file_row(f, 1, "ไฟล์ Ref_number.xlsx:", self.result_ref_input, clearable=True,
+                       hint="คอลัมน์ที่ต้องมี: Ref_number (เลขคำขอ), user (Username เจ้าของคำขอ) — กด 'ล้าง' เพื่อใช้โหมด B")
+        self.result_login_input = self._remember(
+            "result_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 2, "ไฟล์ UsernameLogin.xlsx:", self.result_login_input,
+                       hint="คอลัมน์ที่ต้องมี: Username, Password, Type")
 
-        # ---- ตัวเลือก (โหมด results: ใบแจ้งผล / ใบรับคำขอ) ----
-        self.result_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ดาวน์โหลดเอกสารผลอนุญาต (ใบแจ้งผล / ใบรับคำขอ)", padding=10,
-        )
-        ttk.Label(
-            self.result_frame,
-            text="โหมด A: ใส่ไฟล์ Ref_number.xlsx → ค้นหา-ดาวน์โหลดตามเลขคำขอ (Ref_number + user)",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(
-            self.result_frame,
-            text="โหมด B: เว้นว่าง/ล้างไฟล์ Ref_number → ดึงจาก e-Tracking ตามรายการคำขอ (สถานะ 'รอนัดหมาย')",
-            foreground="#444",
-        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        # ---- โหมด A: ไฟล์ Ref_number.xlsx (ค้นหาตามเลขคำขอ) ----
-        ttk.Label(self.result_frame, text="ไฟล์ Ref_number.xlsx:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.result_ref_input = tk.StringVar(value=str(ROOT / "Ref_number.xlsx"))
-        ttk.Entry(self.result_frame, textvariable=self.result_ref_input).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        rref_btns = ttk.Frame(self.result_frame)
-        rref_btns.grid(row=2, column=2, padx=4)
-        ttk.Button(
-            rref_btns, text="เลือก...",
-            command=lambda: self._choose_into(self.result_ref_input),
-        ).pack(side="left")
-        ttk.Button(
-            rref_btns, text="ล้าง",
-            command=lambda: self.result_ref_input.set(""),
-        ).pack(side="left", padx=(4, 0))
-        ttk.Label(
-            self.result_frame,
-            text="คอลัมน์ที่ต้องมี: Ref_number (เลขคำขอ), user (Username เจ้าของคำขอ)",
-            foreground="gray",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.result_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=4, column=0, sticky="w", pady=4,
-        )
-        self.result_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.result_frame, textvariable=self.result_login_input).grid(
-            row=4, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.result_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.result_login_input),
-        ).grid(row=4, column=2, padx=4)
-        ttk.Label(
-            self.result_frame,
-            text="UsernameLogin ต้องมีคอลัมน์: Username, Password, Type (จัดกลุ่มตาม Username → login อัตโนมัติ)",
-            foreground="gray",
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        # ---- โหมด B: รายการคำขอ (ใช้เมื่อไม่มีไฟล์ Ref_number) ----
-        ttk.Label(self.result_frame, text="รายการคำขอ (โหมด B):").grid(row=6, column=0, sticky="w", pady=4)
+        ttk.Separator(f, orient="horizontal").grid(row=3, column=0, columnspan=3, sticky="we", pady=6)
+        ttk.Label(f, text="โหมด B — ดึงจาก e-Tracking (เมื่อช่อง Ref_number ว่าง) สถานะ 'รอนัดหมาย'",
+                  style="Section.TLabel").grid(row=4, column=0, columnspan=3, sticky="w", pady=(0, 2))
+        ttk.Label(f, text="รายการคำขอ:").grid(row=5, column=0, sticky="w", pady=3)
         self.result_request_type = tk.StringVar(value="")
         self.result_request_label = tk.StringVar(value=REQUEST_TYPES[0][1])
-        rr_combo = ttk.Combobox(
-            self.result_frame, textvariable=self.result_request_label, state="readonly",
-            values=[lbl for _, lbl in REQUEST_TYPES],
-        )
-        rr_combo.grid(row=6, column=1, columnspan=2, sticky="we", padx=8)
+        rr_combo = ttk.Combobox(f, textvariable=self.result_request_label, state="readonly",
+                                values=[lbl for _, lbl in REQUEST_TYPES])
+        rr_combo.grid(row=5, column=1, columnspan=2, sticky="we", padx=8)
         rr_combo.bind("<<ComboboxSelected>>", self._on_result_request_changed)
+        self._text_row(f, 6, "หรือใส่ code เอง:", self.result_request_type, "(เว้นว่าง = ทั้งหมด)", width=28)
 
-        ttk.Label(self.result_frame, text="หรือใส่ code เอง:").grid(row=7, column=0, sticky="w", pady=4)
-        ttk.Entry(self.result_frame, textvariable=self.result_request_type).grid(
-            row=7, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(self.result_frame, text="(เว้นว่าง = ทั้งหมด)", foreground="gray").grid(
-            row=7, column=2, sticky="w",
-        )
+        ttk.Label(f, text="เอกสารที่จะดาวน์โหลด:").grid(row=7, column=0, sticky="w", pady=(6, 2))
+        rdoc = ttk.Frame(f)
+        rdoc.grid(row=7, column=1, columnspan=2, sticky="w", pady=(6, 2))
+        ttk.Checkbutton(rdoc, text="ใบแจ้งผลใบอนุญาตทำงาน", variable=self.doc_result_notice).pack(side="left", padx=(0, 14))
+        ttk.Checkbutton(rdoc, text="ใบรับคำขอใบอนุญาตทำงาน", variable=self.doc_request_receipt).pack(side="left", padx=(0, 14))
+        ttk.Checkbutton(rdoc, text="แบบ บต.50 อ.6", variable=self.doc_result_bt50).pack(side="left")
+        self._note(f, "PDF เก็บใน reports/result_docs ชื่อ {ชื่อคนต่างด้าว(Eng)}_{ชื่อเอกสาร}.pdf  •  รันซ้ำได้: ไฟล์ที่มีอยู่แล้วจะถูกข้าม",
+                   row=8)
+        f.columnconfigure(1, weight=1)
 
-        ttk.Label(self.result_frame, text="เอกสารที่จะดาวน์โหลด:").grid(
-            row=8, column=0, sticky="w", pady=(6, 2),
-        )
-        rdoc_box = ttk.Frame(self.result_frame)
-        rdoc_box.grid(row=8, column=1, columnspan=2, sticky="w", pady=(6, 2))
-        ttk.Checkbutton(
-            rdoc_box, text="ใบแจ้งผลใบอนุญาตทำงาน", variable=self.doc_result_notice,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            rdoc_box, text="ใบรับคำขอใบอนุญาตทำงาน", variable=self.doc_request_receipt,
-        ).pack(side="left", padx=(0, 14))
-        ttk.Checkbutton(
-            rdoc_box, text="แบบ บต.50 อ.6", variable=self.doc_result_bt50,
-        ).pack(side="left")
-
-        ttk.Label(
-            self.result_frame,
-            text="ไฟล์ PDF เก็บในโฟลเดอร์ result_docs — ตั้งชื่อ {ชื่อคนต่างด้าว(Eng)}_{ชื่อเอกสารบนเว็บ}.pdf",
-            foreground="gray",
-        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.result_frame,
-            text="ทำซ้ำได้: เอกสารที่มีไฟล์ PDF อยู่แล้วจะถูกข้าม / รองรับ session หมดอายุ",
-            foreground="gray",
-        ).grid(row=10, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.result_frame.columnconfigure(1, weight=1)
-
-        # ---- ตัวเลือก (โหมด inform: แจ้งเข้านายจ้าง บต.52) ----
-        self.inform_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — แจ้งเข้านายจ้าง (แบบ บต.52)", padding=10,
-        )
-        ttk.Label(
-            self.inform_frame,
-            text="FormRequestEmployment ต้องมีคอลัมน์: ประเภทนายจ้าง, รหัสนายจ้าง, เลขใบอนุญาตทำงาน, วันที่เริ่มงาน, Files",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(
-            self.inform_frame,
-            text="UsernameLogin ใช้บัญชีแรกที่เจอ (ควรเป็นบัญชี บนจ. ที่ตรงกับฟอร์มนี้)",
-            foreground="#444",
-        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.inform_frame, text="ไฟล์ FormRequestEmployment.xlsx:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.inform_excel_input = tk.StringVar(value=str(ROOT / "FormRequestEmployment.xlsx"))
-        ttk.Entry(self.inform_frame, textvariable=self.inform_excel_input).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.inform_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.inform_excel_input),
-        ).grid(row=2, column=2, padx=4)
-
-        ttk.Label(self.inform_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
-        self.inform_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.inform_frame, textvariable=self.inform_login_input).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.inform_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.inform_login_input),
-        ).grid(row=3, column=2, padx=4)
-
-        ttk.Label(self.inform_frame, text="เลือกแถวที่จะทำ:").grid(
-            row=4, column=0, sticky="w", pady=4,
-        )
+    def _build_card_inform(self) -> None:
+        f = self._card("ตัวเลือก — แจ้งเข้านายจ้าง (บต.52)")
+        self.inform_frame = f
+        self.inform_excel_input = self._remember(
+            "inform_excel_input", tk.StringVar(value=str(ROOT / "FormRequestEmployment.xlsx")))
+        self._file_row(f, 0, "ไฟล์ FormRequestEmployment.xlsx:", self.inform_excel_input,
+                       hint="คอลัมน์ที่ต้องมี: ประเภทนายจ้าง, รหัสนายจ้าง, เลขใบอนุญาตทำงาน, วันที่เริ่มงาน, Files\n"
+                            "ไฟล์แนบ (คอลัมน์ Files) ใช้ relative path จากโฟลเดอร์เดียวกับ Excel")
+        self.inform_login_input = self._remember(
+            "inform_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 1, "ไฟล์ UsernameLogin.xlsx:", self.inform_login_input,
+                       hint="ใช้บัญชีแรกที่เจอ (ควรเป็นบัญชี บนจ. ที่ตรงกับฟอร์มนี้)")
         self.inform_row_range = tk.StringVar(value="")
-        ttk.Entry(self.inform_frame, textvariable=self.inform_row_range).grid(
-            row=4, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.inform_frame,
-            text='เช่น "1-5" หรือ "2,4" (เว้นว่าง = ทุกแถว)',
-            foreground="gray",
-        ).grid(row=4, column=2, sticky="w")
-
+        self._text_row(f, 2, "แถวที่จะทำ:", self.inform_row_range, 'เช่น "1-5" หรือ "2,4" — เว้นว่าง = ทุกแถว')
         self.inform_commit = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.inform_frame,
-            text="ยืนยันส่งคำขอจริง (ทำข้อ 7+8) — ถ้าไม่ติ๊กจะหยุดก่อนข้อ 7 (โหมดทดสอบ)",
-            variable=self.inform_commit,
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(8, 2))
-        ttk.Label(
-            self.inform_frame,
-            text="โหมดทดสอบ: เก็บ screenshot หน้าสรุปคำขอใน inform_screenshots/ — ไม่ส่งจริง",
-            foreground="#a04a00",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.inform_frame,
-            text="ไฟล์แนบ (คอลัมน์ Files) ใช้ relative path จากโฟลเดอร์เดียวกับ Excel",
-            foreground="gray",
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.inform_frame.columnconfigure(1, weight=1)
+        ttk.Checkbutton(f, text="⚠ ยืนยันส่งคำขอจริง (ทำข้อ 7+8) — ไม่ติ๊ก = โหมดทดสอบ หยุดก่อนข้อ 7",
+                        variable=self.inform_commit).grid(row=3, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self._note(f, "โหมดทดสอบจะเก็บ screenshot หน้าสรุปคำขอใน inform_screenshots/ โดยไม่ส่งจริง",
+                   style="Warn.TLabel", row=4)
+        f.columnconfigure(1, weight=1)
 
-        # ---- ตัวเลือก (โหมด bt30: ยื่นต่อใบอนุญาตทำงานตาม MoU แบบ บต.30) ----
-        self.bt30_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ยื่นต่อใบอนุญาตทำงาน (แบบ บต.30 / MoU)", padding=10,
-        )
-        ttk.Label(
-            self.bt30_frame,
-            text="from_bt30.xlsx ต้องมีคอลัมน์: No., คำนำหน้า, ชื่อ, สัญชาติ, เพศ, วันเกิด",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(
-            self.bt30_frame,
-            text="ขั้นตอน 1: Login → เมนูบริการ → ต่ออายุตาม MoU → 'ค้นหาข้อมูลคนต่างด้าว' → บันทึก",
-            foreground="#444",
-        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.bt30_frame, text="ไฟล์ from_bt30.xlsx:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.bt30_excel_input = tk.StringVar(value=str(ROOT / "from_bt30.xlsx"))
-        ttk.Entry(self.bt30_frame, textvariable=self.bt30_excel_input).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.bt30_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.bt30_excel_input),
-        ).grid(row=2, column=2, padx=4)
-
-        ttk.Label(self.bt30_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
-        self.bt30_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.bt30_frame, textvariable=self.bt30_login_input).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.bt30_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.bt30_login_input),
-        ).grid(row=3, column=2, padx=4)
-
-        ttk.Label(self.bt30_frame, text="เลือกแถวที่จะทำ:").grid(
-            row=4, column=0, sticky="w", pady=4,
-        )
+    def _build_card_bt30(self) -> None:
+        f = self._card("ตัวเลือก — ยื่นต่อใบอนุญาตทำงาน (บต.30 / MoU)")
+        self.bt30_frame = f
+        self.bt30_excel_input = self._remember(
+            "bt30_excel_input", tk.StringVar(value=str(ROOT / "from_bt30.xlsx")))
+        self._file_row(f, 0, "ไฟล์ from_bt30.xlsx:", self.bt30_excel_input,
+                       hint="คอลัมน์ที่ต้องมี: No., คำนำหน้า, ชื่อ, สัญชาติ, เพศ, วันเกิด (ค.ศ. เช่น 01/01/1995)")
+        self.bt30_login_input = self._remember(
+            "bt30_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 1, "ไฟล์ UsernameLogin.xlsx:", self.bt30_login_input)
         self.bt30_row_range = tk.StringVar(value="")
-        ttk.Entry(self.bt30_frame, textvariable=self.bt30_row_range).grid(
-            row=4, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.bt30_frame,
-            text='เช่น "1-5" หรือ "2,4" (เว้นว่าง = ทุกแถว)',
-            foreground="gray",
-        ).grid(row=4, column=2, sticky="w")
+        self._text_row(f, 2, "แถวที่จะทำ:", self.bt30_row_range, 'เช่น "1-5" หรือ "2,4" — เว้นว่าง = ทุกแถว')
+
         self.bt30_do_step2 = tk.BooleanVar(value=True)
         ttk.Checkbutton(
-            self.bt30_frame,
-            text="ทำขั้นตอนที่ 2 ต่อ (2.1–2.9 → Step 4 เอกสารนายจ้าง → 5.1/5.2 สรุปคำขอ → 6.1 ยืนยันตัวตน)",
-            variable=self.bt30_do_step2,
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        ttk.Label(
-            self.bt30_frame,
-            text="โหมดขั้นตอน 1+2 = 1 แถวต่อ 1 คำขอ (เปิดฟอร์มใหม่ทุกคน) และหยุดหลัง Step 6.1 (ยืนยันตัวตน) — ไม่ส่งคำขอ/ไม่ชำระเงิน",
-            foreground="#a04a00",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(4, 0))
-        ttk.Label(
-            self.bt30_frame,
-            text="วันที่ในไฟล์ใช้รูปแบบ ค.ศ. (เช่น 01/01/1995) — เก็บ screenshot ไว้ใน reports/bt30_screenshots/",
-            foreground="#a04a00",
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Separator(self.bt30_frame, orient="horizontal").grid(
-            row=8, column=0, columnspan=3, sticky="we", pady=(8, 4),
-        )
+            f, text="ทำขั้นตอนที่ 2 ต่อ (2.1–2.9 → Step 4 เอกสารนายจ้าง → 5.1/5.2 สรุปคำขอ → 6.1 ยืนยันตัวตน)",
+            variable=self.bt30_do_step2).grid(row=3, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        self._note(f, "1 แถว = 1 คำขอ (เปิดฟอร์มใหม่ทุกคน) หยุดหลัง Step 6.1 — ไม่ส่งคำขอ/ไม่ชำระเงิน  •  "
+                      "screenshot เก็บใน reports/bt30_screenshots/", row=4)
+
+        ttk.Separator(f, orient="horizontal").grid(row=5, column=0, columnspan=3, sticky="we", pady=8)
         self.bt30_submit = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            self.bt30_frame,
-            text="⚠ ส่งคำขอจริง + ชำระเงิน (Step 7) แล้วเก็บข้อมูล+ดาวน์โหลดใบชำระเงิน (Step 8)",
-            variable=self.bt30_submit,
-        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(0, 0))
-        ttk.Label(
-            self.bt30_frame,
-            text="*** อันตราย: กด 'ถัดไป' หน้าชำระเงิน = ยืนยันส่งคำขอจริง ย้อนกลับไม่ได้ และมีค่าธรรมเนียม ***",
-            foreground="#c00000", font=("Segoe UI", 9, "bold"),
-        ).grid(row=10, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        ttk.Label(
-            self.bt30_frame,
-            text="ต้องทำขั้นตอนที่ 2 ก่อน • ใบชำระเงินดาวน์โหลดได้ครั้งเดียว → เก็บใน reports/bt30_submitted/",
-            foreground="#c00000",
-        ).grid(row=11, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.bt30_frame.columnconfigure(1, weight=1)
+            f, text="⚠ ส่งคำขอจริง + ชำระเงิน (Step 7) แล้วเก็บข้อมูล + ดาวน์โหลดใบชำระเงิน (Step 8)",
+            variable=self.bt30_submit).grid(row=6, column=0, columnspan=3, sticky="w")
+        self._note(f, "อันตราย: กด 'ถัดไป' หน้าชำระเงิน = ยืนยันส่งคำขอจริง ย้อนกลับไม่ได้ และมีค่าธรรมเนียม  •  "
+                      "ต้องเปิดขั้นตอนที่ 2 ก่อน  •  ใบชำระเงินดาวน์โหลดได้ครั้งเดียว → reports/bt30_submitted/",
+                   style="Danger.TLabel", row=7)
+        f.columnconfigure(1, weight=1)
 
-        # ---- ตัวเลือก (โหมด bt44: แจ้งการทำงาน/เปลี่ยนรายการในใบอนุญาต ซึ่งไม่กระทบ แบบ บต.44) ----
-        self.bt44_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — เปลี่ยนย้ายนายจ้างในระบบ (บต.44)", padding=10,
-        )
-        ttk.Label(
-            self.bt44_frame,
-            text="from_bt44 ต้องมีคอลัมน์: No., คำนำหน้า, หมายเลขอ้างอิงของคนต่างด้าว, ชื่อ, สัญชาติ, เพศ, เกิดวันที่",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(
-            self.bt44_frame,
-            text="ขั้นตอน: Login → เมนูบริการ → การยื่นขอเปลี่ยนรายการฯ ซึ่งไม่กระทบ → 'ค้นหาข้อมูลคนต่างด้าว' → บันทึก",
-            foreground="#444",
-        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.bt44_frame, text="ไฟล์ from_bt44:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.bt44_excel_input = tk.StringVar(value=str(ROOT / "from_bt44.xlxs.xlsx"))
-        ttk.Entry(self.bt44_frame, textvariable=self.bt44_excel_input).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.bt44_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.bt44_excel_input),
-        ).grid(row=2, column=2, padx=4)
-
-        ttk.Label(self.bt44_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
-        self.bt44_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.bt44_frame, textvariable=self.bt44_login_input).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.bt44_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.bt44_login_input),
-        ).grid(row=3, column=2, padx=4)
-
-        ttk.Label(self.bt44_frame, text="เลือกแถวที่จะทำ:").grid(
-            row=4, column=0, sticky="w", pady=4,
-        )
+    def _build_card_bt44(self) -> None:
+        f = self._card("ตัวเลือก — เปลี่ยนย้ายนายจ้าง (บต.44)")
+        self.bt44_frame = f
+        self.bt44_excel_input = self._remember(
+            "bt44_excel_input", tk.StringVar(value=str(ROOT / "from_bt44.xlxs.xlsx")))
+        self._file_row(f, 0, "ไฟล์ from_bt44:", self.bt44_excel_input,
+                       hint="คอลัมน์ที่ต้องมี: No., คำนำหน้า, หมายเลขอ้างอิงของคนต่างด้าว (ไม่มีก็ได้), ชื่อ, สัญชาติ, เพศ, เกิดวันที่")
+        self.bt44_login_input = self._remember(
+            "bt44_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 1, "ไฟล์ UsernameLogin.xlsx:", self.bt44_login_input)
         self.bt44_row_range = tk.StringVar(value="")
-        ttk.Entry(self.bt44_frame, textvariable=self.bt44_row_range).grid(
-            row=4, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.bt44_frame,
-            text='เช่น "1-5" หรือ "2,4" (เว้นว่าง = ทุกแถว)',
-            foreground="gray",
-        ).grid(row=4, column=2, sticky="w")
-        ttk.Label(
-            self.bt44_frame,
-            text="หมายเหตุ: หมายเลขอ้างอิงของคนต่างด้าว หากไม่มีระบุใน Excel ก็ไม่ต้องกรอก",
-            foreground="#444",
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        ttk.Label(
-            self.bt44_frame,
-            text="หยุดหลังกด 'บันทึก' (ไม่กดถัดไป/ไม่ส่งคำขอ) — ถ้า Modal แจ้ง Error จะเก็บข้อความไว้ในรายงานแล้วข้ามไปคนถัดไป",
-            foreground="#a04a00",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(2, 0))
+        self._text_row(f, 2, "แถวที่จะทำ:", self.bt44_row_range, 'เช่น "1-5" หรือ "2,4" — เว้นว่าง = ทุกแถว')
+        self._note(f, "หยุดหลังกด 'บันทึก' (ไม่กดถัดไป/ไม่ส่งคำขอ) — ถ้า Modal แจ้ง Error จะเก็บข้อความไว้ในรายงานแล้วข้ามคนถัดไป",
+                   style="Warn.TLabel", row=3, pady=(6, 0))
 
-        # 'ทดลองยื่น' (Dry-Run) — หยุดที่ Step 2.3 + เก็บข้อมูลคนต่างด้าวเต็ม + ไม่ส่งคำขอ
         self.bt44_dry_run = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.bt44_frame,
-            text="🧪 ทดลองยื่น (Dry-Run) — ไม่ส่งคำขอจริง + เก็บข้อมูลคนต่างด้าวเต็มลงรายงาน",
-            variable=self.bt44_dry_run,
-            command=self._on_bt44_dryrun_toggle,
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(8, 0))
-
-        # ระดับการหยุด — เลือกได้เมื่อ Dry-Run เปิด
+        ttk.Checkbutton(f, text="🧪 ทดลองยื่น (Dry-Run) — ไม่ส่งคำขอจริง + เก็บข้อมูลคนต่างด้าวเต็มลงรายงาน",
+                        variable=self.bt44_dry_run, command=self._on_bt44_dryrun_toggle).grid(
+            row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
         self.bt44_dry_stop = tk.StringVar(value="step2")
-        self._bt44_dry_stop_frame = ttk.Frame(self.bt44_frame)
-        self._bt44_dry_stop_frame.grid(row=8, column=0, columnspan=3, sticky="w", padx=(24, 0), pady=(2, 0))
+        self._bt44_dry_stop_frame = ttk.Frame(f)
+        self._bt44_dry_stop_frame.grid(row=5, column=0, columnspan=3, sticky="w", padx=(24, 0), pady=(2, 0))
         ttk.Label(self._bt44_dry_stop_frame, text="หยุดที่:").pack(side="left")
         self._bt44_dry_stop_rb2 = ttk.Radiobutton(
-            self._bt44_dry_stop_frame,
-            text="Step 2 (ตรวจเลขใบอนุญาต) — ไม่แก้ที่อยู่",
-            variable=self.bt44_dry_stop, value="step2",
-        )
+            self._bt44_dry_stop_frame, text="Step 2 (ตรวจเลขใบอนุญาต) — ไม่แก้ที่อยู่",
+            variable=self.bt44_dry_stop, value="step2")
         self._bt44_dry_stop_rb2.pack(side="left", padx=(6, 12))
         self._bt44_dry_stop_rb3 = ttk.Radiobutton(
-            self._bt44_dry_stop_frame,
-            text="Step 3 (เลือกนายจ้าง+ประเภทกิจการ+งาน) — รวมแก้ที่อยู่",
-            variable=self.bt44_dry_stop, value="step3",
-        )
+            self._bt44_dry_stop_frame, text="Step 3 (เลือกนายจ้าง+ประเภทกิจการ+งาน) — รวมแก้ที่อยู่ หยุดก่อนแนบเอกสาร",
+            variable=self.bt44_dry_stop, value="step3")
         self._bt44_dry_stop_rb3.pack(side="left")
-        ttk.Label(
-            self.bt44_frame,
-            text="• Step 2 = หยุดหลังตรวจเลขใบอนุญาต (Step 2.3) เพื่อเช็คข้อมูลคนต่างด้าวอย่างเดียว\n"
-                 "• Step 3 = ทำ Step 2.2 แก้ที่อยู่ + Step 3.1 เปลี่ยนนายจ้าง + Step 3.3-3.4 เลือกประเภทกิจการ/งาน "
-                 "แล้วหยุดก่อนแนบเอกสาร (Step 4)",
-            foreground="#1a7000", justify="left",
-        ).grid(row=9, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        # ปิด radio buttons ตอน dry-run ยังไม่เปิด
         self._on_bt44_dryrun_toggle()
 
-        # ตรวจไฟล์แนบ Step 4 ก่อนรัน (ค่าเริ่มต้น: ON)
         self.bt44_check_docs = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            self.bt44_frame,
-            text="📎 ตรวจไฟล์แนบ Step 4 ก่อนรัน (ถ้าเอกสารไม่ครบ/เปิดไม่ได้ → ข้าม record นั้น)",
-            variable=self.bt44_check_docs,
-        ).grid(row=10, column=0, columnspan=3, sticky="w", pady=(8, 0))
-        ttk.Label(
-            self.bt44_frame,
-            text="ปิดได้เมื่อยังไม่ต้องการตรวจไฟล์ (เช่น ระหว่างทดสอบ flow Dry-Run) — ในการใช้งานจริงควรเปิดไว้",
-            foreground="#a04a00",
-        ).grid(row=11, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.bt44_frame.columnconfigure(1, weight=1)
+        cb = ttk.Checkbutton(f, text="📎 ตรวจไฟล์แนบ Step 4 ก่อนรัน (เอกสารไม่ครบ/เปิดไม่ได้ → ข้าม record นั้น)",
+                             variable=self.bt44_check_docs)
+        cb.grid(row=6, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        Tooltip(cb, "ปิดได้เมื่อยังไม่ต้องการตรวจไฟล์ (เช่น ระหว่างทดสอบ flow Dry-Run) — ใช้งานจริงควรเปิดไว้")
+        f.columnconfigure(1, weight=1)
 
-        # ----- โหมด: ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม) -----
-        self.billpay_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ดาวน์โหลดใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม)", padding=10,
-        )
-        ttk.Label(
-            self.billpay_frame,
-            text="ขั้นตอน: Login → Tracking → กรองสถานะ 'รอชำระเงิน / รอจ่ายเงินค่าธรรมเนียม' → เปิดคำขอ → แท็บ 'การชำระเงิน' → พิมพ์แบบฟอร์มการชำระเงิน",
-            foreground="#444",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 2))
-        ttk.Label(
-            self.billpay_frame,
-            text="รองรับหลายบัญชี — วนทุก Username/Password/Type ในไฟล์ UsernameLogin.xlsx",
-            foreground="#444",
-        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.billpay_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.billpay_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.billpay_frame, textvariable=self.billpay_login_input).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.billpay_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.billpay_login_input),
-        ).grid(row=2, column=2, padx=4)
-
-        ttk.Label(self.billpay_frame, text="เลือกแถวที่จะดาวน์โหลด:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
+    def _build_card_billpay(self) -> None:
+        f = self._card("ตัวเลือก — ใบแจ้งชำระเงิน (รอจ่ายค่าธรรมเนียม)")
+        self.billpay_frame = f
+        self.billpay_login_input = self._remember(
+            "billpay_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 0, "ไฟล์ UsernameLogin.xlsx:", self.billpay_login_input,
+                       hint="วนทุก Username/Password/Type ในไฟล์")
         self.billpay_row_range = tk.StringVar(value="")
-        ttk.Entry(self.billpay_frame, textvariable=self.billpay_row_range).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.billpay_frame,
-            text='เช่น "1-5" หรือ "2,4" (เว้นว่าง = ทุกแถวในแต่ละบัญชี)',
-            foreground="gray",
-        ).grid(row=3, column=2, sticky="w")
-
-        # รายการคำขอ (เลือกได้หลายรายการ) — เหมือนโหมด e-Tracking แต่ติ๊กได้หลายอัน
-        ttk.Label(self.billpay_frame, text="รายการคำขอ:").grid(
-            row=4, column=0, sticky="nw", pady=4,
-        )
-        bp_lb_box = ttk.Frame(self.billpay_frame)
-        bp_lb_box.grid(row=4, column=1, columnspan=2, sticky="we", padx=8, pady=4)
-        bp_sb = ttk.Scrollbar(bp_lb_box, orient="vertical")
-        # selectmode=multiple → คลิกเลือก/ยกเลิกได้ทีละอัน ไม่ต้องกด Ctrl
+        self._text_row(f, 1, "แถวที่จะดาวน์โหลด:", self.billpay_row_range,
+                       'เช่น "1-5" หรือ "2,4" — เว้นว่าง = ทุกแถวในแต่ละบัญชี')
+        ttk.Label(f, text="รายการคำขอ:").grid(row=2, column=0, sticky="nw", pady=4)
+        box = ttk.Frame(f)
+        box.grid(row=2, column=1, columnspan=2, sticky="we", padx=8, pady=4)
+        sb = ttk.Scrollbar(box, orient="vertical")
         self.billpay_reqtypes_lb = tk.Listbox(
-            bp_lb_box, selectmode="multiple", height=7,
-            exportselection=False, yscrollcommand=bp_sb.set, activestyle="none",
-        )
-        bp_sb.config(command=self.billpay_reqtypes_lb.yview)
-        bp_sb.pack(side="right", fill="y")
+            box, selectmode="multiple", height=6, exportselection=False, yscrollcommand=sb.set,
+            activestyle="none", bg=PALETTE["surface"], relief="flat", highlightthickness=1,
+            highlightbackground=PALETTE["border"], selectbackground=PALETTE["accent"],
+            selectforeground="#FFFFFF", font=FONT_UI)
+        sb.config(command=self.billpay_reqtypes_lb.yview)
+        sb.pack(side="right", fill="y")
         self.billpay_reqtypes_lb.pack(side="left", fill="both", expand=True)
-        # เก็บเฉพาะรายการที่มีรหัส (ตัด "" = ทั้งหมด ออก) — ไม่เลือก = ทั้งหมด
         self._billpay_reqtype_codes = [code for code, _ in REQUEST_TYPES if code]
         for code in self._billpay_reqtype_codes:
             lbl = next((l for c, l in REQUEST_TYPES if c == code), code)
             self.billpay_reqtypes_lb.insert("end", lbl)
-        ttk.Label(
-            self.billpay_frame,
-            text="คลิกเลือกได้หลายรายการ (คลิกซ้ำ = ยกเลิก) — ไม่เลือก = ทุกรายการคำขอ",
-            foreground="gray",
-        ).grid(row=5, column=1, columnspan=2, sticky="w", padx=8)
+        ttk.Label(f, text="คลิกเลือกได้หลายรายการ (คลิกซ้ำ = ยกเลิก) — ไม่เลือก = ทุกรายการคำขอ",
+                  style="Hint.TLabel").grid(row=3, column=1, columnspan=2, sticky="w", padx=8)
+        self._note(f, "สร้าง 'ใบแจ้งชำระเงิน' เพื่อพิมพ์เก็บไว้จ่ายภายหลังผ่านธนาคาร — ไม่มีการตัดเงิน  •  "
+                      "ไฟล์: {เลขที่คำขอ}_{รายชื่อคนต่างด้าว} → reports/bill_payment/", row=4, pady=(6, 0))
+        f.columnconfigure(1, weight=1)
 
-        ttk.Label(
-            self.billpay_frame,
-            text="ปลอดภัย: เป็นการสร้าง 'ใบแจ้งชำระเงิน' เพื่อพิมพ์เก็บไว้ (จ่ายภายหลังผ่านธนาคาร) — ไม่มีการตัดเงิน",
-            foreground="#1a7000",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(4, 0))
-        ttk.Label(
-            self.billpay_frame,
-            text="ตั้งชื่อไฟล์: {เลขที่คำขอ}_{รายชื่อคนต่างด้าว} → reports/bill_payment/",
-            foreground="#444",
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.billpay_frame.columnconfigure(1, weight=1)
-
-        # ----- โหมด: ดาวน์โหลดใบเสร็จรับเงินทั้งชุด -----
-        self.payrcpt_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — ดาวน์โหลดใบเสร็จรับเงินทั้งชุด (900 + 100 + อื่นๆ)",
-            padding=10,
-        )
-        ttk.Label(
-            self.payrcpt_frame,
-            text="ขั้นตอน: อ่านเลขคำขอจาก Excel → Login ต่อ Username → ค้นหาคำขอ → แท็บ 'การชำระเงิน' → 'ดูใบเสร็จรับเงิน' → วนทุกแถว ทุกหน้า pagination → ดาวน์โหลด → แยก PDF ผลายหน้าเป็น 1 ใบ/1 คน/1 ไฟล์",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.payrcpt_frame, text="ไฟล์ Request_Receipt.xlsx:").grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        self.payrcpt_request_input = tk.StringVar(value=str(ROOT / "Request_Receipt.xlsx"))
-        ttk.Entry(self.payrcpt_frame, textvariable=self.payrcpt_request_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.payrcpt_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.payrcpt_request_input),
-        ).grid(row=1, column=2, padx=4)
-        ttk.Label(
-            self.payrcpt_frame,
-            text="คอลัมน์: ลำดับ, เลขที่คำขอ, Username",
-            foreground="gray",
-        ).grid(row=2, column=1, columnspan=2, sticky="w", padx=8)
-
-        ttk.Label(self.payrcpt_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=3, column=0, sticky="w", pady=4,
-        )
-        self.payrcpt_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.payrcpt_frame, textvariable=self.payrcpt_login_input).grid(
-            row=3, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.payrcpt_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.payrcpt_login_input),
-        ).grid(row=3, column=2, padx=4)
-
-        ttk.Label(self.payrcpt_frame, text="เลือกแถวที่จะทำ:").grid(
-            row=4, column=0, sticky="w", pady=4,
-        )
+    def _build_card_payrcpt(self) -> None:
+        f = self._card("ตัวเลือก — ใบเสร็จรับเงินทั้งชุด")
+        self.payrcpt_frame = f
+        self.payrcpt_request_input = self._remember(
+            "payrcpt_request_input", tk.StringVar(value=str(ROOT / "Request_Receipt.xlsx")))
+        self._file_row(f, 0, "ไฟล์ Request_Receipt.xlsx:", self.payrcpt_request_input,
+                       hint="คอลัมน์ที่ต้องมี: ลำดับ, เลขที่คำขอ, Username")
+        self.payrcpt_login_input = self._remember(
+            "payrcpt_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 1, "ไฟล์ UsernameLogin.xlsx:", self.payrcpt_login_input)
         self.payrcpt_row_range = tk.StringVar(value="")
-        ttk.Entry(self.payrcpt_frame, textvariable=self.payrcpt_row_range).grid(
-            row=4, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.payrcpt_frame,
-            text='เช่น "1-5" หรือ "2,4" (เว้นว่าง = ทุกแถว)',
-            foreground="gray",
-        ).grid(row=4, column=2, sticky="w")
+        self._text_row(f, 2, "แถวที่จะทำ:", self.payrcpt_row_range, 'เช่น "1-5" หรือ "2,4" — เว้นว่าง = ทุกแถว')
+        self._note(f, "ไฟล์: {เลขที่คำขอ}_{ชื่อคนต่างด้าว}_{ชื่อนายจ้าง}_{เลขอ้างอิง}_RECEIPT{Amount}.pdf → reports/payment_receipts/",
+                   row=3, pady=(6, 0))
+        f.columnconfigure(1, weight=1)
 
-        ttk.Label(
-            self.payrcpt_frame,
-            text="ตั้งชื่อไฟล์: {เลขที่คำขอ}_{ชื่อคนต่างด้าว}_{ชื่อนายจ้าง}_{เลขอ้างอิง}_RECEIPT{Amount}.pdf → reports/payment_receipts/",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        ttk.Label(
-            self.payrcpt_frame,
-            text="ปลอดภัย: เป็นการดาวน์โหลดใบเสร็จที่ชำระเงินไปแล้วเท่านั้น — ไม่มีการส่งคำขอหรือตัดเงิน",
-            foreground="#1a7000",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.payrcpt_frame.columnconfigure(1, weight=1)
-
-        # ----- โหมด: นัดหมายถ่ายบัตร -----
-        self.appt_frame = ttk.LabelFrame(
-            self._body, text="ตัวเลือก — นัดหมายถ่ายบัตร (เก็บที่อยู่จากใบเสร็จค่าธรรมเนียม)",
-            padding=10,
-        )
-        ttk.Label(
-            self.appt_frame,
-            text="ขั้นตอน: วน Login ทุกบัญชีใน UsernameLogin.xlsx → Tracking → กรองสถานะ 'รอนัดหมาย' (AP) → "
-                 "ทุกคำขอ: tab 'ข้อมูลคนต่างด้าว' (เก็บชื่อสถานประกอบการ) → tab 'การชำระเงิน' → "
-                 "ดาวน์โหลดใบเสร็จ → อ่านที่อยู่ (จังหวัด + อำเภอ/เขต) จาก PDF",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.appt_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        self.appt_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.appt_frame, textvariable=self.appt_login_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.appt_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.appt_login_input),
-        ).grid(row=1, column=2, padx=4)
-
-        ttk.Label(self.appt_frame, text="เลือกแถวที่จะทำ (ของแต่ละบัญชี):").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
+    def _build_card_appointment(self) -> None:
+        f = self._card("ตัวเลือก — นัดหมายถ่ายบัตร")
+        self.appt_frame = f
+        self.appt_login_input = self._remember(
+            "appt_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 0, "ไฟล์ UsernameLogin.xlsx:", self.appt_login_input)
         self.appt_row_range = tk.StringVar(value="")
-        ttk.Entry(self.appt_frame, textvariable=self.appt_row_range).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.appt_frame,
-            text='เช่น "1-5" หรือ "2,4" (เว้นว่าง = ทุกคำขอ AP ของบัญชีนั้น)',
-            foreground="gray",
-        ).grid(row=2, column=2, sticky="w")
+        self._text_row(f, 1, "แถวที่จะทำ (ต่อบัญชี):", self.appt_row_range,
+                       'เช่น "1-5" หรือ "2,4" — เว้นว่าง = ทุกคำขอ AP ของบัญชีนั้น')
+        self._note(f, "รายการคำขอ = ทั้งหมด, สถานะ = รอนัดหมาย (AP) เสมอ  •  PDF → reports/appointment_receipts/  •  "
+                      "รายงาน Excel มี hyperlink ไปที่ไฟล์ PDF", row=2, pady=(6, 0))
+        f.columnconfigure(1, weight=1)
 
-        ttk.Label(
-            self.appt_frame,
-            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ดาวน์โหลด PDF ใบเสร็จที่ชำระเงินแล้ว ไม่มีการส่งคำขอ/ตัดเงิน",
-            foreground="#1a7000",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        ttk.Label(
-            self.appt_frame,
-            text="เซฟ PDF → reports/appointment_receipts/  |  รายงาน Excel มี hyperlink ไปที่ไฟล์ PDF",
-            foreground="#444",
-        ).grid(row=4, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.appt_frame.columnconfigure(1, weight=1)
-
-        # ---- ตัวเลือก (โหมด bt30_ctn) ----
-        self.bt30ctn_frame = ttk.LabelFrame(
-            self._body,
-            text="ตัวเลือก — ดาวน์โหลด (ใบตอบรับ / ใบนัดหมาย)",
-            padding=10,
-        )
-        ttk.Label(
-            self.bt30ctn_frame,
-            text="ขั้นตอน: วน Login ทุกบัญชีใน UsernameLogin.xlsx (หรือใช้ Username/Password จาก 'ข้อมูลเข้าสู่ระบบ' ด้านบน) → "
-                 "Tracking → กรอง Status ตาม checkbox ด้านบน → ทุกคำขอ: เปิด detail → \n"
-                 "  • ใบตอบรับ (บต.30) — tab 'เอกสารตอบรับจากระบบ' → PDF → ตั้งชื่อ {PASSPORT}_BT{XX}_CTN.pdf (สถานะ WP2)\n"
-                 "  • แบบ บต.25 — tab 'เอกสารตอบรับจากระบบ' → PDF → ตั้งชื่อ {PASSPORT}_BT25.pdf\n"
-                 "  • ใบนัดหมาย — tab 'การนัดหมาย' → iframe queue → PDF → ตั้งชื่อ {PASSPORT}_APPOINTMENT.pdf (สถานะ AP/APSS)\n"
-                 "  • Receipt ค่าธรรมเนียมฯ — tab 'การชำระเงิน' → PDF → ตั้งชื่อ {PASSPORT}_RECEIPT.pdf",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.bt30ctn_frame, text="ไฟล์ UsernameLogin.xlsx:").grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        self.bt30ctn_login_input = tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx"))
-        ttk.Entry(self.bt30ctn_frame, textvariable=self.bt30ctn_login_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.bt30ctn_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.bt30ctn_login_input),
-        ).grid(row=1, column=2, padx=4)
-
-        ttk.Label(self.bt30ctn_frame, text="เลือกแถวที่จะทำ (ต่อบัญชี):").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
+    def _build_card_bt30ctn(self) -> None:
+        f = self._card("ตัวเลือก — ใบตอบรับ / บต.25 / ใบนัดหมาย / ใบเสร็จ")
+        self.bt30ctn_frame = f
+        self.bt30ctn_login_input = self._remember(
+            "bt30ctn_login_input", tk.StringVar(value=str(ROOT / "UsernameLogin.xlsx")))
+        self._file_row(f, 0, "ไฟล์ UsernameLogin.xlsx:", self.bt30ctn_login_input, clearable=True,
+                       hint="วนทุกบัญชีในไฟล์ — ถ้าเว้นว่าง/ไม่พบไฟล์ จะใช้ Username/Password จากการ์ด 'บัญชีเข้าสู่ระบบ'")
         self.bt30ctn_row_range = tk.StringVar(value="")
-        ttk.Entry(self.bt30ctn_frame, textvariable=self.bt30ctn_row_range).grid(
-            row=2, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.bt30ctn_frame,
-            text='เช่น "1-10,15" (เว้นว่าง = ทั้งหมด)',
-            foreground="gray",
-        ).grid(row=2, column=2, sticky="w")
+        self._text_row(f, 1, "แถวที่จะทำ (ต่อบัญชี):", self.bt30ctn_row_range, 'เช่น "1-10,15" — เว้นว่าง = ทั้งหมด')
 
-        # date filter (ใช้ตัวแปรร่วมกับโหมด e-Tracking — self.date_from / self.date_to)
-        # แสดง label เพื่อบอกว่าจะใช้ค่าจากด้านบน (ถ้ามี)
-        ttk.Label(
-            self.bt30ctn_frame,
-            text="💡 ค่ากรอง 'วันที่ยื่นคำขอ (จาก → ถึง)' + 'รายการคำขอ' + 'สถานะ (checkbox)' ในกล่อง e-Tracking ด้านบนจะถูกใช้ร่วมกัน",
-            foreground="#0056b3", wraplength=900, justify="left",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 2))
-
-        # เลือกประเภทเอกสารที่จะดาวน์โหลด
-        ttk.Label(self.bt30ctn_frame, text="เอกสารที่จะดาวน์โหลด:").grid(
-            row=4, column=0, sticky="w", pady=(6, 2),
-        )
-        _doc_box = ttk.Frame(self.bt30ctn_frame)
-        _doc_box.grid(row=4, column=1, columnspan=2, sticky="w", pady=(6, 2))
+        ttk.Label(f, text="เอกสารที่จะดาวน์โหลด:").grid(row=2, column=0, sticky="nw", pady=(6, 2))
+        box = ttk.Frame(f)
+        box.grid(row=2, column=1, columnspan=2, sticky="w", pady=(6, 2))
         self.bt30ctn_do_ctn = tk.BooleanVar(value=True)
         self.bt30ctn_do_appointment = tk.BooleanVar(value=False)
         self.bt30ctn_do_bt25 = tk.BooleanVar(value=False)
         self.bt30ctn_do_receipt = tk.BooleanVar(value=False)
-        # แถวที่ 1
-        _doc_row1 = ttk.Frame(_doc_box)
-        _doc_row1.pack(anchor="w")
-        ttk.Checkbutton(
-            _doc_row1, text="ใบตอบรับ บต.30 (CTN) — สถานะ WP2",
-            variable=self.bt30ctn_do_ctn,
-        ).pack(side="left", padx=(0, 20))
-        ttk.Checkbutton(
-            _doc_row1, text="ใบนัดหมาย (APPOINTMENT) — สถานะ AP/APSS",
-            variable=self.bt30ctn_do_appointment,
-        ).pack(side="left")
-        # แถวที่ 2 (เอกสารเพิ่มเติม)
-        _doc_row2 = ttk.Frame(_doc_box)
-        _doc_row2.pack(anchor="w", pady=(4, 0))
-        ttk.Checkbutton(
-            _doc_row2, text="แบบ บต.25 (เอกสารตอบรับจากระบบ)",
-            variable=self.bt30ctn_do_bt25,
-        ).pack(side="left", padx=(0, 20))
-        ttk.Checkbutton(
-            _doc_row2, text="Receipt ค่าธรรมเนียมใบอนุญาตทำงาน (การชำระเงิน)",
-            variable=self.bt30ctn_do_receipt,
-        ).pack(side="left")
-        # หมายเหตุ: บต.25 ผูกกับรายการคำขอ MT_59 เท่านั้น
-        ttk.Label(
-            _doc_box,
-            text="⚠ 'แบบ บต.25' ต้องกรอง 'รายการคำขอ' เป็น 'การยื่นคำขอรับใบอนุญาตทำงานของ"
-                 "คนต่างด้าวซึ่งได้รับอนุญาตให้อยู่ในราชอาณาจักรเป็นการชั่วคราว (MT_59)'",
-            foreground="#b06f00", wraplength=680, justify="left",
-        ).pack(anchor="w", pady=(4, 0))
+        for i, (text, var, tip) in enumerate((
+            ("ใบตอบรับ บต.30 (CTN) — สถานะ WP2", self.bt30ctn_do_ctn,
+             "tab 'เอกสารตอบรับจากระบบ' → {PASSPORT}_BT{XX}_CTN.pdf"),
+            ("ใบนัดหมาย (APPOINTMENT) — สถานะ AP/APSS", self.bt30ctn_do_appointment,
+             "tab 'การนัดหมาย' → iframe queue → {PASSPORT}_APPOINTMENT.pdf"),
+            ("แบบ บต.25 (เอกสารตอบรับจากระบบ)", self.bt30ctn_do_bt25,
+             "มีเฉพาะรายการคำขอ MT_59 — ระบบจะเสนอเพิ่ม MT_59 ให้อัตโนมัติ → {PASSPORT}_BT25.pdf"),
+            ("Receipt ค่าธรรมเนียมใบอนุญาตทำงาน", self.bt30ctn_do_receipt,
+             "tab 'การชำระเงิน' → {PASSPORT}_RECEIPT.pdf"),
+        )):
+            cb = ttk.Checkbutton(box, text=text, variable=var)
+            cb.grid(row=i // 2, column=i % 2, sticky="w", padx=(0, 18), pady=1)
+            Tooltip(cb, tip)
+        self.bt30ctn_make_subfolder = self._remember("bt30ctn_make_subfolder", tk.BooleanVar(value=False))
+        ttk.Checkbutton(f, text="สร้างโฟลเดอร์แยกตาม PASSPORT (bt30_ctn/MH788309/MH788309_BT30_CTN.pdf)",
+                        variable=self.bt30ctn_make_subfolder).grid(
+            row=3, column=0, columnspan=3, sticky="w", pady=(6, 2))
+        self._note(f, "ใช้ 'รายการคำขอ / วันที่ยื่น / สถานะ' จากการ์ดด้านบนร่วมกัน  •  PDF → reports/bt30_ctn/  •  "
+                      "รายงาน Excel มี hyperlink ไปที่ไฟล์ PDF", style="Info.TLabel", row=4)
+        f.columnconfigure(1, weight=1)
 
-        self.bt30ctn_make_subfolder = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.bt30ctn_frame,
-            text="สร้างโฟลเดอร์แยกตาม PASSPORT (เช่น bt30_ctn/MH788309/MH788309_BT30_CTN.pdf)",
-            variable=self.bt30ctn_make_subfolder,
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 2))
-
-        ttk.Label(
-            self.bt30ctn_frame,
-            text="เซฟ PDF → reports/bt30_ctn/  |  รายงาน Excel มี hyperlink ไปที่ไฟล์ PDF (CTN + บต.25 + APPOINTMENT + Receipt)",
-            foreground="#444",
-        ).grid(row=6, column=0, columnspan=3, sticky="w", pady=(4, 0))
-        ttk.Label(
-            self.bt30ctn_frame,
-            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ดาวน์โหลด PDF ที่ระบบสร้างแล้ว ไม่มีการส่งคำขอ/ตัดเงิน",
-            foreground="#1a7000",
-        ).grid(row=7, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.bt30ctn_frame.columnconfigure(1, weight=1)
-
-        # ---- ตัวเลือก (โหมด namelist_alien) ----
-        self.namelist_frame = ttk.LabelFrame(
-            self._body,
-            text="ตัวเลือก — ดึงรายชื่อคนต่างด้าว (NameListAlien)",
-            padding=10,
-        )
-        ttk.Label(
-            self.namelist_frame,
-            text="ขั้นตอน: Login ผ่านช่อง 'ข้อมูลเข้าสู่ระบบ' ด้านบน (บัญชีเดียว) → "
-                 "เปิด /Requtst63_2/NameListAlien?form_type=<code> → "
-                 "วน DataTable ทุกหน้า (100 แถว/หน้า) → บันทึกลง Excel",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(self.namelist_frame, text="Form Type:").grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        self.namelist_form_type = tk.StringVar(value="MT_63_2_3103_RENEWAL")
-        ttk.Entry(self.namelist_frame, textvariable=self.namelist_form_type).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Label(
-            self.namelist_frame,
-            text="เช่น MT_63_2_3103_RENEWAL, MT_63_2_1302_RENEWAL, MT_63_2_AGN_RENEWAL",
-            foreground="gray",
-        ).grid(row=1, column=2, sticky="w")
-
-        ttk.Label(self.namelist_frame, text="จำกัดจำนวน (0 = ทั้งหมด):").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
+    def _build_card_namelist(self) -> None:
+        f = self._card("ตัวเลือก — รายชื่อคนต่างด้าว (NameListAlien)")
+        self.namelist_frame = f
+        self.namelist_form_type = self._remember(
+            "namelist_form_type", tk.StringVar(value="MT_63_2_3103_RENEWAL"))
+        ttk.Label(f, text="Form Type:").grid(row=0, column=0, sticky="w", pady=3)
+        ttk.Combobox(f, textvariable=self.namelist_form_type, state="normal",
+                     values=["MT_63_2_3103_RENEWAL", "MT_63_2_1302_RENEWAL", "MT_63_2_AGN_RENEWAL",
+                             "MT_63_2_19_RENEWAL"]).grid(row=0, column=1, sticky="we", padx=8)
+        ttk.Label(f, text="พิมพ์ code อื่นเองได้", style="Hint.TLabel").grid(row=1 - 1, column=2, sticky="w")
+        ttk.Label(f, text="จำกัดจำนวน:").grid(row=1, column=0, sticky="w", pady=3)
         self.namelist_limit = tk.IntVar(value=0)
-        ttk.Spinbox(
-            self.namelist_frame, from_=0, to=99999,
-            textvariable=self.namelist_limit, width=10,
-        ).grid(row=2, column=1, sticky="w", padx=8)
-        ttk.Label(
-            self.namelist_frame,
-            text="ใส่ 100 เพื่อทดสอบเร็ว (แต่ละหน้ามี 100 แถว)",
-            foreground="gray",
-        ).grid(row=2, column=2, sticky="w")
+        ttk.Spinbox(f, from_=0, to=99999, textvariable=self.namelist_limit, width=10).grid(
+            row=1, column=1, sticky="w", padx=8)
+        ttk.Label(f, text="0 = ทั้งหมด — ใส่ 100 เพื่อทดสอบเร็ว (100 แถว/หน้า)", style="Hint.TLabel").grid(
+            row=1, column=2, sticky="w")
+        f.columnconfigure(1, weight=1)
 
-        ttk.Label(
-            self.namelist_frame,
-            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ไม่มีการส่งคำขอ/แก้ข้อมูลใดๆ",
-            foreground="#1a7000",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(6, 0))
-        self.namelist_frame.columnconfigure(1, weight=1)
+    def _build_card_ticket(self) -> None:
+        f = self._card("ตัวเลือก — ตรวจสอบ Ticket ID")
+        self.ticket_frame = f
+        self.ticket_excel_input = self._remember(
+            "ticket_excel_input", tk.StringVar(value=str(ROOT / "TicketID.xlsx")))
+        self._file_row(f, 0, "ไฟล์ Excel Ticket ID:", self.ticket_excel_input,
+                       hint="คอลัมน์ที่ต้องมี: Ticket ID (หนึ่งแถวต่อหนึ่งเลข)")
+        f.columnconfigure(1, weight=1)
 
-        # ---- ตัวเลือก (โหมด ticket: ตรวจสอบ Ticket ID) ----
-        self.ticket_frame = ttk.LabelFrame(
-            self._body,
-            text="ตัวเลือก — ตรวจสอบ Ticket ID (แจ้งปัญหาการใช้งาน)",
-            padding=10,
-        )
-        ttk.Label(
-            self.ticket_frame,
-            text="ไม่ต้อง Login — หน้า /TicketRequest เปิดสาธารณะ ค้นหาทีละเลข Ticket ID จากไฟล์ Excel "
-                 "แล้วเก็บข้อมูลตารางผลลัพธ์ทุกคอลัมน์ที่เว็บแสดง",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+    def _build_card_booking(self) -> None:
+        f = self._card("ตัวเลือก — ตรวจวันว่างจอง (คิวถ่ายบัตร)")
+        self.booking_frame = f
+        self.booking_login_input = self._remember("booking_login_input", tk.StringVar(value=""))
+        self._file_row(f, 0, "ไฟล์ UsernameLogin.xlsx (ไม่บังคับ):", self.booking_login_input, clearable=True,
+                       hint="ถ้าระบุจะใช้บัญชีแรกในไฟล์ — เว้นว่าง = ใช้ Username/Password จากการ์ด 'บัญชีเข้าสู่ระบบ'")
+        ttk.Label(f, text="จำนวนเดือนที่ตรวจ:").grid(row=1, column=0, sticky="w", pady=3)
+        self.booking_months_ahead = self._remember("booking_months_ahead", tk.IntVar(value=3))
+        ttk.Spinbox(f, from_=1, to=12, textvariable=self.booking_months_ahead, width=8).grid(
+            row=1, column=1, sticky="w", padx=8)
+        ttk.Label(f, text="นับจากเดือนนี้ — แนะนำ 1-3 (ประมาณ 2-3 นาที/เดือน/89 สาขา)", style="Hint.TLabel").grid(
+            row=1, column=2, sticky="w")
 
-        ttk.Label(self.ticket_frame, text="ไฟล์ Excel Ticket ID:").grid(
-            row=1, column=0, sticky="w", pady=4,
-        )
-        self.ticket_excel_input = tk.StringVar(value=str(ROOT / "TicketID.xlsx"))
-        ttk.Entry(self.ticket_frame, textvariable=self.ticket_excel_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.ticket_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.ticket_excel_input),
-        ).grid(row=1, column=2, padx=4)
-        ttk.Label(
-            self.ticket_frame,
-            text="คอลัมน์ที่ต้องมี: Ticket ID (หนึ่งแถวต่อหนึ่งเลข)",
-            foreground="gray",
-        ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(0, 6))
-        ttk.Label(
-            self.ticket_frame,
-            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ไม่ต้อง login, ไม่มีการส่งคำขอ/แก้ข้อมูลใดๆ",
-            foreground="#1a7000",
-        ).grid(row=3, column=0, columnspan=3, sticky="w", pady=(2, 0))
-        self.ticket_frame.columnconfigure(1, weight=1)
-
-        # ----- โหมด: ตรวจวันว่างจอง (Real-Time Booking Availability) -----
-        self.booking_frame = ttk.LabelFrame(
-            self._body,
-            text="ตัวเลือก — ตรวจวันว่างจอง (คิวถ่ายบัตร)",
-            padding=10,
-        )
-        ttk.Label(
-            self.booking_frame,
-            text="ขั้นตอน: Login (ผ่านช่อง 'ข้อมูลเข้าสู่ระบบ' ด้านบน หรือ UsernameLogin.xlsx) → "
-                 "หา Bearer token จาก 1 record ที่มีสถานะ AP/SS → "
-                 "ดึงรายชื่อสาขาทั้งหมด → วน calendar × time-slot ทุกวัน\n"
-                 "รายงาน Excel 3 sheet: ตารางว่างจอง (รายวัน) / สรุปตามสาขา / ช่วงเวลาที่ว่าง (รายรอบ 30 นาที)",
-            foreground="#444", wraplength=900, justify="left",
-        ).grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
-
-        ttk.Label(
-            self.booking_frame,
-            text="ไฟล์ UsernameLogin.xlsx (ไม่จำเป็น — ปล่อยว่างจะใช้บัญชีจาก 'ข้อมูลเข้าสู่ระบบ'):",
-        ).grid(row=1, column=0, sticky="w", pady=4)
-        self.booking_login_input = tk.StringVar(value="")
-        ttk.Entry(self.booking_frame, textvariable=self.booking_login_input).grid(
-            row=1, column=1, sticky="we", padx=8,
-        )
-        ttk.Button(
-            self.booking_frame, text="เลือก...",
-            command=lambda: self._choose_into(self.booking_login_input),
-        ).grid(row=1, column=2, padx=4)
-
-        ttk.Label(self.booking_frame, text="จำนวนเดือนที่ตรวจ (นับจากเดือนนี้):").grid(
-            row=2, column=0, sticky="w", pady=4,
-        )
-        self.booking_months_ahead = tk.IntVar(value=3)
-        ttk.Spinbox(
-            self.booking_frame, from_=1, to=12,
-            textvariable=self.booking_months_ahead, width=8,
-        ).grid(row=2, column=1, sticky="w", padx=8)
-        ttk.Label(
-            self.booking_frame,
-            text="แนะนำ 1-3 เดือน (มากกว่านั้นใช้เวลานานขึ้น ~2-3 นาที/เดือน/89 สาขา)",
-            foreground="gray",
-        ).grid(row=2, column=2, sticky="w")
-
-        ttk.Label(self.booking_frame, text="กรองรหัสสาขา (เว้นว่าง = ทุกสาขา):").grid(
-            row=3, column=0, sticky="nw", pady=4,
-        )
-        self.booking_branch_filter = tk.StringVar(value="")  # เก็บ compat; ใช้ Listbox จริง
-        bk_lb_box = ttk.Frame(self.booking_frame)
-        bk_lb_box.grid(row=3, column=1, columnspan=2, sticky="we", padx=8, pady=4)
-        # ช่องค้นหา (filter listbox)
-        _search_row = ttk.Frame(bk_lb_box)
-        _search_row.pack(fill="x")
-        ttk.Label(_search_row, text="ค้นหา:").pack(side="left")
+        ttk.Label(f, text="สาขา (เว้นว่าง = ทุกสาขา):").grid(row=2, column=0, sticky="nw", pady=4)
+        self.booking_branch_filter = tk.StringVar(value="")  # compat
+        box = ttk.Frame(f)
+        box.grid(row=2, column=1, columnspan=2, sticky="we", padx=8, pady=4)
+        srow = ttk.Frame(box)
+        srow.pack(fill="x")
+        ttk.Label(srow, text="🔍").pack(side="left")
         self.booking_search = tk.StringVar(value="")
-        _ent = ttk.Entry(_search_row, textvariable=self.booking_search)
-        _ent.pack(side="left", fill="x", expand=True, padx=(4, 8))
+        ttk.Entry(srow, textvariable=self.booking_search).pack(side="left", fill="x", expand=True, padx=(4, 8))
         self.booking_search.trace_add("write", lambda *_: self._booking_apply_search())
-        ttk.Button(
-            _search_row, text="โหลด/รีเฟรชรายชื่อสาขา",
-            command=self._booking_load_branches,
-        ).pack(side="left", padx=(0, 4))
-        ttk.Button(
-            _search_row, text="ล้างเลือก",
-            command=lambda: self.booking_branches_lb.selection_clear(0, "end"),
-        ).pack(side="left")
-        # Listbox
-        _lb_row = ttk.Frame(bk_lb_box)
-        _lb_row.pack(fill="both", expand=True, pady=(4, 0))
-        bk_sb = ttk.Scrollbar(_lb_row, orient="vertical")
+        ttk.Button(srow, text="โหลด/รีเฟรชรายชื่อสาขา", command=self._booking_load_branches).pack(
+            side="left", padx=(0, 4))
+        ttk.Button(srow, text="ล้างเลือก", command=self._booking_clear_selection).pack(side="left")
+        lrow = ttk.Frame(box)
+        lrow.pack(fill="both", expand=True, pady=(4, 0))
+        sb = ttk.Scrollbar(lrow, orient="vertical")
         self.booking_branches_lb = tk.Listbox(
-            _lb_row, selectmode="multiple", height=10,
-            exportselection=False, yscrollcommand=bk_sb.set, activestyle="none",
-        )
-        bk_sb.config(command=self.booking_branches_lb.yview)
-        bk_sb.pack(side="right", fill="y")
-        self.booking_branches_lb.pack(side="left", fill="both", expand=True)
-        # โครงข้อมูล: master list (ไม่กรอง) + visible mapping
-        self._booking_all_branches: list[dict] = []       # [{code, name}, ...]
-        self._booking_visible_idx: list[int] = []          # เชื่อม row-in-listbox → all-branches idx
-        self._booking_selected_codes: set[str] = set()     # เก็บ selection ข้าม filter
-        ttk.Label(
-            self.booking_frame,
-            text="คลิกเลือกได้หลายสาขา (คลิกซ้ำ = ยกเลิก) — ไม่เลือก = ทุกสาขา",
-            foreground="gray",
-        ).grid(row=4, column=1, columnspan=2, sticky="w", padx=8)
-
-        ttk.Label(
-            self.booking_frame,
-            text="ปลอดภัย: โหมดอ่านอย่างเดียว — ไม่มีการจอง/แก้ข้อมูลใดๆ (เฉพาะเรียก API เพื่ออ่านข้อมูลว่าง)",
-            foreground="#1a7000",
-        ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(6, 0))
-
-        # ปุ่ม Monitor (real-time)
-        _mon_row = ttk.Frame(self.booking_frame)
-        _mon_row.grid(row=6, column=0, columnspan=3, sticky="we", pady=(8, 0))
-        ttk.Button(
-            _mon_row, text="🖥️  เปิดหน้าจอ Monitor (Real-Time)",
-            command=self._booking_open_monitor,
-        ).pack(side="left")
-        ttk.Label(
-            _mon_row,
-            text="เปิดหน้าต่างใหม่ — แสดงที่ว่างสด ๆ + auto-refresh (แนะนำเลือก 5-10 สาขาเพื่อรอบ scan สั้น)",
-            foreground="gray",
-        ).pack(side="left", padx=(10, 0))
-        self.booking_frame.columnconfigure(1, weight=1)
-
-        # โหลด cache ถ้ามี
-        self._booking_load_branches_from_cache()
-
-        # ปกติซ่อนไว้ — แสดงเมื่อเลือกโหมดอื่น
-        self._on_etk_multi_changed()
-        self._on_mode_changed()
-
-        # ---- ปุ่ม ----
-        btns = ttk.Frame(self._body)
-        btns.pack(fill="x", **pad)
-        self._btns_frame = btns
-        self.btn_start = ttk.Button(
-            btns, text="⬇  ดาวน์โหลด Report",
-            command=self._on_start,
-        )
-        self.btn_start.pack(side="left", padx=4, ipadx=12, ipady=4)
-        self.btn_pause = ttk.Button(
-            btns, text="⏸  หยุด", command=self._on_pause, state="disabled",
-        )
-        self.btn_pause.pack(side="left", padx=4, ipady=4)
-        self.btn_resume = ttk.Button(
-            btns, text="▶  ต่อ", command=self._on_resume, state="disabled",
-        )
-        self.btn_resume.pack(side="left", padx=4, ipady=4)
-        self.btn_cancel = ttk.Button(
-            btns, text="ยกเลิก", command=self._on_cancel, state="disabled",
-        )
-        self.btn_cancel.pack(side="left", padx=4, ipady=4)
-        self.btn_open = ttk.Button(
-            btns, text="เปิดโฟลเดอร์", command=self._open_folder,
-        )
-        self.btn_open.pack(side="right", padx=4, ipady=4)
-
-        # ---- Progress ----
-        prog_frame = ttk.Frame(self._body)
-        prog_frame.pack(fill="x", **pad)
-        self._prog_frame = prog_frame
-        self.progress = ttk.Progressbar(prog_frame, mode="determinate")
-        self.progress.pack(fill="x", side="left", expand=True)
-        self.progress_lbl = ttk.Label(prog_frame, text="0 / 0", width=12)
-        self.progress_lbl.pack(side="left", padx=8)
-
-        # ---- Log ----
-        logf = ttk.LabelFrame(self._body, text="บันทึกการทำงาน", padding=6)
-        logf.pack(fill="both", expand=True, **pad)
-        self._log_frame = logf
-        self.log_text = tk.Text(logf, height=14, wrap="word", state="disabled", font=("Consolas", 10))
-        self.log_text.pack(fill="both", expand=True, side="left")
-        sb = ttk.Scrollbar(logf, command=self.log_text.yview)
+            lrow, selectmode="multiple", height=8, exportselection=False, yscrollcommand=sb.set,
+            activestyle="none", bg=PALETTE["surface"], relief="flat", highlightthickness=1,
+            highlightbackground=PALETTE["border"], selectbackground=PALETTE["accent"],
+            selectforeground="#FFFFFF", font=FONT_UI)
+        sb.config(command=self.booking_branches_lb.yview)
         sb.pack(side="right", fill="y")
-        self.log_text.configure(yscrollcommand=sb.set)
+        self.booking_branches_lb.pack(side="left", fill="both", expand=True)
+        self._booking_all_branches: list[dict] = []
+        self._booking_visible_idx: list[int] = []
+        self._booking_selected_codes: set[str] = set()
+        ttk.Label(f, text="คลิกเลือกได้หลายสาขา (คลิกซ้ำ = ยกเลิก) — ครั้งแรกให้กด 'โหลด/รีเฟรชรายชื่อสาขา' (ต้องกรอกบัญชีก่อน)",
+                  style="Hint.TLabel").grid(row=3, column=1, columnspan=2, sticky="w", padx=8)
+
+        mon = ttk.Frame(f)
+        mon.grid(row=4, column=0, columnspan=3, sticky="we", pady=(10, 0))
+        ttk.Button(mon, text="🖥️  เปิดหน้าจอ Monitor (Real-Time)", style="Accent.TButton",
+                   command=self._booking_open_monitor).pack(side="left")
+        ttk.Label(mon, text="หน้าต่างใหม่ แสดงที่ว่างสด ๆ + auto-refresh (แนะนำเลือก 5-10 สาขาเพื่อรอบ scan สั้น)",
+                  style="Hint.TLabel").pack(side="left", padx=(10, 0))
+        f.columnconfigure(1, weight=1)
+        self._booking_load_branches_from_cache()
 
     # ---------- helpers ----------
     def _toggle_pw(self) -> None:
@@ -1724,135 +1397,114 @@ class App(tk.Tk):
         except Exception:
             pass
 
+    # ---------- sidebar ----------
+    def _select_nav(self, mode: str) -> None:
+        iid = f"mode:{mode}"
+        try:
+            if self.nav.exists(iid):
+                self.nav.selection_set(iid)
+                self.nav.focus(iid)
+                self.nav.see(iid)
+        except Exception:
+            pass
+
+    def _on_nav_select(self, _evt=None) -> None:
+        sel = self.nav.selection()
+        if not sel:
+            return
+        iid = sel[0]
+        if iid.startswith("grp:"):
+            # คลิกหัวกลุ่ม → กลับไปเลือกโหมดเดิม (ไม่ให้หัวกลุ่มถูกเลือกค้าง)
+            self.after(10, lambda: self._select_nav(self.source_mode.get()))
+            return
+        mode = iid.split(":", 1)[1]
+        if mode in MODE_BY_KEY and mode != self.source_mode.get():
+            self.source_mode.set(mode)
+            self._on_mode_changed()
+
     def _on_mode_changed(self) -> None:
-        """แสดง/ซ่อน frame ตามโหมดที่เลือก"""
+        """แสดง/ซ่อนการ์ดตามโหมดที่เลือก + อัปเดตหัวข้อ/ป้ายความปลอดภัย/ไฟล์ผลลัพธ์"""
         mode = self.source_mode.get()
-        # ซ่อนทุก frame ก่อน
-        for f in self._etracking_frames:
-            f.pack_forget()
-        self.etk_req_no_frame.pack_forget()
-        self.aliens_frame.pack_forget()
-        self.register_frame.pack_forget()
-        self.receipt_frame.pack_forget()
-        self.result_frame.pack_forget()
-        self.inform_frame.pack_forget()
-        self.bt30_frame.pack_forget()
-        self.bt44_frame.pack_forget()
-        self.billpay_frame.pack_forget()
-        self.payrcpt_frame.pack_forget()
-        self.appt_frame.pack_forget()
-        self.etk_template_frame.pack_forget()
-        self.bt30ctn_frame.pack_forget()
-        self.namelist_frame.pack_forget()
-        self.booking_frame.pack_forget()
-        self.ticket_frame.pack_forget()
-        # default output path ตามโหมด
+        m = MODE_BY_KEY.get(mode, MODE_BY_KEY["etracking"])
+        self._select_nav(mode)
+
+        # หัวข้อ
+        self.mode_title.config(text=m["title"])
+        badge_text, badge_style = SAFETY_BADGE[m["safety"]]
+        self.mode_badge.config(text=badge_text, style=badge_style)
+        self.mode_desc.config(text=m["desc"])
+
+        # ซ่อนทุกการ์ดก่อน
+        for child in self._body.winfo_children():
+            child.pack_forget()
+
+        # ไฟล์ผลลัพธ์เริ่มต้นตามโหมด (เปลี่ยนให้เฉพาะเมื่อผู้ใช้ยังไม่ได้ตั้งชื่อเอง)
         cur = self.out_path.get()
-        defaults = {
-            "WA_report.xlsx", "WA_aliens.xlsx", "WA_register_report.xlsx",
-            "WA_receipts_report.xlsx", "WA_result_docs_report.xlsx",
-            "WA_inform_report.xlsx", "WA_bt30_report.xlsx",
-            "WA_bt44_report.xlsx",
-            "WA_bill_payment_report.xlsx",
-            "WA_payment_receipts_report.xlsx",
-            "WA_appointment_report.xlsx",
-            "WA_bt30_ctn_report.xlsx",
-            "WA_namelist_alien_report.xlsx",
-            "WA_booking_availability.xlsx",
-            "WA_permit_report.xlsx",
-            "WA_ticket_report.xlsx",
-        }
         cur_basename = Path(cur).name if cur else ""
-        if mode == "aliens":
-            self.aliens_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_aliens.xlsx"))
-        elif mode == "register":
-            self.register_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_register_report.xlsx"))
-        elif mode == "receipts":
-            self.receipt_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_receipts_report.xlsx"))
-        elif mode == "results":
-            self.result_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_result_docs_report.xlsx"))
-        elif mode == "inform":
-            self.inform_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_inform_report.xlsx"))
-        elif mode == "bt30":
-            self.bt30_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_bt30_report.xlsx"))
-        elif mode == "bt44":
-            self.bt44_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_bt44_report.xlsx"))
-        elif mode == "bill_payment":
-            self.billpay_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_bill_payment_report.xlsx"))
-        elif mode == "payment_receipts":
-            self.payrcpt_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_payment_receipts_report.xlsx"))
-        elif mode == "appointment":
-            self.appt_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_appointment_report.xlsx"))
-        elif mode == "bt30_ctn":
-            # โหมดนี้แชร์ตัวเลือก e-Tracking (request_types + date filter) → แสดงร่วมกัน
-            for f in self._etracking_frames:
-                f.pack(fill="x", padx=10, pady=6)
-            self.bt30ctn_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_bt30_ctn_report.xlsx"))
-        elif mode == "namelist_alien":
-            self.namelist_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_namelist_alien_report.xlsx"))
-        elif mode == "booking_availability":
-            self.booking_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_booking_availability.xlsx"))
+        if not cur_basename or cur_basename in DEFAULT_OUT_NAMES:
+            self.out_path.set(str(REPORTS_DIR / m["out"]))
+
+        pack = dict(fill="x", pady=(0, 8))
+        mode_frames = {
+            "aliens": self.aliens_frame, "register": self.register_frame,
+            "receipts": self.receipt_frame, "results": self.result_frame,
+            "inform": self.inform_frame, "bt30": self.bt30_frame, "bt44": self.bt44_frame,
+            "bill_payment": self.billpay_frame, "payment_receipts": self.payrcpt_frame,
+            "appointment": self.appt_frame, "bt30_ctn": self.bt30ctn_frame,
+            "namelist_alien": self.namelist_frame, "booking_availability": self.booking_frame,
+            "ticket": self.ticket_frame,
+        }
+
+        # 1) บัญชีเข้าสู่ระบบ — เฉพาะโหมดที่ใช้
+        login_kind = m["login"]
+        if login_kind in ("creds", "either"):
+            self.login_frame.pack(**pack)
+            if mode in ("etracking", "permit_report"):
+                hint = "ใช้เมื่อดึงบัญชีเดียว — ถ้าติ๊ก 'ดึงหลายบัญชี' หรือระบุไฟล์ Ref_number ด้านล่าง จะใช้บัญชีจากไฟล์แทน"
+            elif login_kind == "either":
+                hint = "ใช้เมื่อไม่ระบุไฟล์ UsernameLogin.xlsx ในตัวเลือกด้านล่าง"
+            else:
+                hint = ""
+            self.login_hint.config(text=hint)
+            if hint:
+                self.login_hint.grid()
+            else:
+                self.login_hint.grid_remove()
+
+        # 2) การ์ดเฉพาะโหมด / ชุด e-Tracking
+        if mode == "etracking":
+            self.multi_frame.pack(**pack)
+            self.req_frame.pack(**pack)
+            self.status_frame.pack(**pack)
+            self.etk_template_frame.pack(**pack)
+            self.etk_req_no_frame.pack(**pack)
         elif mode == "permit_report":
-            # แชร์ตัวเลือก e-Tracking (request_types + date + status checkboxes)
-            for f in self._etracking_frames:
-                f.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_permit_report.xlsx"))
-        elif mode == "ticket":
-            self.ticket_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_ticket_report.xlsx"))
+            self.multi_frame.pack(**pack)
+            self.req_frame.pack(**pack)
+            self.status_frame.pack(**pack)
+        elif mode == "bt30_ctn":
+            self.req_frame.pack(**pack)
+            self.status_frame.pack(**pack)
+            self.bt30ctn_frame.pack(**pack)
         else:
-            # e-Tracking: ตัวเลือก → รูปแบบรายงาน (Template) → ตัวกรองสถานะ → ดึงเฉพาะเลขคำขอ
-            self._etracking_frames[0].pack(fill="x", padx=10, pady=6)
-            self.etk_template_frame.pack(fill="x", padx=10, pady=6)
-            for f in self._etracking_frames[1:]:
-                f.pack(fill="x", padx=10, pady=6)
-            self.etk_req_no_frame.pack(fill="x", padx=10, pady=6)
-            if cur_basename in defaults:
-                self.out_path.set(str(REPORTS_DIR / "WA_report.xlsx"))
-        self._reorder_after_login()
+            fr = mode_frames.get(mode)
+            if fr is not None:
+                fr.pack(**pack)
 
-    def _reorder_after_login(self) -> None:
-        """จัดให้ปุ่ม/progress/log อยู่ล่างสุดหลังเปลี่ยน mode"""
-        for child in (
-            getattr(self, "_btns_frame", None),
-            getattr(self, "_prog_frame", None),
-            getattr(self, "_log_frame", None),
-        ):
-            if child is not None:
-                child.pack_forget()
-                if child is self._log_frame:
-                    child.pack(fill="both", expand=True, padx=10, pady=6)
-                else:
-                    child.pack(fill="x", padx=10, pady=6)
+        # 3) ไฟล์ผลลัพธ์ (ทุกโหมด) — ตัวเลือก limit/relogin เฉพาะที่ backend รองรับ
+        self.output_frame.pack(**pack)
+        if mode in ("etracking", "permit_report"):
+            self.run_opts_row.grid()
+        else:
+            self.run_opts_row.grid_remove()
 
+        # เลื่อนกลับบนสุด
+        try:
+            self._scroll_canvas.yview_moveto(0)
+        except Exception:
+            pass
+
+    # ---------- request listbox ----------
     def _render_request_listbox(self, filt: str = "") -> None:
         """เติมรายการใน request_listbox ตามคำค้น + re-apply selection ที่เก็บไว้ (ข้าม filter)"""
         filt = (filt or "").strip().lower()
@@ -1862,7 +1514,7 @@ class App(tk.Tk):
             if filt and filt not in lbl.lower() and filt not in code.lower():
                 continue
             self._req_visible_idx.append(i)
-            self.request_listbox.insert("end", lbl)
+            self.request_listbox.insert("end", f"{lbl}   [{code}]")
             if code in self._req_selected_codes:
                 self.request_listbox.selection_set("end")
 
@@ -1882,11 +1534,10 @@ class App(tk.Tk):
             self._req_codes[i] for i in self._req_visible_idx
             if 0 <= i < len(self._req_codes)
         }
-        self._req_selected_codes -= visible_codes  # ตัวที่ visible เดิมลบก่อน
-        self._req_selected_codes |= codes_now       # แล้วรวม selection ปัจจุบัน
+        self._req_selected_codes -= visible_codes
+        self._req_selected_codes |= codes_now
 
     def _req_apply_search(self) -> None:
-        """เรียกเมื่อพิมพ์ในช่องค้นหา — เก็บ selection เดิมก่อน แล้ว render ใหม่ตามคำค้น"""
         self._req_persist_selection()
         self._render_request_listbox(self.request_search.get())
         self._update_request_summary()
@@ -1900,16 +1551,15 @@ class App(tk.Tk):
         codes = self._get_selected_request_codes()
         n = len(codes)
         if n == 0:
-            self.request_summary.set("[เลือก 0 รายการ] → จะดึงทุกรายการคำขอ")
+            self.request_summary.set("ยังไม่เลือก → จะดึงทุกรายการคำขอ")
         elif n == 1:
-            self.request_summary.set(f"[เลือก 1 รายการ] code: {codes[0]}")
+            self.request_summary.set(f"เลือก 1 รายการ: {codes[0]}")
         else:
             preview = ", ".join(codes[:3])
             more = f" (+{n - 3} อื่น)" if n > 3 else ""
-            self.request_summary.set(f"[เลือก {n} รายการ] {preview}{more}")
+            self.request_summary.set(f"เลือก {n} รายการ: {preview}{more}")
 
     def _req_select_all(self) -> None:
-        """เลือกทุกรายการ (รวมที่ถูกซ่อนจากคำค้นด้วย)"""
         try:
             self._req_selected_codes = set(self._req_codes)
             self._render_request_listbox(self.request_search.get())
@@ -1918,7 +1568,6 @@ class App(tk.Tk):
             pass
 
     def _req_clear(self) -> None:
-        """ล้างการเลือกทั้งหมด (รวมที่ถูกซ่อนจากคำค้นด้วย)"""
         try:
             self._req_selected_codes.clear()
             self._render_request_listbox(self.request_search.get())
@@ -1928,10 +1577,8 @@ class App(tk.Tk):
 
     def _on_request_changed(self, _evt=None) -> None:
         codes = self._get_selected_request_codes()
-        # เก็บ code แรก (หรือว่าง) ไว้ที่ self.request_type สำหรับ backward compat
         first = codes[0] if codes else ""
         self.request_type.set(first)
-        # อัปเดต profile defaults ตาม code แรกที่เลือก
         self._apply_profile_defaults(first)
         self._update_request_summary()
 
@@ -1961,15 +1608,15 @@ class App(tk.Tk):
         cap = prof.get("capture_extra_notes", True)
         self.capture_extra_notes.set(bool(cap))
 
+    # ---------- file dialogs ----------
     def _choose_register_input(self) -> None:
-        path = filedialog.askopenfilename(
-            filetypes=[("Excel", "*.xlsx"), ("All files", "*.*")],
-        )
-        if path:
-            self.register_input.set(path)
+        self._choose_into(self.register_input)
 
     def _choose_into(self, var: tk.StringVar) -> None:
+        cur = (var.get() or "").strip()
+        initdir = str(Path(cur).parent) if cur and Path(cur).parent.exists() else str(ROOT)
         path = filedialog.askopenfilename(
+            initialdir=initdir,
             filetypes=[("Excel", "*.xlsx"), ("All files", "*.*")],
         )
         if path:
@@ -1977,10 +1624,11 @@ class App(tk.Tk):
 
     def _choose_out(self) -> None:
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        cur = Path(self.out_path.get() or (REPORTS_DIR / "WA_report.xlsx"))
         path = filedialog.asksaveasfilename(
             defaultextension=".xlsx",
-            initialdir=str(REPORTS_DIR),
-            initialfile="WA_report.xlsx",
+            initialdir=str(cur.parent if cur.parent.exists() else REPORTS_DIR),
+            initialfile=cur.name,
             filetypes=[("Excel", "*.xlsx")],
         )
         if path:
@@ -1989,8 +1637,11 @@ class App(tk.Tk):
     # ---- Branches (booking mode) ----
     _BRANCHES_CACHE = ROOT / "_branches_cache.json"
 
+    def _booking_clear_selection(self) -> None:
+        self._booking_selected_codes.clear()
+        self.booking_branches_lb.selection_clear(0, "end")
+
     def _booking_persist_selection(self) -> None:
-        """สังเคราะห์ selection ปัจจุบัน → self._booking_selected_codes (เก็บข้าม filter)"""
         sel = self.booking_branches_lb.curselection()
         codes_now = set()
         for row_idx in sel:
@@ -1998,17 +1649,15 @@ class App(tk.Tk):
                 master_idx = self._booking_visible_idx[row_idx]
                 if 0 <= master_idx < len(self._booking_all_branches):
                     codes_now.add(self._booking_all_branches[master_idx]["code"])
-        # อัปเดต: ตัวที่ visible = ให้สิทธิ์ตาม state ปัจจุบัน
         visible_codes = {
             self._booking_all_branches[i]["code"]
             for i in self._booking_visible_idx
             if 0 <= i < len(self._booking_all_branches)
         }
-        self._booking_selected_codes -= visible_codes  # ตัวที่ visible เดิมให้ลบก่อน
-        self._booking_selected_codes |= codes_now       # แล้วรวม selection ปัจจุบัน
+        self._booking_selected_codes -= visible_codes
+        self._booking_selected_codes |= codes_now
 
     def _booking_render_listbox(self, filt: str = "") -> None:
-        """Render listbox ตาม self._booking_all_branches + filter string"""
         filt = (filt or "").strip().lower()
         self.booking_branches_lb.delete(0, "end")
         self._booking_visible_idx = []
@@ -2023,7 +1672,6 @@ class App(tk.Tk):
                 self.booking_branches_lb.selection_set("end")
 
     def _booking_apply_search(self) -> None:
-        # ก่อน re-render ให้เก็บ selection ที่ user ทำก่อน
         self._booking_persist_selection()
         self._booking_render_listbox(self.booking_search.get())
 
@@ -2045,7 +1693,6 @@ class App(tk.Tk):
         if getattr(self, "_worker", None) and self._worker.is_alive():
             messagebox.showinfo("รอสักครู่", "มีงานอื่นทำงานอยู่ — กรุณารอให้เสร็จก่อน")
             return
-        # เก็บ selection ปัจจุบันก่อนโหลดใหม่
         self._booking_persist_selection()
         cfg = self._collect_cfg_for_branches()
         if not cfg:
@@ -2091,7 +1738,6 @@ class App(tk.Tk):
                         for b in branches if b.get("code")
                     ]
                     branches_clean.sort(key=lambda x: (x["code"], x["name"]))
-                    # เซฟ cache
                     try:
                         self._BRANCHES_CACHE.write_text(
                             json.dumps(branches_clean, ensure_ascii=False, indent=2),
@@ -2099,7 +1745,7 @@ class App(tk.Tk):
                         )
                     except Exception:
                         pass
-                    # อัปเดต UI ใน main thread
+
                     def _update() -> None:
                         self._booking_all_branches = branches_clean
                         self._booking_render_listbox(self.booking_search.get())
@@ -2113,13 +1759,13 @@ class App(tk.Tk):
         threading.Thread(target=_worker, daemon=True).start()
 
     def _collect_cfg_for_branches(self) -> dict | None:
-        """รวม cfg (username/password/type/method) จากช่องข้อมูลเข้าสู่ระบบด้านบน"""
+        """รวม cfg (username/password/type/method) จากการ์ดบัญชีเข้าสู่ระบบ"""
         u = (self.username.get() or "").strip()
         p = self.password.get() or ""
         if not u or not p:
             messagebox.showwarning(
                 "ข้อมูลไม่ครบ",
-                "กรุณากรอก Username/Password ในช่อง 'ข้อมูลเข้าสู่ระบบ' ก่อน แล้วค่อยกดโหลดสาขา",
+                "กรุณากรอก Username/Password ในการ์ด 'บัญชีเข้าสู่ระบบ' ก่อน แล้วค่อยกดโหลดสาขา",
             )
             return None
         return {
@@ -2127,23 +1773,54 @@ class App(tk.Tk):
             "user_type": self.user_type.get(),
             "method": self.method.get(),
             "headless": bool(self.headless.get()),
+            "hide_window": bool(self.hide_window.get()),
         }
 
+    # ---------- log / progress ----------
     def _open_folder(self) -> None:
         p = Path(self.out_path.get()).parent
+        p.mkdir(parents=True, exist_ok=True)
         if p.exists():
             import os
             os.startfile(str(p))  # type: ignore[attr-defined]
 
     def _log(self, msg: str) -> None:
-        self._log_q.put(msg)
+        self._log_q.put(str(msg))
+
+    def _clear_log(self) -> None:
+        self.log_text.config(state="normal")
+        self.log_text.delete("1.0", "end")
+        self.log_text.config(state="disabled")
+
+    @staticmethod
+    def _log_tag(msg: str) -> str | None:
+        s = msg.lstrip()
+        if s.startswith(("[ผิดพลาด]", "Traceback", "⛔")) or "✗" in s[:12] or "[!]" in s[:6]:
+            return "err"
+        if "✓" in s[:12] or s.startswith(("[✔]", "เสร็จ")):
+            return "ok"
+        if s.startswith(("[⏸", "[▶", "[i]", "💡", "⚠")):
+            return "warn"
+        return None
 
     def _drain_log(self) -> None:
         try:
             while True:
-                msg = self._log_q.get_nowait()
+                item = self._log_q.get_nowait()
+                if isinstance(item, tuple) and item and item[0] == "progress":
+                    _, done, total = item
+                    self._last_progress = (done, total)
+                    self.progress["maximum"] = max(total, 1)
+                    self.progress["value"] = done
+                    self.progress_lbl.config(text=f"{done} / {total}" if total else "กำลังทำงาน…")
+                    continue
+                msg = str(item)
                 self.log_text.config(state="normal")
-                self.log_text.insert("end", msg + "\n")
+                tag = self._log_tag(msg)
+                if tag:
+                    self.log_text.insert("end", msg + "\n", tag)
+                else:
+                    self.log_text.insert("end", msg + "\n")
                 self.log_text.see("end")
                 self.log_text.config(state="disabled")
         except queue.Empty:
@@ -2151,11 +1828,22 @@ class App(tk.Tk):
         self.after(120, self._drain_log)
 
     def _set_progress(self, done: int, total: int) -> None:
-        def _do():
-            self.progress["maximum"] = max(total, 1)
-            self.progress["value"] = done
-            self.progress_lbl.config(text=f"{done} / {total}")
-        self.after(0, _do)
+        # เรียกได้จาก worker thread — ส่งผ่าน queue ให้ main thread อัปเดต
+        self._log_q.put(("progress", int(done), int(total)))
+
+    def _set_running(self, running: bool) -> None:
+        if running:
+            self.btn_start.config(state="disabled")
+            self.btn_cancel.config(state="normal")
+            self.btn_pause.config(state="normal")
+            self.btn_resume.config(state="disabled")
+            self.progress_lbl.config(text="กำลังเริ่ม…")
+        else:
+            self.btn_start.config(state="normal")
+            self.btn_cancel.config(state="disabled")
+            self.btn_pause.config(state="disabled")
+            self.btn_resume.config(state="disabled")
+        self._pause_evt.set()
 
     # ---------- actions ----------
     def _relogin_every_value(self) -> int:
@@ -2164,26 +1852,58 @@ class App(tk.Tk):
         try:
             n = int(raw)
         except ValueError:
-            return 0  # "ปิด (ไม่ login ใหม่)" หรือค่าที่แปลงไม่ได้
-        return n if n > 0 else 0  # ติดลบ/ศูนย์ = ปิด
+            return 0
+        return n if n > 0 else 0
+
+    def _warn(self, title: str, msg: str) -> None:
+        messagebox.showwarning(title, msg)
+        return None
 
     def _on_start(self) -> None:
-        mode = self.source_mode.get()
-        etk_multi = (mode in ("etracking", "permit_report") and self.etk_multi.get())
-        # รวมทุกบัญชีเป็นไฟล์เดียว — เฉพาะโหมด e-Tracking แบบหลายบัญชี (permit_report รวมเป็นไฟล์เดียวอยู่แล้ว)
-        etk_combine = (mode == "etracking" and etk_multi and self.etk_combine.get())
-        if mode not in ("register", "receipts", "results", "inform", "bt30", "bt44", "bill_payment", "payment_receipts", "appointment", "bt30_ctn", "ticket") and not etk_multi:
-            if not self.username.get().strip() or not self.password.get():
-                messagebox.showwarning("ข้อมูลไม่ครบ", "กรุณากรอก Username และ Password")
-                return
-        self.log_text.config(state="normal")
-        self.log_text.delete("1.0", "end")
-        self.log_text.config(state="disabled")
+        if self._worker is not None and self._worker.is_alive():
+            return
+        # ตรวจสอบค่าทั้งหมด "ก่อน" เปลี่ยนสถานะปุ่ม — ถ้าค่าผิด ปุ่มจะไม่ค้าง
+        try:
+            job = self._collect_job()
+        except (tk.TclError, ValueError) as e:
+            messagebox.showwarning("ค่าไม่ถูกต้อง", f"กรุณาตรวจตัวเลขในช่องตัวเลือก\n\n{e}")
+            return
+        if job is None:
+            return
+        self._clear_log()
         self._cancel.clear()
-        self.btn_start.config(state="disabled")
-        self.btn_cancel.config(state="normal")
-        self._pause_evt.set()
+        self._set_running(True)
         self._set_progress(0, 0)
+        self._save_settings()
+        self._last_progress = (0, 0)
+        try:
+            self._job_meta = usage_tracker.begin_job(
+                mode=job[0], operator=self.operator.get().strip(),
+                ewp_username=job[1].get("username", ""),
+                login_file=getattr(self, "_job_login_file", None), out_path=job[2],
+                app_version=APP_VERSION,
+            )
+        except Exception:
+            self._job_meta = None
+        self._worker = threading.Thread(target=self._run, args=job, daemon=True)
+        self._worker.start()
+
+    def _collect_job(self) -> tuple | None:
+        """อ่าน+ตรวจค่าจากหน้าจอ → คืน args สำหรับ _run หรือ None (แจ้งเตือนแล้ว)"""
+        mode = self.source_mode.get()
+        m = MODE_BY_KEY[mode]
+        etk_multi = (mode in ("etracking", "permit_report") and self.etk_multi.get())
+        etk_combine = (mode == "etracking" and etk_multi and self.etk_combine.get())
+        etk_req_excel_str = self.etk_req_excel_input.get().strip() if mode == "etracking" else ""
+
+        # ---- ต้องมี Username/Password ในหน้าจอหรือไม่ ----
+        needs_creds = m["login"] == "creds"
+        if etk_multi or (mode == "etracking" and etk_req_excel_str):
+            needs_creds = False
+        if mode == "booking_availability" and not (self.booking_login_input.get() or "").strip():
+            needs_creds = True
+        if needs_creds and (not self.username.get().strip() or not self.password.get()):
+            return self._warn("ข้อมูลไม่ครบ", "กรุณากรอก Username และ Password ในการ์ด 'บัญชีเข้าสู่ระบบ'")
 
         cfg = {
             "username": self.username.get().strip(),
@@ -2208,38 +1928,28 @@ class App(tk.Tk):
                 self.etk_template.get() if mode == "etracking" else "main"
             ),
         }
-        out = Path(self.out_path.get())
-        limit = int(self.limit.get() or 0)
+        out_str = (self.out_path.get() or "").strip()
+        if not out_str:
+            return self._warn("ข้อมูลไม่ครบ", "กรุณาระบุไฟล์ผลลัพธ์ (.xlsx)")
+        out = Path(out_str)
+        limit = int(self.limit.get() or 0) if mode in ("etracking", "permit_report") else 0
         sub_tabs = [n for n, v in self.alien_subtab_vars.items() if v.get()]
         if mode == "aliens" and not sub_tabs:
-            messagebox.showwarning("ข้อมูลไม่ครบ", "กรุณาเลือกอย่างน้อย 1 ตารางในโหมดข้อมูลคนต่างด้าว")
-            self.btn_start.config(state="normal")
-            self.btn_cancel.config(state="disabled")
-            return
+            return self._warn("ข้อมูลไม่ครบ", "กรุณาเลือกอย่างน้อย 1 ตารางในโหมดข้อมูลคนต่างด้าว")
 
-        etk_req_excel_str = self.etk_req_excel_input.get().strip() if mode == "etracking" else ""
         etk_req_excel = Path(etk_req_excel_str) if etk_req_excel_str else None
         etk_req_login = Path(self.etk_req_login_input.get()) if mode == "etracking" else None
         if mode == "etracking" and etk_req_excel is not None:
             if not etk_req_excel.exists():
-                messagebox.showwarning("ไม่พบไฟล์ Ref_number", f"ไม่พบไฟล์: {etk_req_excel}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ไม่พบไฟล์ Ref_number", f"ไม่พบไฟล์: {etk_req_excel}")
             if not etk_req_login or not etk_req_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {etk_req_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {etk_req_login}")
 
         register_input = Path(self.register_input.get()) if mode == "register" else None
         register_row_range = self.register_row_range.get().strip() or None
         if mode == "register":
             if not register_input or not register_input.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ Excel: {register_input}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ Excel: {register_input}")
 
         receipt_request = Path(self.receipt_request_input.get()) if mode == "receipts" else None
         receipt_login = Path(self.receipt_login_input.get()) if mode == "receipts" else None
@@ -2249,33 +1959,19 @@ class App(tk.Tk):
         receipt_doc_types: list[str] | None = None
         if mode == "receipts":
             if not receipt_request or not receipt_request.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ RequestData: {receipt_request}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ RequestData: {receipt_request}")
             if not receipt_login or not receipt_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {receipt_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {receipt_login}")
             receipt_doc_types = [
                 key for key, var in (
-                    ("receipt", self.doc_receipt),
-                    ("bt44", self.doc_bt44),
-                    ("bt22", self.doc_bt22),
-                    ("bt53", self.doc_bt53),
-                    ("bt55", self.doc_bt55),
-                    ("bt52", self.doc_bt52),
+                    ("receipt", self.doc_receipt), ("bt44", self.doc_bt44),
+                    ("bt22", self.doc_bt22), ("bt53", self.doc_bt53),
+                    ("bt55", self.doc_bt55), ("bt52", self.doc_bt52),
                     ("bt56", self.doc_bt56),
                 ) if var.get()
             ]
             if not receipt_doc_types:
-                messagebox.showwarning(
-                    "ข้อมูลไม่ครบ", "กรุณาเลือกประเภทเอกสารอย่างน้อย 1 อย่าง (ใบเสร็จ / บต.44 / บต.22 / บต.53 / บต.56)",
-                )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", "กรุณาเลือกประเภทเอกสารอย่างน้อย 1 อย่าง")
 
         result_login = Path(self.result_login_input.get()) if mode == "results" else None
         result_request_type = self.result_request_type.get().strip()
@@ -2284,19 +1980,13 @@ class App(tk.Tk):
         result_doc_keys: list[str] | None = None
         if mode == "results":
             if not result_login or not result_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {result_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {result_login}")
             if result_ref is not None and not result_ref.exists():
-                messagebox.showwarning(
+                return self._warn(
                     "ไม่พบไฟล์ Ref_number",
                     f"ระบุไฟล์ Ref_number แต่หาไม่พบ:\n{result_ref}\n\n"
-                    "ถ้าต้องการใช้โหมด e-Tracking ให้กดปุ่ม 'ล้าง' ที่ช่อง Ref_number",
+                    "ถ้าต้องการใช้โหมด B (e-Tracking) ให้กดปุ่ม 'ล้าง' ที่ช่อง Ref_number",
                 )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
             result_doc_keys = [
                 key for key, var in (
                     ("result_notice", self.doc_result_notice),
@@ -2305,12 +1995,7 @@ class App(tk.Tk):
                 ) if var.get()
             ]
             if not result_doc_keys:
-                messagebox.showwarning(
-                    "ข้อมูลไม่ครบ", "กรุณาเลือกเอกสารอย่างน้อย 1 อย่าง (ใบแจ้งผล / ใบรับคำขอ)",
-                )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", "กรุณาเลือกเอกสารอย่างน้อย 1 อย่าง (ใบแจ้งผล / ใบรับคำขอ / บต.50)")
             cfg["request_type"] = result_request_type
 
         inform_excel = Path(self.inform_excel_input.get()) if mode == "inform" else None
@@ -2319,23 +2004,16 @@ class App(tk.Tk):
         inform_commit = bool(self.inform_commit.get()) if mode == "inform" else False
         if mode == "inform":
             if not inform_excel or not inform_excel.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ FormRequestEmployment: {inform_excel}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ FormRequestEmployment: {inform_excel}")
             if not inform_login or not inform_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {inform_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {inform_login}")
             if inform_commit:
                 if not messagebox.askyesno(
                     "ยืนยันส่งคำขอจริง",
                     "โหมด 'COMMIT' จะบันทึกข้อมูลจริงลงระบบ (ข้อ 7+8) — ยืนยันดำเนินการ?",
+                    icon="warning",
                 ):
-                    self.btn_start.config(state="normal")
-                    self.btn_cancel.config(state="disabled")
-                    return
+                    return None
 
         bt30_excel = Path(self.bt30_excel_input.get()) if mode == "bt30" else None
         bt30_login = Path(self.bt30_login_input.get()) if mode == "bt30" else None
@@ -2344,30 +2022,17 @@ class App(tk.Tk):
         bt30_submit = bool(self.bt30_submit.get()) if mode == "bt30" else False
         if mode == "bt30":
             if not bt30_excel or not bt30_excel.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ from_bt30: {bt30_excel}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ from_bt30: {bt30_excel}")
             if not bt30_login or not bt30_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {bt30_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
-            # ตรวจขนาดไฟล์แนบ 'before run' — ถ้ามีไฟล์เกิน 4 MB ให้ฟ้องและไม่เริ่มรัน
-            # (เฉพาะเมื่อทำขั้นตอนที่ 2 ซึ่งมีการแนบเอกสาร — ขั้นตอน 1 อย่างเดียวไม่แนบไฟล์)
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {bt30_login}")
             if bt30_do_step2:
                 try:
                     _recs = _read_bt30_excel(bt30_excel)
                     _sel = [_recs[i - 1] for i in _parse_row_range(bt30_row_range, len(_recs))]
                     _oversize = _bt30_preflight_doc_sizes(_sel, log=lambda *a: None)
                 except Exception as e:
-                    messagebox.showerror(
-                        "อ่านไฟล์ไม่สำเร็จ",
-                        f"ตรวจขนาดไฟล์แนบก่อนรันไม่สำเร็จ:\n{e}",
-                    )
-                    self.btn_start.config(state="normal")
-                    self.btn_cancel.config(state="disabled")
-                    return
+                    messagebox.showerror("อ่านไฟล์ไม่สำเร็จ", f"ตรวจขนาดไฟล์แนบก่อนรันไม่สำเร็จ:\n{e}")
+                    return None
                 if _oversize:
                     _lines = "\n".join(
                         f"• แถว {p['row']} {p['name']} | {p['label']}\n     {p['file']} = {p['mb']} MB"
@@ -2378,23 +2043,13 @@ class App(tk.Tk):
                         f"พบไฟล์แนบเกิน {_BT30_MAX_DOC_MB:.0f} MB จำนวน {len(_oversize)} ไฟล์\n"
                         f"ระบบ e-WorkPermit จำกัดไฟล์แนบไม่เกิน {_BT30_MAX_DOC_MB:.0f} MB ต่อไฟล์\n\n"
                         f"{_lines}\n\n"
-                        f"กรุณาย่อ/บีบอัดไฟล์ให้≤ {_BT30_MAX_DOC_MB:.0f} MB แล้วกดรันใหม่",
+                        f"กรุณาย่อ/บีบอัดไฟล์ให้ ≤ {_BT30_MAX_DOC_MB:.0f} MB แล้วกดรันใหม่",
                     )
-                    self._log(
-                        f"⛔ ยกเลิกการรัน — พบไฟล์แนบเกิน {_BT30_MAX_DOC_MB:.0f} MB "
-                        f"จำนวน {len(_oversize)} ไฟล์ (ต้องแก้ไขก่อน)"
-                    )
-                    self.btn_start.config(state="normal")
-                    self.btn_cancel.config(state="disabled")
-                    return
+                    self._log(f"⛔ ยกเลิกการรัน — พบไฟล์แนบเกิน {_BT30_MAX_DOC_MB:.0f} MB "
+                              f"จำนวน {len(_oversize)} ไฟล์ (ต้องแก้ไขก่อน)")
+                    return None
             if bt30_submit and not bt30_do_step2:
-                messagebox.showwarning(
-                    "ตั้งค่าไม่ถูกต้อง",
-                    "ต้องเปิด 'ทำขั้นตอนที่ 2 ต่อ' ก่อน จึงจะส่งคำขอจริง (Step 7-8) ได้",
-                )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ตั้งค่าไม่ถูกต้อง", "ต้องเปิด 'ทำขั้นตอนที่ 2 ต่อ' ก่อน จึงจะส่งคำขอจริง (Step 7-8) ได้")
             if bt30_submit:
                 if not messagebox.askyesno(
                     "⚠ ยืนยันส่งคำขอจริง — ย้อนกลับไม่ได้",
@@ -2406,17 +2061,12 @@ class App(tk.Tk):
                     "ยืนยันดำเนินการส่งคำขอจริงหรือไม่?",
                     icon="warning",
                 ):
-                    self.btn_start.config(state="normal")
-                    self.btn_cancel.config(state="disabled")
-                    return
+                    return None
 
         etk_login = Path(self.etk_login_input.get()) if etk_multi else None
         if etk_multi:
             if not etk_login or not etk_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {etk_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {etk_login}")
 
         bt44_excel = Path(self.bt44_excel_input.get()) if mode == "bt44" else None
         bt44_login = Path(self.bt44_login_input.get()) if mode == "bt44" else None
@@ -2426,25 +2076,16 @@ class App(tk.Tk):
         bt44_check_docs = bool(self.bt44_check_docs.get()) if mode == "bt44" else True
         if mode == "bt44":
             if not bt44_excel or not bt44_excel.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ from_bt44: {bt44_excel}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ from_bt44: {bt44_excel}")
             if not bt44_login or not bt44_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {bt44_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {bt44_login}")
 
         billpay_login = Path(self.billpay_login_input.get()) if mode == "bill_payment" else None
         billpay_row_range = self.billpay_row_range.get().strip() or None
         billpay_request_types: list[str] | None = None
         if mode == "bill_payment":
             if not billpay_login or not billpay_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {billpay_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {billpay_login}")
             sel_idx = self.billpay_reqtypes_lb.curselection()
             billpay_request_types = [self._billpay_reqtype_codes[i] for i in sel_idx] or None
 
@@ -2453,26 +2094,19 @@ class App(tk.Tk):
         payrcpt_row_range = self.payrcpt_row_range.get().strip() or None
         if mode == "payment_receipts":
             if not payrcpt_request or not payrcpt_request.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ Request_Receipt: {payrcpt_request}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ Request_Receipt: {payrcpt_request}")
             if not payrcpt_login or not payrcpt_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {payrcpt_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {payrcpt_login}")
 
         appt_login = Path(self.appt_login_input.get()) if mode == "appointment" else None
         appt_row_range = self.appt_row_range.get().strip() or None
         if mode == "appointment":
             if not appt_login or not appt_login.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {appt_login}")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {appt_login}")
+            cfg["request_type"] = ""  # โหมดนี้ใช้ 'ทั้งหมด' เสมอ
 
-        bt30ctn_login = Path(self.bt30ctn_login_input.get()) if mode == "bt30_ctn" else None
+        bt30ctn_login_str = self.bt30ctn_login_input.get().strip() if mode == "bt30_ctn" else ""
+        bt30ctn_login = Path(bt30ctn_login_str) if bt30ctn_login_str else None
         bt30ctn_row_range = self.bt30ctn_row_range.get().strip() or None
         bt30ctn_subfolder = bool(self.bt30ctn_make_subfolder.get()) if mode == "bt30_ctn" else False
         bt30ctn_do_ctn = bool(self.bt30ctn_do_ctn.get()) if mode == "bt30_ctn" else True
@@ -2481,19 +2115,10 @@ class App(tk.Tk):
         bt30ctn_do_receipt = bool(self.bt30ctn_do_receipt.get()) if mode == "bt30_ctn" else False
         if mode == "bt30_ctn":
             if not (bt30ctn_do_ctn or bt30ctn_do_appt or bt30ctn_do_bt25 or bt30ctn_do_receipt):
-                messagebox.showwarning(
-                    "ข้อมูลไม่ครบ",
-                    "กรุณาเลือกอย่างน้อย 1 เอกสาร (บต.30 / บต.25 / ใบนัดหมาย / ใบเสร็จ)",
-                )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
-            # บต.25 มีเฉพาะในรายการคำขอ MT_59 → ถ้ายังไม่เลือก เสนอเพิ่มให้อัตโนมัติ
+                return self._warn("ข้อมูลไม่ครบ", "กรุณาเลือกอย่างน้อย 1 เอกสาร (บต.30 / บต.25 / ใบนัดหมาย / ใบเสร็จ)")
             if bt30ctn_do_bt25 and "MT_59" not in cfg.get("request_types", []):
-                _mt59_label = (
-                    "การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาต"
-                    "ให้อยู่ในราชอาณาจักรเป็นการชั่วคราว"
-                )
+                _mt59_label = ("การยื่นคำขอรับใบอนุญาตทำงานของคนต่างด้าวซึ่งได้รับอนุญาต"
+                               "ให้อยู่ในราชอาณาจักรเป็นการชั่วคราว")
                 _ok = messagebox.askyesno(
                     "บต.25 ต้องเลือกรายการคำขอ MT_59",
                     "การดาวน์โหลด 'แบบ บต.25' ต้องกรอง 'รายการคำขอ' เป็น:\n"
@@ -2503,46 +2128,32 @@ class App(tk.Tk):
                     "กด 'No' เพื่อยกเลิก แล้วกลับไปเลือกเอง",
                 )
                 if not _ok:
-                    self.btn_start.config(state="normal")
-                    self.btn_cancel.config(state="disabled")
-                    return
+                    return None
                 self._req_selected_codes.add("MT_59")
                 self._render_request_listbox(self.request_search.get())
                 self._update_request_summary()
                 cfg["request_types"] = self._get_selected_request_codes()
                 self._log("[i] เพิ่มรายการคำขอ MT_59 อัตโนมัติ (จำเป็นสำหรับ บต.25)")
-            # ยืดหยุ่น: ถ้าไม่มี UsernameLogin.xlsx ต้องมี Username/Password ด้านบน
             _has_file = bool(bt30ctn_login and bt30ctn_login.exists())
             _has_creds = bool(self.username.get().strip() and self.password.get())
+            if bt30ctn_login_str and not _has_file and not _has_creds:
+                return self._warn("ไม่พบไฟล์", f"ไม่พบไฟล์ UsernameLogin: {bt30ctn_login}\n"
+                                  "กด 'ล้าง' ที่ช่องไฟล์เพื่อใช้ Username/Password แทน")
             if not _has_file and not _has_creds:
-                messagebox.showwarning(
+                return self._warn(
                     "ข้อมูลไม่ครบ",
                     "โหมดนี้ต้องมีอย่างใดอย่างหนึ่ง:\n"
                     "  1) ไฟล์ UsernameLogin.xlsx ที่มีข้อมูลบัญชี\n"
-                    "  2) กรอก Username/Password ในช่อง 'ข้อมูลเข้าสู่ระบบ' ด้านบน",
+                    "  2) กรอก Username/Password ในการ์ด 'บัญชีเข้าสู่ระบบ'",
                 )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
-            # ถ้าไม่มีไฟล์ → ส่ง None ให้ backend fallback ไปใช้ cfg
             if not _has_file:
                 bt30ctn_login = None
 
-        # ---- โหมด namelist_alien: อ่าน options ----
-        namelist_form_type = (
-            self.namelist_form_type.get().strip() if mode == "namelist_alien" else ""
-        )
+        namelist_form_type = self.namelist_form_type.get().strip() if mode == "namelist_alien" else ""
         namelist_limit = int(self.namelist_limit.get() or 0) if mode == "namelist_alien" else 0
-        if mode == "namelist_alien":
-            if not namelist_form_type:
-                messagebox.showwarning(
-                    "ข้อมูลไม่ครบ", "กรุณาระบุ Form Type (เช่น MT_63_2_3103_RENEWAL)",
-                )
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+        if mode == "namelist_alien" and not namelist_form_type:
+            return self._warn("ข้อมูลไม่ครบ", "กรุณาระบุ Form Type (เช่น MT_63_2_3103_RENEWAL)")
 
-        # ---- โหมด booking_availability: อ่าน options ----
         booking_login: Path | None = None
         booking_months_ahead = 3
         booking_branch_filter: list[str] | None = None
@@ -2550,71 +2161,53 @@ class App(tk.Tk):
             _bl = (self.booking_login_input.get() or "").strip()
             if _bl:
                 p = Path(_bl)
-                if p.exists():
-                    booking_login = p
-                else:
-                    messagebox.showwarning(
-                        "ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {p}",
-                    )
-                    self.btn_start.config(state="normal")
-                    self.btn_cancel.config(state="disabled")
-                    return
-            try:
-                booking_months_ahead = max(1, int(self.booking_months_ahead.get() or 3))
-            except Exception:
-                booking_months_ahead = 3
-            # ดึง selection จาก Listbox (รวม selection ที่ซ่อนอยู่จาก filter)
+                if not p.exists():
+                    return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ UsernameLogin: {p}")
+                booking_login = p
+            booking_months_ahead = max(1, int(self.booking_months_ahead.get() or 3))
             self._booking_persist_selection()
-            if self._booking_selected_codes:
-                booking_branch_filter = sorted(self._booking_selected_codes)
-            else:
-                booking_branch_filter = None
+            booking_branch_filter = sorted(self._booking_selected_codes) or None
 
-        # ---- โหมด ticket: อ่านไฟล์ Excel Ticket ID ----
         ticket_excel: Path | None = None
         if mode == "ticket":
             _te = (self.ticket_excel_input.get() or "").strip()
             if not _te:
-                messagebox.showwarning("ข้อมูลไม่ครบ", "กรุณาเลือกไฟล์ Excel รายการ Ticket ID")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", "กรุณาเลือกไฟล์ Excel รายการ Ticket ID")
             ticket_excel = Path(_te)
             if not ticket_excel.exists():
-                messagebox.showwarning("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ '{ticket_excel}'")
-                self.btn_start.config(state="normal")
-                self.btn_cancel.config(state="disabled")
-                return
+                return self._warn("ข้อมูลไม่ครบ", f"ไม่พบไฟล์ '{ticket_excel}'")
 
-        self._worker = threading.Thread(
-            target=self._run,
-            args=(mode, cfg, out, limit, sub_tabs, register_input, register_row_range,
-                  receipt_request, receipt_login, receipt_row_range, receipt_doc_types,
-                  receipt_name_suffix, receipt_make_folder,
-                  result_login, result_doc_keys, result_ref, etk_multi, etk_login,
-                  etk_combine, etk_req_excel, etk_req_login,
-                  inform_excel, inform_login, inform_row_range, inform_commit,
-                  bt30_excel, bt30_login, bt30_row_range, bt30_do_step2, bt30_submit,
-                  bt44_excel, bt44_login, bt44_row_range, bt44_dry_run, bt44_dry_stop, bt44_check_docs,
-                  billpay_login, billpay_row_range, billpay_request_types,
-                  payrcpt_request, payrcpt_login, payrcpt_row_range,
-                  appt_login, appt_row_range,
-                  bt30ctn_login, bt30ctn_row_range, bt30ctn_subfolder,
-                  bt30ctn_do_ctn, bt30ctn_do_appt,
-                  bt30ctn_do_bt25, bt30ctn_do_receipt,
-                  namelist_form_type, namelist_limit,
-                  booking_login, booking_months_ahead, booking_branch_filter,
-                  ticket_excel),
-            daemon=True,
-        )
-        self.btn_pause.config(state="normal")
-        self.btn_resume.config(state="disabled")
-        self._worker.start()
+        # ไฟล์บัญชีที่งานนี้ใช้ (สำหรับบันทึกการใช้งานว่าทำให้บัญชีไหนบ้าง)
+        self._job_login_file = {
+            "etracking": (etk_req_login if etk_req_excel is not None else etk_login),
+            "permit_report": etk_login, "receipts": receipt_login, "results": result_login,
+            "inform": inform_login, "bt30": bt30_login, "bt44": bt44_login,
+            "bill_payment": billpay_login, "payment_receipts": payrcpt_login,
+            "appointment": appt_login, "bt30_ctn": bt30ctn_login,
+            "booking_availability": booking_login,
+        }.get(mode)
+        return (mode, cfg, out, limit, sub_tabs, register_input, register_row_range,
+                receipt_request, receipt_login, receipt_row_range, receipt_doc_types,
+                receipt_name_suffix, receipt_make_folder,
+                result_login, result_doc_keys, result_ref, etk_multi, etk_login,
+                etk_combine, etk_req_excel, etk_req_login,
+                inform_excel, inform_login, inform_row_range, inform_commit,
+                bt30_excel, bt30_login, bt30_row_range, bt30_do_step2, bt30_submit,
+                bt44_excel, bt44_login, bt44_row_range, bt44_dry_run, bt44_dry_stop, bt44_check_docs,
+                billpay_login, billpay_row_range, billpay_request_types,
+                payrcpt_request, payrcpt_login, payrcpt_row_range,
+                appt_login, appt_row_range,
+                bt30ctn_login, bt30ctn_row_range, bt30ctn_subfolder,
+                bt30ctn_do_ctn, bt30ctn_do_appt,
+                bt30ctn_do_bt25, bt30ctn_do_receipt,
+                namelist_form_type, namelist_limit,
+                booking_login, booking_months_ahead, booking_branch_filter,
+                ticket_excel)
 
     def _on_cancel(self) -> None:
-        if messagebox.askyesno("ยืนยัน", "ต้องการยกเลิกการดึงข้อมูลใช่หรือไม่?"):
+        if messagebox.askyesno("ยืนยัน", "ต้องการยกเลิกการทำงานใช่หรือไม่?"):
             self._cancel.set()
-            self._pause_evt.set()  # ปลุก worker ถ้ากำลังพักค้างอยู่ ให้ออกจาก loop
+            self._pause_evt.set()
             self.btn_pause.config(state="disabled")
             self.btn_resume.config(state="disabled")
             self._log("[!] ส่งสัญญาณยกเลิก... จะหยุดหลังเสร็จรายการปัจจุบัน")
@@ -2627,20 +2220,15 @@ class App(tk.Tk):
         self._log("[⏸] หยุดชั่วคราว — จะค้างไว้หลังจบรายการปัจจุบัน กด 'ต่อ' เพื่อทำงานต่อ")
 
     def _on_resume(self) -> None:
-        """ทำงานต่อจากรายการเดิมทันที (ไม่ต้อง login ใหม่)"""
         self._pause_evt.set()
         self.btn_resume.config(state="disabled")
         self.btn_pause.config(state="normal")
         self._log("[▶] ทำงานต่อจากเดิม")
 
     def _wait_if_paused_or_cancelled(self) -> bool:
-        """callback ส่งให้ run_* แทน is_cancelled:
-        - ถ้าพักอยู่ → บล็อกค้างไว้จนกว่าจะกด 'ต่อ' หรือ 'ยกเลิก'
-        - คืน True เมื่อผู้ใช้ยกเลิก (ให้ loop ออก)
-        """
+        """callback ส่งให้ run_* แทน is_cancelled: พัก → บล็อกจนกด 'ต่อ'/'ยกเลิก'; คืน True เมื่อยกเลิก"""
         self._pause_evt.wait()
         return self._cancel.is_set()
-
     def _run(
         self, mode: str, cfg: dict, out: Path, limit: int, sub_tabs: list[str],
         register_input: Path | None = None, register_row_range: str | None = None,
@@ -2862,12 +2450,20 @@ class App(tk.Tk):
             self._log(tb_txt)
             self.after(0, lambda em=err_msg: self._done_err(em))
 
+
+    def _usage_end(self, status: str, count: int = 0, path=None, error: str = "") -> None:
+        meta, self._job_meta = self._job_meta, None
+        try:
+            usage_tracker.end_job(meta, status=status, count=count, out_path=path,
+                                  progress=self._last_progress, error=error, log=self._log)
+        except Exception:
+            pass
+
     def _done_ok(self, count: int, path: Path) -> None:
-        self.btn_start.config(state="normal")
-        self.btn_cancel.config(state="disabled")
-        self.btn_pause.config(state="disabled")
-        self.btn_resume.config(state="disabled")
-        self._pause_evt.set()
+        self._set_running(False)
+        self._usage_end("cancelled" if self._cancel.is_set() else "ok", count=count, path=path)
+        self.progress_lbl.config(text=f"เสร็จ {count} รายการ")
+        self._log(f"✓ เสร็จสิ้น — {count} รายการ → {path}")
         if messagebox.askyesno(
             "เสร็จสิ้น",
             f"ดึงข้อมูล {count} รายการ\nบันทึกที่:\n{path}\n\nต้องการเปิดไฟล์เลยไหม?",
@@ -2879,14 +2475,12 @@ class App(tk.Tk):
                 messagebox.showerror("เปิดไฟล์ไม่ได้", str(e))
 
     def _done_err(self, msg: str) -> None:
-        self.btn_start.config(state="normal")
-        self.btn_cancel.config(state="disabled")
-        self.btn_pause.config(state="disabled")
-        self.btn_resume.config(state="disabled")
-        self._pause_evt.set()
+        self._set_running(False)
+        self._usage_end("error", error=msg)
+        self.progress_lbl.config(text="ผิดพลาด")
+        self._log_box.set_open(True)
         messagebox.showerror("เกิดข้อผิดพลาด", msg)
 
-    # ---- Booking Monitor (real-time) ----
     def _booking_open_monitor(self) -> None:
         cfg = self._collect_cfg_for_branches()
         if not cfg:
