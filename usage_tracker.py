@@ -82,6 +82,59 @@ def is_configured() -> bool:
     return load_db_config() is not None
 
 
+# ---------------------------------------------------------------------------
+# license (Serial Number) — ตรวจกับเว็บ datacorpapi.com ก่อนเริ่มงาน
+# ---------------------------------------------------------------------------
+LICENSE_URL_DEFAULT = "https://datacorpapi.com/api/license/verify"
+LICENSE_GRACE_DAYS = 7  # ถ้าเน็ตล่ม ให้ใช้ผลตรวจล่าสุดได้ไม่เกินกี่วัน
+
+
+def license_url() -> str:
+    if load_dotenv is not None:
+        load_dotenv(ROOT / ".env")
+    return _env("USAGE_LICENSE_URL", LICENSE_URL_DEFAULT)
+
+
+def normalize_serial(v: str) -> str:
+    import re
+    s = re.sub(r"[^A-Z0-9]", "", str(v or "").upper())
+    if len(s) != 15 or not s.startswith("DCA"):
+        return ""
+    return f"DCA-{s[3:7]}-{s[7:11]}-{s[11:15]}"
+
+
+def verify_license(serial: str, app_version: str = "") -> dict:
+    """POST serial ไปตรวจ — คืน dict {ok, operator, display_name, error, message}
+    error = "network" เมื่อติดต่อเซิร์ฟเวอร์ไม่ได้ (ไม่ใช่ serial ผิด)"""
+    import json as _json
+    import urllib.request
+    import urllib.error
+    sn = normalize_serial(serial)
+    if not sn:
+        return {"ok": False, "error": "invalid_format", "message": "รูปแบบ Serial ไม่ถูกต้อง (DCA-XXXX-XXXX-XXXX)"}
+    body = _json.dumps({
+        "serial": sn, "install_id": install_id(), "machine": _machine()[:64],
+        "windows_user": default_operator()[:64], "app_version": str(app_version)[:20],
+    }).encode("utf-8")
+    req = urllib.request.Request(license_url(), data=body, method="POST",
+                                 headers={"Content-Type": "application/json", "User-Agent": "e-WorkPermit-Tools"})
+    try:
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = _json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            data = _json.loads(e.read().decode("utf-8"))
+        except Exception:
+            return {"ok": False, "error": "network", "message": f"เซิร์ฟเวอร์ตอบ {e.code}"}
+    except Exception as e:
+        return {"ok": False, "error": "network", "message": f"ติดต่อเซิร์ฟเวอร์ตรวจสอบไม่ได้: {e.__class__.__name__}"}
+    if not isinstance(data, dict):
+        return {"ok": False, "error": "network", "message": "คำตอบจากเซิร์ฟเวอร์ไม่ถูกต้อง"}
+    data.setdefault("ok", False)
+    data["serial"] = sn
+    return data
+
+
 def pending_count() -> int:
     try:
         if not PENDING_FILE.exists():

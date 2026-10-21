@@ -465,19 +465,111 @@ class App(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind("<F5>", lambda _e: self._on_start())
         self.after(120, self._drain_log)
-        # ส่งบันทึกการใช้งานที่ค้างอยู่ (ถ้ามี) ตอนเปิดโปรแกรม
+        # ส่งบันทึกการใช้งานที่ค้างอยู่ (ถ้ามี) ตอนเปิดโปรแกรม + ตรวจ Serial อัตโนมัติ
         self.after(1500, lambda: usage_tracker.flush_async(log=self._log))
+        self.after(800, lambda: self._verify_license(show=False))
+
+    # ---------- license (Serial Number) ----------
+    def _set_license_ui(self, ok: bool, text: str, warn: bool = False) -> None:
+        self._license_ok = ok
+        self.license_lbl.config(text=text, style="Ok.TLabel" if ok and not warn else ("Warn.TLabel" if warn else "Danger.TLabel"))
+
+    def _verify_license(self, show: bool = False) -> None:
+        """ตรวจ Serial กับเซิร์ฟเวอร์ใน thread แยก แล้วอัปเดตป้าย/operator"""
+        serial = (self.serial.get() or "").strip()
+        if not serial:
+            self._set_license_ui(False, "ยังไม่ได้ใส่ Serial Number", warn=True)
+            if show:
+                messagebox.showwarning("Serial Number", "กรุณาใส่ Serial Number ของบริษัทคุณ\n(ดูได้ที่ datacorpapi.com/portal → Billing details)")
+            return
+        self.license_lbl.config(text="กำลังตรวจสอบ…", style="Muted.TLabel")
+
+        def _worker() -> None:
+            res = usage_tracker.verify_license(serial, app_version=APP_VERSION)
+            self.after(0, lambda: self._apply_license_result(res, show))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_license_result(self, res: dict, show: bool) -> None:
+        import time as _t
+        if res.get("ok"):
+            op = str(res.get("operator") or "").strip()
+            self.operator.set(op)
+            self._license_info = {"operator": op, "display_name": res.get("display_name") or op,
+                                  "serial": res.get("serial") or "", "verified_at": _t.time()}
+            self._persist["license_cache"].set(json.dumps(self._license_info))
+            self._set_license_ui(True, f"✓ {self._license_info['display_name']} ({op})")
+            self._log(f"[license] ✓ Serial ถูกต้อง — ผู้ใช้งาน: {op}")
+            if show:
+                messagebox.showinfo("Serial Number", f"ถูกต้อง\nบริษัท: {self._license_info['display_name']}\nผู้ใช้งาน: {op}")
+            self._save_settings()
+            return
+        err = res.get("error", "")
+        msg = res.get("message", "ตรวจสอบไม่ผ่าน")
+        if err == "network":
+            # เน็ต/เซิร์ฟเวอร์ล่ม → ใช้ผลตรวจล่าสุดได้ภายใน LICENSE_GRACE_DAYS วัน
+            cache = self._license_cache()
+            if cache and cache.get("serial") == usage_tracker.normalize_serial(self.serial.get()):
+                age_days = (_t.time() - float(cache.get("verified_at", 0))) / 86400
+                if age_days <= usage_tracker.LICENSE_GRACE_DAYS:
+                    self.operator.set(cache["operator"])
+                    self._license_info = cache
+                    self._set_license_ui(True, f"✓ {cache.get('display_name')} (ออฟไลน์ — ใช้ผลตรวจล่าสุด)", warn=True)
+                    self._log(f"[license] ⚠ {msg} — ใช้ผลตรวจล่าสุดเมื่อ {age_days:.1f} วันก่อน")
+                    return
+            self._set_license_ui(False, f"✗ {msg}")
+            self._log(f"[license] ✗ {msg}")
+            if show:
+                messagebox.showerror("ตรวจสอบ Serial ไม่ได้", msg + "\n\nตรวจอินเทอร์เน็ตแล้วลองใหม่")
+            return
+        self.operator.set("")
+        self._license_info = {}
+        self._set_license_ui(False, f"✗ {msg}")
+        self._log(f"[license] ✗ {msg}")
+        if show:
+            messagebox.showerror("Serial Number ไม่ถูกต้อง", msg + "\n\nตรวจ Serial ที่ datacorpapi.com/portal หรือติดต่อ info@datacorpapi.com")
+
+    def _license_cache(self) -> dict:
+        try:
+            v = self._persist.get("license_cache")
+            return json.loads(v.get()) if v is not None and v.get() else {}
+        except Exception:
+            return {}
+
+    def _require_license(self) -> bool:
+        """เรียกก่อนเริ่มงาน: ต้องมี Serial ที่ตรวจผ่าน (หรือผลตรวจล่าสุดในช่วงผ่อนผันเมื่อออฟไลน์)"""
+        if self._license_ok and self.operator.get().strip():
+            return True
+        serial = (self.serial.get() or "").strip()
+        if not serial:
+            messagebox.showwarning("ต้องใส่ Serial Number",
+                                   "โปรแกรมต้องมี Serial Number ของบริษัทคุณจึงจะเริ่มงานได้\n"
+                                   "ดู Serial ได้ที่ datacorpapi.com/portal → Billing details แล้วใส่ที่ช่องมุมขวาบน")
+            return False
+        # ตรวจแบบรอผล (ไม่เกิน ~12 วิ) เพราะต้องรู้ผลก่อนเริ่มงาน
+        self.license_lbl.config(text="กำลังตรวจสอบ…", style="Muted.TLabel")
+        self.update_idletasks()
+        res = usage_tracker.verify_license(serial, app_version=APP_VERSION)
+        self._apply_license_result(res, show=False)
+        if self._license_ok and self.operator.get().strip():
+            return True
+        messagebox.showerror("เริ่มงานไม่ได้",
+                             f"{res.get('message', 'Serial Number ไม่ถูกต้อง')}\n\n"
+                             "โปรแกรมจะทำงานได้เมื่อ Serial Number ถูกต้องและบัญชียังใช้งานอยู่\n"
+                             "ติดต่อ info@datacorpapi.com")
+        return False
 
     # ---------- usage tracking ----------
     def _usage_status(self) -> None:
         """ปุ่ม 'สถานะการบันทึกใช้งาน' — แสดงสถานะ + ทดสอบเชื่อมต่อ MySQL"""
         pending = usage_tracker.pending_count()
         ok, msg = usage_tracker.test_connection()
-        operator = self.operator.get().strip() or usage_tracker.default_operator()
+        operator = self.operator.get().strip() or "(ยังไม่ได้ตรวจ Serial)"
         lines = [
             ("✓ " if ok else "✗ ") + msg,
             "",
-            f"ผู้ใช้งาน: {operator}",
+            f"Serial: {usage_tracker.normalize_serial(self.serial.get()) or '-'}  →  ผู้ใช้งาน: {operator}",
+            f"บริษัท: {self._license_info.get('display_name', '-')}",
             f"รหัสเครื่อง: {usage_tracker.install_id()}",
             f"รายการค้างส่ง: {pending}",
         ]
@@ -624,14 +716,24 @@ class App(tk.Tk):
         ttk.Label(header, text="e-WorkPermit Tools", style="Title.TLabel").pack(side="left")
         ttk.Label(header, text="  ดึงรายงาน · ดาวน์โหลดเอกสาร · ยื่นคำขอ",
                   style="Desc.TLabel").pack(side="left", pady=(4, 0))
-        # ชื่อผู้ใช้งาน — ใช้แยกยอดการใช้งานต่อคน (บันทึกลง MySQL)
-        ttk.Label(header, text="ผู้ใช้งาน:", style="Surface.TLabel").pack(side="left", padx=(28, 4), pady=(3, 0))
-        self.operator = self._remember("operator", tk.StringVar(value=usage_tracker.default_operator()))
-        op_ent = ttk.Entry(header, textvariable=self.operator, width=16)
-        op_ent.pack(side="left", pady=(2, 0))
-        Tooltip(op_ent, "ชื่อที่ใช้แยกยอดการใช้งานเพื่อคิดค่าใช้จ่าย — ใส่ชื่อตัวเอง/รหัสหน่วยงาน (จำค่าไว้ให้)")
+        # Serial Number ของลูกค้า (ได้จาก datacorpapi.com/portal) — โปรแกรมตรวจกับเซิร์ฟเวอร์ก่อนเริ่มงาน
+        # ชื่อผู้ใช้งาน (operator) ถูกกำหนดจาก Serial ที่ตรวจผ่าน ไม่ให้พิมพ์เอง
+        self.operator = self._remember("operator", tk.StringVar(value=""))
+        self.serial = self._remember("serial_no", tk.StringVar(value=""))
+        self._remember("license_cache", tk.StringVar(value=""))
+        self._license_ok = False
+        self._license_info: dict = {}
+        ttk.Label(header, text="Serial Number:", style="Surface.TLabel").pack(side="left", padx=(28, 4), pady=(3, 0))
+        sn_ent = ttk.Entry(header, textvariable=self.serial, width=22, font=("Consolas", 10))
+        sn_ent.pack(side="left", pady=(2, 0))
+        sn_ent.bind("<Return>", lambda _e: self._verify_license(show=True))
+        Tooltip(sn_ent, "Serial Number ของบริษัทคุณ ดูได้ที่ datacorpapi.com/portal → Billing details\nโปรแกรมจะตรวจสอบกับเซิร์ฟเวอร์ก่อนเริ่มงานทุกครั้ง")
+        ttk.Button(header, text="ตรวจสอบ", style="Link.TButton",
+                   command=lambda: self._verify_license(show=True)).pack(side="left", padx=(2, 0), pady=(2, 0))
+        self.license_lbl = ttk.Label(header, text="ยังไม่ได้ตรวจสอบ Serial", style="Warn.TLabel")
+        self.license_lbl.pack(side="left", padx=(6, 0), pady=(3, 0))
         ttk.Button(header, text="สถานะการบันทึกใช้งาน", style="Link.TButton",
-                   command=self._usage_status).pack(side="left", padx=(4, 0), pady=(2, 0))
+                   command=self._usage_status).pack(side="left", padx=(8, 0), pady=(2, 0))
         # ตัวเลือกส่วนกลาง (ใช้ทุกโหมด)
         self.headless = tk.BooleanVar(value=False)   # headless จริงซ่อนจาก UI (ใช้ซ่อนนอกจอแทน)
         self.hide_window = self._remember("hide_window", tk.BooleanVar(value=False))
@@ -1861,6 +1963,8 @@ class App(tk.Tk):
 
     def _on_start(self) -> None:
         if self._worker is not None and self._worker.is_alive():
+            return
+        if not self._require_license():
             return
         # ตรวจสอบค่าทั้งหมด "ก่อน" เปลี่ยนสถานะปุ่ม — ถ้าค่าผิด ปุ่มจะไม่ค้าง
         try:
