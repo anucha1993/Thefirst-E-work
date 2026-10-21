@@ -189,3 +189,6 @@ webapp/.env
 # session cookie + downloaded reports (personal data) - do not commit
 storage_state.json
 reports/
+
+# โฟลเดอร์ lib ของเว็บแอป (กฎ lib/ ด้านบนเป็นของ Python ไม่เกี่ยว)
+!webapp/lib/
