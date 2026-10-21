@@ -205,10 +205,10 @@ A: ใน [scrape_wa.py](scrape_wa.py) ฟังก์ชัน `apply_wa_filter
 การทำงาน: เขียนลง `usage/usage_pending.jsonl` ในเครื่องก่อนเสมอ → ส่งเข้า MySQL ใน thread แยก → ส่งแล้วย้ายไป `usage/usage_sent_YYYYMM.jsonl` ถ้าเน็ต/ฐานข้อมูลล่ม จะเก็บไว้ส่งตอนเปิดโปรแกรมครั้งถัดไป (ไม่กระทบการทำงานหลัก)
 
 ### ติดตั้งฝั่งเซิร์ฟเวอร์ (ทำครั้งเดียว)
-สร้าง database และ user ผ่านหน้าควบคุมของโฮสต์ (cPanel/DirectAdmin) หรือถ้าโฮสต์ MySQL เองใช้ `sql/grants_optional.sql` แล้วรันใน database นั้น (phpMyAdmin → SQL หรือ):
+สร้าง database และ user ผ่านหน้าควบคุมของโฮสต์ (cPanel/DirectAdmin) หรือถ้าโฮสต์ MySQL เองใช้ `webapp/sql/grants_optional.sql` แล้วรันใน database นั้น (phpMyAdmin → SQL หรือ):
 ```bash
-mysql -h HOST -u USER -p DATABASE < sql/usage_schema.sql     # ตาราง usage_runs, usage_prices + view สรุป
-mysql -h HOST -u USER -p DATABASE < sql/billing_schema.sql   # ตารางลูกค้า/การชำระเงิน (Lemon Squeezy) + ข้อความติดต่อ
+mysql -h HOST -u USER -p DATABASE < webapp/sql/usage_schema.sql     # ตาราง usage_runs, usage_prices + view สรุป
+mysql -h HOST -u USER -p DATABASE < webapp/sql/billing_schema.sql   # ตารางลูกค้า/การชำระเงิน (Lemon Squeezy) + ข้อความติดต่อ
 ```
 แนะนำให้มี user 2 ตัว: ตัวที่ใส่ใน `.env` ของเครื่องผู้ใช้ควรมีสิทธิ์ **INSERT เฉพาะ usage_runs** (ผู้ใช้แก้/ลบ/อ่านข้อมูลไม่ได้) ส่วนเว็บแอปใช้อีก user ที่อ่านได้ทุกตาราง
 
@@ -234,6 +234,14 @@ USAGE_DB_PASSWORD=<รหัสของ ewp_app>
 
 ---
 
+## 🌐 repo ของเว็บ (datacorpapi.com)
+
+โฟลเดอร์ `webapp/` ถูกแยกขึ้น GitHub เป็น repo ของตัวเองที่ `anucha1993/datacorpapi.com` (มีเฉพาะเว็บ + `sql/`) เพื่อให้ Plesk ดึงเฉพาะส่วนเว็บ แก้โค้ดเว็บใน repo นี้ตามปกติ แล้วส่งขึ้น repo เว็บด้วย
+```bash
+git subtree push --prefix=webapp datacorp main
+```
+(remote `datacorp` = https://github.com/anucha1993/datacorpapi.com.git)
+
 ## 📁 ไฟล์ในโปรเจกต์
 
 | ไฟล์ | หน้าที่ |
@@ -243,9 +251,9 @@ USAGE_DB_PASSWORD=<รหัสของ ewp_app>
 | [scrape_wa.py](scrape_wa.py) | โค้ดดึงข้อมูลหลัก (ใช้ได้ทั้ง CLI/GUI) |
 | [login_ewp.py](login_ewp.py) | สคริปต์ทดสอบ Login อย่างเดียว |
 | [usage_tracker.py](usage_tracker.py) | บันทึกการใช้งาน → MySQL (คิว + ส่ง) |
-| [sql/usage_schema.sql](sql/usage_schema.sql) | สร้างตาราง/view/user สำหรับบันทึกการใช้งาน |
+| [webapp/sql/usage_schema.sql](webapp/sql/usage_schema.sql) | สร้างตาราง/view/user สำหรับบันทึกการใช้งาน |
 | [webapp/](webapp/) | เว็บไซต์ขาย + หลังบ้านดูยอด + รับชำระเงินผ่าน Lemon Squeezy (Node.js + MySQL) |
-| [sql/billing_schema.sql](sql/billing_schema.sql) | ตารางลูกค้า/คำสั่งซื้อ/subscription จาก Lemon Squeezy |
+| [webapp/sql/billing_schema.sql](webapp/sql/billing_schema.sql) | ตารางลูกค้า/คำสั่งซื้อ/subscription จาก Lemon Squeezy |
 | [requirements.txt](requirements.txt) | รายการ library ที่ต้องลง |
 | [.env](.env) | ค่า Login สำหรับโหมด CLI |
 | `WA_report.xlsx` | ไฟล์ Excel ที่ได้หลังรัน |
