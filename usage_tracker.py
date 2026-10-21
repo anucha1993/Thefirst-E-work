@@ -371,6 +371,10 @@ def test_connection() -> tuple[bool, str]:
 
 if __name__ == "__main__":
     import sys
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # คอนโซล Windows (cp874) พิมพ์ ✓/✗ ไม่ได้
+    except Exception:
+        pass
     ok, msg = test_connection()
     print(("✓ " if ok else "✗ ") + msg)
     if ok:
