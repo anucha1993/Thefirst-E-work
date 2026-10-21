@@ -96,11 +96,13 @@ def license_url() -> str:
 
 
 def normalize_serial(v: str) -> str:
+    """รับได้ทั้ง 'DCA-XXXX-XXXX-XXXX', พิมพ์เล็ก, ไม่มีขีด หรือวางมาทั้งประโยค — ดึงเฉพาะส่วนที่เป็น serial"""
     import re
-    s = re.sub(r"[^A-Z0-9]", "", str(v or "").upper())
-    if len(s) != 15 or not s.startswith("DCA"):
+    text = str(v or "").upper()
+    m = re.search(r"DCA[\s\-_]*([A-Z0-9]{4})[\s\-_]*([A-Z0-9]{4})[\s\-_]*([A-Z0-9]{4})(?![A-Z0-9])", text)
+    if not m:
         return ""
-    return f"DCA-{s[3:7]}-{s[7:11]}-{s[11:15]}"
+    return f"DCA-{m.group(1)}-{m.group(2)}-{m.group(3)}"
 
 
 def verify_license(serial: str, app_version: str = "") -> dict:

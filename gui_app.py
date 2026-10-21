@@ -486,7 +486,7 @@ class App(tk.Tk):
 
         def _worker() -> None:
             res = usage_tracker.verify_license(serial, app_version=APP_VERSION)
-            self.after(0, lambda: self._apply_license_result(res, show))
+            self._log_q.put(("license", res, show))  # ให้ main thread จัดการ (ห้ามเรียก after() จาก thread)
 
         threading.Thread(target=_worker, daemon=True).start()
 
@@ -495,6 +495,8 @@ class App(tk.Tk):
         if res.get("ok"):
             op = str(res.get("operator") or "").strip()
             self.operator.set(op)
+            if res.get("serial"):
+                self.serial.set(res["serial"])  # เขียนรูปแบบมาตรฐานกลับลงช่อง
             self._license_info = {"operator": op, "display_name": res.get("display_name") or op,
                                   "serial": res.get("serial") or "", "verified_at": _t.time()}
             self._persist["license_cache"].set(json.dumps(self._license_info))
@@ -525,7 +527,7 @@ class App(tk.Tk):
         self.operator.set("")
         self._license_info = {}
         self._set_license_ui(False, f"✗ {msg}")
-        self._log(f"[license] ✗ {msg}")
+        self._log(f"[license] ✗ {msg}" + (f"  (ค่าที่กรอก: {self.serial.get()!r})" if err == "invalid_format" else ""))
         if show:
             messagebox.showerror("Serial Number ไม่ถูกต้อง", msg + "\n\nตรวจ Serial ที่ datacorpapi.com/portal หรือติดต่อ info@datacorpapi.com")
 
@@ -1909,6 +1911,10 @@ class App(tk.Tk):
         try:
             while True:
                 item = self._log_q.get_nowait()
+                if isinstance(item, tuple) and item and item[0] == "license":
+                    _, res, show = item
+                    self._apply_license_result(res, show)
+                    continue
                 if isinstance(item, tuple) and item and item[0] == "progress":
                     _, done, total = item
                     self._last_progress = (done, total)
